@@ -125,19 +125,27 @@ export default function InboxScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#16803C" colors={["#16803C"]} />}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.title}>Messages</Text>
-            <Text style={styles.subtitle}>
-              Conversations with employers after you apply.
-            </Text>
+            <View style={styles.titleRow}>
+              <View>
+                <Text style={styles.title}>My inbox</Text>
+                <Text style={styles.subtitle}>Applications and messages in one place</Text>
+              </View>
+              <View style={styles.headerIcon}><IconSymbol name="bell" size={18} color="#0F7D5E" /></View>
+            </View>
+            <View style={styles.tabs}>
+              <View style={[styles.tab, styles.tabActive]}><Text style={styles.tabActiveText}>Applications</Text></View>
+              <View style={styles.tab}><Text style={styles.tabText}>Messages</Text></View>
+              <View style={styles.tab}><Text style={styles.tabText}>Updates</Text></View>
+            </View>
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
+            <View style={styles.empty}>
             <IconSymbol name="paperplane.fill" size={24} color="#16803C" />
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
-            <Text style={styles.emptyCopy}>
-              Apply for a job to start messaging the employer.
-            </Text>
+              <Text style={styles.emptyTitle}>No applications yet</Text>
+              <Text style={styles.emptyCopy}>
+              Your application updates and employer messages will appear here.
+              </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Browse open jobs"
@@ -199,10 +207,17 @@ export default function InboxScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, padding: 20, paddingBottom: 28 },
-  header: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, paddingBottom: 17, paddingTop: 3 },
-  title: { color: "#17201A", fontSize: 28, fontWeight: "800", letterSpacing: -0.75 },
-  subtitle: { color: "#66736A", fontSize: 13, lineHeight: 18, marginTop: 6 },
+  content: { flexGrow: 1, padding: 18, paddingBottom: 28 },
+  header: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, paddingBottom: 12, paddingTop: 3 },
+  titleRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  title: { color: "#17201A", fontSize: 27, fontWeight: "800", letterSpacing: -0.75 },
+  subtitle: { color: "#66736A", fontSize: 12.5, lineHeight: 18, marginTop: 5 },
+  headerIcon: { alignItems: "center", backgroundColor: "#EAF6F3", borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
+  tabs: { flexDirection: "row", gap: 8, marginTop: 18 },
+  tab: { alignItems: "center", backgroundColor: "#F3F6F4", borderRadius: 999, flex: 1, paddingVertical: 9 },
+  tabActive: { backgroundColor: "#0F7D5E" },
+  tabText: { color: "#66736A", fontSize: 12, fontWeight: "600" },
+  tabActiveText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
   empty: { alignItems: "center", flex: 1, justifyContent: "center", paddingHorizontal: 35 },
   emptyTitle: { color: "#17201A", fontSize: 17, fontWeight: "700", marginTop: 12 },
   emptyCopy: { color: "#66736A", fontSize: 13, lineHeight: 19, marginTop: 5, textAlign: "center" },
@@ -210,7 +225,7 @@ const styles = StyleSheet.create({
   browseButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   signInButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 12, justifyContent: "center", minHeight: 48, marginTop: 18, paddingHorizontal: 22 },
   signInButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
-  row: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 12, marginTop: 12, padding: 14 },
+  row: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 12, marginTop: 12, padding: 13 },
   pressed: { opacity: 0.78 },
   avatar: { alignItems: "center", backgroundColor: "#EDF1EE", borderRadius: 22, height: 44, justifyContent: "center", width: 44 },
   avatarUnread: { backgroundColor: "#16803C" },

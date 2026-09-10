@@ -32,6 +32,7 @@ const exploreItems: { label: string; icon: "clock" | "graduationcap.fill" | "cal
 const typewriterSuggestions = ["Find a part-time role", "Search jobs near Phnom Penh", "Try remote opportunities", "Search by skill or company"];
 
 const heroHeight = 178;
+const currentTime = () => Date.now();
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -136,7 +137,7 @@ export default function HomeScreen() {
 
   const openQuickSearch = (params: Record<string, string>) => {
     haptic.light();
-    const now = Date.now();
+    const now = currentTime();
     if (navLockRef.current && navLockRef.current.target === "/search-results" && navLockRef.current.until > now) return;
     navLockRef.current = { target: "/search-results", until: now + 700 };
     router.push({ pathname: "/search-results", params } as never);
@@ -290,7 +291,7 @@ export default function HomeScreen() {
           </Animated.View>
 
           <View style={styles.sectionWrap}>
-            <SectionHeading action="See all" onAction={() => openSearch()} title="Quick searches" />
+            <SectionHeading action="See all" onAction={() => openSearch()} title="What are you looking for?" />
             <FlatList
               contentContainerStyle={styles.exploreList}
               data={exploreItems}

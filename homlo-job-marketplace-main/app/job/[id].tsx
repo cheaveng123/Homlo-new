@@ -132,7 +132,7 @@ export default function JobDetailScreen() {
               <View style={styles.bannerTint} />
             </Animated.View>
             <Animated.View style={[styles.bannerCopy, heroContentStyle]}>
-              <View style={styles.bannerTag}><Text style={styles.bannerTagText}>{job.category}</Text></View>
+              <View style={styles.bannerTag}><Text style={styles.bannerTagText}>{job.tag || job.category}</Text></View>
               <Text style={styles.bannerCompany}>{job.company}</Text>
               <Text numberOfLines={2} style={styles.bannerTitle}>{job.title}</Text>
               <View style={styles.bannerMeta}><IconSymbol name="mappin.and.ellipse" size={15} color="#D8F3ED" /><Text style={styles.bannerMetaText}>{job.location}</Text></View>
@@ -155,11 +155,11 @@ export default function JobDetailScreen() {
             </View>
             <Text style={styles.sectionTitle}>About this role</Text>
             <Text style={styles.description}>{job.description}</Text>
-            <Text style={styles.sectionTitle}>What you'll do</Text>
+            <Text style={styles.sectionTitle}>What you&apos;ll do</Text>
             <Bullet text={`Work closely with the ${job.company} team to deliver a thoughtful customer experience.`} />
             <Bullet text="Keep priorities clear, communicate early, and contribute to a reliable daily rhythm." />
             <Bullet text={`Bring energy and care to each ${job.category.toLowerCase()} task.`} />
-            <Text style={styles.sectionTitle}>What we're looking for</Text>
+            <Text style={styles.sectionTitle}>What we&apos;re looking for</Text>
             <Bullet text={`Availability for the listed ${job.schedule.toLowerCase()} schedule.`} />
             <Bullet text="A friendly, reliable approach to working with people." />
             <Bullet text="A willingness to learn and contribute as part of a team." />
@@ -201,13 +201,13 @@ function Benefit({ text }: { text: string }) { return <View style={styles.benefi
 const styles = StyleSheet.create({
   screen: { flex: 1, position: "relative" },
   content: { paddingBottom: 126 },
-  banner: { backgroundColor: "#0F5C2B", overflow: "hidden", position: "relative" },
+  banner: { backgroundColor: "#0F5C2B", height: 270, overflow: "hidden", position: "relative" },
   bannerImageLayer: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   bannerImage: { height: "100%", width: "100%" },
   bannerTint: { backgroundColor: "rgba(15, 92, 43, 0.44)", bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   bannerCopy: { bottom: 23, left: 20, position: "absolute", right: 20 },
-  bannerTag: { alignSelf: "flex-start", backgroundColor: "rgba(237, 255, 250, 0.2)", borderColor: "rgba(237, 255, 250, 0.42)", borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
-  bannerTagText: { color: "#E4FFF8", fontSize: 11, fontWeight: "600" },
+  bannerTag: { alignSelf: "flex-start", backgroundColor: "#EAF6F3", borderColor: "#EAF6F3", borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
+  bannerTagText: { color: "#0F7D5E", fontSize: 11, fontWeight: "700" },
   bannerCompany: { color: "#D8F3ED", fontSize: 13, fontWeight: "500", marginTop: 13 },
   bannerTitle: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", letterSpacing: -0.9, lineHeight: 34, marginTop: 3 },
   bannerMeta: { alignItems: "center", flexDirection: "row", gap: 5, marginTop: 10 },
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   compactTitle: { color: "#16211F", fontSize: 14, fontWeight: "600", textAlign: "center" },
   applyLayer: { alignItems: "center", left: 0, position: "absolute", right: 0, zIndex: 15 },
   applyActions: { width: "88%" },
-  applyButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 32, flexDirection: "row", gap: 10, justifyContent: "center", minHeight: 64, paddingHorizontal: 26, shadowColor: "#0F5C2B", shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.22, shadowRadius: 12 },
+  applyButton: { alignItems: "center", backgroundColor: "#0F7D5E", borderRadius: 999, flexDirection: "row", gap: 10, justifyContent: "center", minHeight: 60, paddingHorizontal: 26, shadowColor: "#0F5C2B", shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.22, shadowRadius: 12 },
   applyDisabled: { opacity: 0.7 },
   applyText: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
   missingTitle: { color: "#16211F", fontSize: 18, fontWeight: "600", textAlign: "center" },

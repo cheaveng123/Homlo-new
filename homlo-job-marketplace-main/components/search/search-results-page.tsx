@@ -265,8 +265,8 @@ export function SearchResultsPage() {
             </Pressable>
           ) : null}
           <View style={styles.heroHeading}>
-            <Text style={styles.topTitle}>Search</Text>
-            <Text style={styles.heroSubtitle}>Find the right opportunity for you</Text>
+            <Text style={styles.topTitle}>What are you looking for?</Text>
+            <Text style={styles.heroSubtitle}>Find flexible work that fits your day</Text>
           </View>
         </View>
 
@@ -277,7 +277,7 @@ export function SearchResultsPage() {
               accessibilityLabel="Search opportunities"
               onChangeText={setDraftKeyword}
               onSubmitEditing={submitSearch}
-              placeholder="Job title, skill, or company"
+              placeholder="Search jobs, skills, or companies..."
               placeholderTextColor="#94A098"
               returnKeyType="search"
               style={styles.searchInput}
@@ -326,7 +326,7 @@ export function SearchResultsPage() {
       {!searching ? (
         <>
           <View style={styles.popularHeader}>
-            <Text style={styles.sectionTitle}>Popular searches</Text>
+            <Text style={styles.sectionTitle}>Quick search</Text>
             <Pressable accessibilityRole="button" accessibilityLabel="View all jobs" onPress={clearKeywordOnly} hitSlop={8}>
               <Text style={styles.seeAllText}>View all</Text>
             </Pressable>
@@ -345,7 +345,7 @@ export function SearchResultsPage() {
                 </View>
                 <View style={styles.popularCopy}>
                   <Text style={styles.popularTitle}>{item.label}</Text>
-                  <Text style={styles.popularSubtitle}>Find flexible work near you</Text>
+                  <Text style={styles.popularSubtitle}>Explore flexible work near you</Text>
                 </View>
                 <IconSymbol name="chevron.right" size={17} color="#66736A" />
               </Pressable>
@@ -414,9 +414,11 @@ const styles = StyleSheet.create({
   listContent: {},
 
   heroHeader: {
-    backgroundColor: "#F7F8F6",
+    backgroundColor: "#EAF6F3",
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
     overflow: "hidden",
-    paddingBottom: 14,
+    paddingBottom: 18,
     paddingHorizontal: 20,
     position: "relative",
   },
@@ -424,25 +426,25 @@ const styles = StyleSheet.create({
   topBar: { alignItems: "center", flexDirection: "row" },
   backButton: { alignItems: "center", height: 40, justifyContent: "center", marginRight: 4, width: 40 },
   heroHeading: { flex: 1 },
-  topTitle: { color: "#17201A", fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
-  heroSubtitle: { color: "#66736A", fontSize: 13, marginTop: 4 },
+  topTitle: { color: "#123B35", fontSize: 24, fontWeight: "800", letterSpacing: -0.55 },
+  heroSubtitle: { color: "#55716B", fontSize: 13, marginTop: 5 },
 
   discoveryControls: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: 18 },
-  searchRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 14, borderWidth: 1, flex: 1, flexDirection: "row", height: 48 },
+  searchRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCEBE6", borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: "row", height: 50 },
   searchIcon: { marginLeft: 12 },
   searchInput: { color: "#17201A", flex: 1, fontSize: 14, height: 48, paddingHorizontal: 10 },
 
-  filterButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 4, height: 48, justifyContent: "center", paddingHorizontal: 13 },
-  filterText: { color: "#16803C", fontSize: 13, fontWeight: "700" },
+  filterButton: { alignItems: "center", backgroundColor: "#0F7D5E", borderColor: "#0F7D5E", borderRadius: 15, borderWidth: 1, flexDirection: "row", gap: 4, height: 50, justifyContent: "center", paddingHorizontal: 13 },
+  filterText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   filterCount: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 9.5, height: 19, justifyContent: "center", marginLeft: 2, minWidth: 19, paddingHorizontal: 4 },
   filterCountText: { color: "#FFFFFF", fontSize: 10.5, fontWeight: "800" },
 
   categoryRail: { gap: 8, paddingRight: 20, paddingTop: 16 },
   categoryItem: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 8, paddingHorizontal: 13, paddingVertical: 7 },
-  categoryItemActive: { backgroundColor: "#EAF6EC", borderColor: "#16803C" },
+  categoryItemActive: { backgroundColor: "#0F7D5E", borderColor: "#0F7D5E" },
   categoryIcon: { alignItems: "center", borderRadius: 15, height: 30, justifyContent: "center", width: 30 },
   categoryLabel: { color: "#17201A", fontSize: 13, fontWeight: "600" },
-  categoryLabelActive: { color: "#16803C", fontWeight: "700" },
+  categoryLabelActive: { color: "#FFFFFF", fontWeight: "700" },
 
   sectionRule: { backgroundColor: "#FFFFFF", height: 10 },
 
@@ -451,7 +453,7 @@ const styles = StyleSheet.create({
   seeAllText: { color: "#16803C", fontSize: 13, fontWeight: "700" },
 
   popularList: { gap: 8, paddingHorizontal: 20, paddingTop: 8 },
-  popularRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E8ECEA", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  popularRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E8ECEA", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
   popularIcon: { alignItems: "center", backgroundColor: "#EAF6EC", borderRadius: 19, height: 38, justifyContent: "center", width: 38 },
   popularCopy: { flex: 1 },
   popularTitle: { color: "#17201A", fontSize: 14.5, fontWeight: "700" },
