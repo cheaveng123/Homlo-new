@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useFocusEffect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -132,6 +133,7 @@ export function SearchResultsPage() {
 
   const [keyword, setKeyword] = useState(params.query ?? "");
   const [draftKeyword, setDraftKeyword] = useState(params.query ?? "");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>(() => ({
     ...defaultSearchFilters,
     ...(params.category && params.category !== "All" ? { category: params.category } : {}),
@@ -271,11 +273,13 @@ export function SearchResultsPage() {
         </View>
 
         <View style={styles.discoveryControls}>
-          <View style={styles.searchRow}>
+          <View style={[styles.searchRow, searchFocused && styles.searchRowFocused]}>
             <IconSymbol name="magnifyingglass" size={20} color="#66736A" style={styles.searchIcon} />
             <TextInput
               accessibilityLabel="Search opportunities"
               onChangeText={setDraftKeyword}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
               onSubmitEditing={submitSearch}
               placeholder="Search jobs, skills, or companies..."
               placeholderTextColor="#94A098"
@@ -283,6 +287,11 @@ export function SearchResultsPage() {
               style={styles.searchInput}
               value={draftKeyword}
             />
+            {draftKeyword ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} onPress={clearKeywordOnly} style={styles.clearSearchButton}>
+                <IconSymbol name="xmark.circle.fill" size={18} color="#93A39C" />
+              </Pressable>
+            ) : null}
           </View>
           <Pressable
             accessibilityRole="button"
@@ -304,8 +313,8 @@ export function SearchResultsPage() {
           {quickChips.map((chip) => {
             const active = chip.kind === "all";
             return (
+              <Animated.View entering={FadeInDown.delay(80 + chip.label.length * 4).duration(220)} key={chip.label}>
               <Pressable
-                key={chip.label}
                 accessibilityRole="button"
                 accessibilityLabel={chip.label}
                 onPress={() => handleChip(chip)}
@@ -316,6 +325,7 @@ export function SearchResultsPage() {
                 </View>
                 <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>{chip.label}</Text>
               </Pressable>
+              </Animated.View>
             );
           })}
         </ScrollView>
@@ -333,8 +343,8 @@ export function SearchResultsPage() {
           </View>
           <View style={styles.popularList}>
             {popularSearches.map((item) => (
+              <Animated.View entering={FadeInDown.delay(100 + item.label.length * 5).duration(240)} key={item.label}>
               <Pressable
-                key={item.label}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
                 onPress={() => handlePopular(item.kind)}
@@ -349,6 +359,7 @@ export function SearchResultsPage() {
                 </View>
                 <IconSymbol name="chevron.right" size={17} color="#66736A" />
               </Pressable>
+              </Animated.View>
             ))}
           </View>
           <View style={styles.sectionRule} />
@@ -431,8 +442,10 @@ const styles = StyleSheet.create({
 
   discoveryControls: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: 18 },
   searchRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCEBE6", borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: "row", height: 50 },
+  searchRowFocused: { borderColor: "#0F7D5E", shadowColor: "#0F7D5E", shadowOpacity: 0.12, shadowRadius: 8 },
   searchIcon: { marginLeft: 12 },
   searchInput: { color: "#17201A", flex: 1, fontSize: 14, height: 48, paddingHorizontal: 10 },
+  clearSearchButton: { alignItems: "center", justifyContent: "center", marginRight: 12 },
 
   filterButton: { alignItems: "center", backgroundColor: "#0F7D5E", borderColor: "#0F7D5E", borderRadius: 15, borderWidth: 1, flexDirection: "row", gap: 4, height: 50, justifyContent: "center", paddingHorizontal: 13 },
   filterText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
