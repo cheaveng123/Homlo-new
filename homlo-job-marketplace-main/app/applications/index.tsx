@@ -1,0 +1,23 @@
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
+
+import { ScreenContainer } from "@/components/screen-container";
+import { Text } from "@/components/ui/text";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useAuth } from "@/hooks/use-auth";
+import { trpc } from "@/lib/trpc";
+
+type GatewayApplication = { id: string; job_id: string; status: "applied" | "reviewed" | "interview" | "hired" | "declined" | "withdrawn"; message: string | null; created_at: string; updated_at: string; job_title: string; job_location_text: string | null; employer_id: string; employer_name: string | null };
+function label(status: GatewayApplication["status"]) { return status === "applied" ? "Submitted" : status[0].toUpperCase() + status.slice(1); }
+
+export default function ApplicationsScreen() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const applications = trpc.homlo.applications.list.useQuery(undefined, { enabled: Boolean(user), refetchOnMount: true });
+  const rows = ((applications.data as { applications?: GatewayApplication[] } | undefined)?.applications ?? []);
+  if (authLoading || applications.isLoading) return <ScreenContainer className="items-center justify-center"><ActivityIndicator color="#16803C" /></ScreenContainer>;
+  if (!user) return <ScreenContainer className="items-center justify-center p-6"><IconSymbol name="person.fill" size={28} color="#16803C" /><Text style={styles.emptyTitle}>Sign in to view applications</Text><Text style={styles.emptyCopy}>Your applications are linked to your secure Homlo account.</Text><Pressable onPress={() => router.replace("/login" as never)} style={styles.signIn}><Text style={styles.signInText}>Sign in</Text></Pressable></ScreenContainer>;
+  return <ScreenContainer className="flex-1" containerClassName="bg-background"><FlatList contentContainerStyle={styles.content} data={rows} keyExtractor={(item) => item.id} ListEmptyComponent={applications.isLoading ? <ActivityIndicator color="#16803C" style={{ marginTop: 80 }} /> : <View style={styles.empty}><IconSymbol name="briefcase.fill" size={28} color="#16803C" /><Text style={styles.emptyTitle}>No applications yet</Text><Text style={styles.emptyCopy}>When you apply for a live role, it will appear here.</Text></View>} ListHeaderComponent={<View style={styles.header}><Pressable accessibilityLabel="Go back" onPress={() => router.back()} style={styles.back}><IconSymbol name="chevron.left" size={21} color="#17201A" /></Pressable><Text style={styles.title}>My applications</Text></View>} renderItem={({ item }) => <Pressable onPress={() => router.push(`/applications/${item.id}` as never)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}><View style={styles.rowCopy}><Text numberOfLines={1} style={styles.jobTitle}>{item.job_title}</Text><Text style={styles.company}>{item.employer_name ?? "Employer"}</Text><Text style={styles.date}>Submitted {new Date(item.created_at).toLocaleDateString()}</Text></View><View style={styles.status}><Text style={styles.statusText}>{label(item.status)}</Text></View></Pressable>} showsVerticalScrollIndicator={false} /></ScreenContainer>;
+}
+
+const styles = StyleSheet.create({ content: { padding: 20, paddingBottom: 30 }, header: { alignItems: "center", flexDirection: "row", gap: 13, marginBottom: 20 }, back: { alignItems: "center", backgroundColor: "#EDF1EE", borderRadius: 18, height: 38, justifyContent: "center", width: 38 }, title: { color: "#17201A", fontSize: 24, fontWeight: "800", letterSpacing: -0.5 }, row: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingVertical: 17 }, rowCopy: { flex: 1, paddingRight: 12 }, jobTitle: { color: "#17201A", fontSize: 15, fontWeight: "800" }, company: { color: "#66736A", fontSize: 12.5, marginTop: 4 }, date: { color: "#94A098", fontSize: 11.5, marginTop: 7 }, status: { alignSelf: "flex-start", backgroundColor: "#EDF7EF", borderRadius: 7, paddingHorizontal: 8, paddingVertical: 5 }, statusText: { color: "#16803C", fontSize: 10.5, fontWeight: "800", textTransform: "capitalize" }, pressed: { opacity: 0.68 }, empty: { alignItems: "center", paddingHorizontal: 28, paddingTop: 92 }, emptyTitle: { color: "#17201A", fontSize: 17, fontWeight: "800", marginTop: 13 }, emptyCopy: { color: "#66736A", fontSize: 13, lineHeight: 19, marginTop: 5, textAlign: "center" }, signIn: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 12, justifyContent: "center", marginTop: 18, minHeight: 48, paddingHorizontal: 21 }, signInText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" } });

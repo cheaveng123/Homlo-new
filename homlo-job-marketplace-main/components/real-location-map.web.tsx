@@ -1,0 +1,58 @@
+import * as maplibregl from "maplibre-gl";
+import { useEffect, useRef } from "react";
+
+import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
+
+type RealLocationMapProps = { coordinate: MapCoordinate; radiusKm: number; onSelect: (coordinate: MapCoordinate) => void };
+const openStreetMapStyle = "https://tiles.openfreemap.org/styles/liberty";
+
+export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocationMapProps) {
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const initialCoordinate = useRef(coordinate);
+  const initialRadius = useRef(radiusKm);
+  const onSelectRef = useRef(onSelect);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  });
+
+  useEffect(() => {
+    if (!elementRef.current || mapRef.current) return;
+    const map = new maplibregl.Map({ container: elementRef.current, style: openStreetMapStyle, center: [initialCoordinate.current.longitude, initialCoordinate.current.latitude], zoom: 10.5, attributionControl: false });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    map.on("click", (event: maplibregl.MapMouseEvent) => onSelectRef.current({ latitude: event.lngLat.lat, longitude: event.lngLat.lng }));
+    map.on("load", () => {
+      map.addSource("job-search-area", { type: "geojson", data: buildSelectionGeoJson(initialCoordinate.current, initialRadius.current) });
+      map.addLayer({ id: "job-search-radius-fill", type: "fill", source: "job-search-area", filter: ["==", ["get", "kind"], "radius"], paint: { "fill-color": "#087569", "fill-opacity": 0.18 } });
+      map.addLayer({ id: "job-search-radius-line", type: "line", source: "job-search-area", filter: ["==", ["get", "kind"], "radius"], paint: { "line-color": "#08675F", "line-width": 2 } });
+      map.addLayer({ id: "job-search-center", type: "circle", source: "job-search-area", filter: ["==", ["get", "kind"], "center"], paint: { "circle-color": "#08675F", "circle-radius": 7, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } });
+    });
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  }, [onSelect]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const source = map.getSource("job-search-area") as maplibregl.GeoJSONSource | undefined;
+    source?.setData(buildSelectionGeoJson(coordinate, radiusKm));
+    map.easeTo({ center: [coordinate.longitude, coordinate.latitude], duration: 450 });
+  }, [coordinate, radiusKm]);
+  return <div ref={elementRef} style={{ height: "100%", width: "100%" }} />;
+}
+
+function buildSelectionGeoJson(center: MapCoordinate, radiusKm: number) {
+  const points = 48;
+  const coordinates: number[][] = [];
+  const earthRadiusKm = 6371;
+  const angularDistance = radiusKm / earthRadiusKm;
+  const latRadians = (center.latitude * Math.PI) / 180;
+  const lngRadians = (center.longitude * Math.PI) / 180;
+  for (let index = 0; index <= points; index += 1) {
+    const bearing = (2 * Math.PI * index) / points;
+    const latitude = Math.asin(Math.sin(latRadians) * Math.cos(angularDistance) + Math.cos(latRadians) * Math.sin(angularDistance) * Math.cos(bearing));
+    const longitude = lngRadians + Math.atan2(Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latRadians), Math.cos(angularDistance) - Math.sin(latRadians) * Math.sin(latitude));
+    coordinates.push([(longitude * 180) / Math.PI, (latitude * 180) / Math.PI]);
+  }
+  return { type: "FeatureCollection" as const, features: [{ type: "Feature" as const, properties: { kind: "radius" }, geometry: { type: "Polygon" as const, coordinates: [coordinates] } }, { type: "Feature" as const, properties: { kind: "center" }, geometry: { type: "Point" as const, coordinates: [center.longitude, center.latitude] } }] };
+}
