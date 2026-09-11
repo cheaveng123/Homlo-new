@@ -29,6 +29,13 @@ const MUTED = "#9AA19F";
 const DISTANCE_MIN = 5;
 const DISTANCE_MAX = 50;
 
+const quickSearchOptions: { label: string; icon: "clock" | "graduationcap.fill" | "calendar" | "house.fill"; value: EmploymentFilter | "Remote" }[] = [
+  { label: "Part-time", icon: "clock", value: "Part-time" },
+  { label: "Internship", icon: "graduationcap.fill", value: "Internship" },
+  { label: "Weekend", icon: "calendar", value: "Weekend" },
+  { label: "Remote", icon: "house.fill", value: "Remote" },
+];
+
 const PRICE_PERIODS: Record<PayPeriodFilter, { min: number; max: number }> = {
   "Per hour": { min: 2, max: 50 },
   "Per day": { min: 16, max: 400 },
@@ -239,6 +246,28 @@ export function DetailSearchPage() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <Text style={styles.quickSearchTitle}>Quick search</Text>
+          <View style={styles.quickSearchGrid}>
+            {quickSearchOptions.map((option) => {
+              const active = option.value === "Remote" ? draft.arrangement === "Remote" : draft.employmentType === option.value;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  key={option.label}
+                  onPress={() => {
+                    haptic.selection();
+                    if (option.value === "Remote") setDraft((current) => ({ ...current, arrangement: active ? "Any" : "Remote" }));
+                    else setDraft((current) => ({ ...current, employmentType: active ? "Any" : option.value as EmploymentFilter }));
+                  }}
+                  style={({ pressed }) => [styles.quickSearchPill, active && styles.quickSearchPillActive, pressed && styles.pressed]}
+                >
+                  <IconSymbol name={option.icon} size={16} color={active ? "#FFFFFF" : GREEN_INK} />
+                  <Text style={active ? styles.quickSearchTextActive : styles.quickSearchText}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <View style={styles.sectionBlock}>
             <Text style={styles.sectionHeading}>Price range</Text>
             <View style={styles.periodRow}>
@@ -451,6 +480,13 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
 
   content: { paddingHorizontal: 20 },
+
+  quickSearchTitle: { color: TEXT_PRIMARY, fontSize: 16, fontWeight: "800", marginTop: 12 },
+  quickSearchGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 11 },
+  quickSearchPill: { alignItems: "center", backgroundColor: CONTROL_GRAY, borderRadius: 18, flexDirection: "row", gap: 6, height: 38, justifyContent: "center", paddingHorizontal: 15, width: "47%" },
+  quickSearchPillActive: { backgroundColor: GREEN_INK },
+  quickSearchText: { color: TEXT_PRIMARY, fontSize: 12.5, fontWeight: "700" },
+  quickSearchTextActive: { color: "#FFFFFF", fontSize: 12.5, fontWeight: "700" },
 
   sectionHeading: { color: TEXT_PRIMARY, fontSize: 16, fontWeight: "700", letterSpacing: -0.2 },
   periodRow: { flexDirection: "row", gap: 8, marginTop: 11 },

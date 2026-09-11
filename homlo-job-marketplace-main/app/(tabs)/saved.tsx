@@ -1,4 +1,5 @@
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
 import { jobs, useJobStore } from "@/components/job-store";
@@ -21,9 +22,11 @@ export default function SavedScreen() {
         keyExtractor={(job) => job.id}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>Your shortlist</Text>
             <Text style={styles.title}>Saved jobs</Text>
-            <Text style={styles.subtitle}>Keep opportunities here so you can return when you are ready.</Text>
+            <View style={styles.tabs}>
+              <View style={[styles.tab, styles.tabActive]}><Text style={styles.tabActiveText}>Saved</Text></View>
+              <View style={styles.tab}><Text style={styles.tabText}>Viewed</Text></View>
+            </View>
           </View>
         }
         ListEmptyComponent={
@@ -40,7 +43,7 @@ export default function SavedScreen() {
             </Pressable>
           </View>
         }
-        renderItem={({ item }) => <JobCard job={item} />}
+        renderItem={({ item, index }) => <Animated.View entering={FadeInDown.delay(index * 45).duration(220)}><JobCard job={item} compact /></Animated.View>}
         showsVerticalScrollIndicator={false}
       />
     </ScreenContainer>
@@ -48,11 +51,14 @@ export default function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, padding: 20, paddingBottom: 28 },
-  header: { marginBottom: 19, marginTop: 5 },
-  eyebrow: { color: "#08675F", fontSize: 13, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase" },
-  title: { color: "#16211F", fontSize: 28, fontWeight: "800", letterSpacing: -0.8, marginTop: 5 },
-  subtitle: { color: "#64716E", fontSize: 14, lineHeight: 20, marginTop: 7, maxWidth: 300 },
+  content: { flexGrow: 1, padding: 18, paddingBottom: 28 },
+  header: { marginBottom: 10, marginTop: 5 },
+  title: { color: "#16211F", fontSize: 27, fontWeight: "800", letterSpacing: -0.8 },
+  tabs: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, flexDirection: "row", gap: 26, marginTop: 18 },
+  tab: { alignItems: "center", paddingBottom: 11, paddingHorizontal: 6 },
+  tabActive: { borderBottomColor: "#0F7D5E", borderBottomWidth: 2 },
+  tabText: { color: "#94A098", fontSize: 12.5, fontWeight: "600" },
+  tabActiveText: { color: "#0F7D5E", fontSize: 12.5, fontWeight: "800" },
   emptyState: { alignItems: "center", backgroundColor: "#F0F8F6", borderRadius: 23, marginTop: 25, paddingHorizontal: 25, paddingVertical: 35 },
   iconWell: { alignItems: "center", backgroundColor: "#DDF1EC", borderRadius: 34, height: 68, justifyContent: "center", width: 68 },
   emptyTitle: { color: "#16211F", fontSize: 18, fontWeight: "800", marginTop: 17 },
