@@ -346,7 +346,7 @@ type JobRow = {
   location_text: string | null;
   latitude: number | null;
   longitude: number | null;
-  start_date: string | null;
+  start_date: string | Date | null;
   start_time: string | null;
   end_time: string | null;
   created_at: string | Date | null;
@@ -365,6 +365,17 @@ type JobQualityRow = {
   apply_rate_wilson_lb: number | string | null;
   n_events: number | string | null;
 };
+
+/** The postgres driver deserializes `date` columns into Date (UTC midnight); map back to "YYYY-MM-DD" for the text parser. */
+function toDateOnlyString(value: string | Date | null): string | null {
+  if (value == null) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return [value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join("-");
+  }
+  return typeof value === "string" ? value : null;
+}
 
 type EventRow = {
   event_type: string;
@@ -534,7 +545,7 @@ export class RankingScoringService {
         locationText: row.location_text,
         latitude: toNumber(row.latitude),
         longitude: toNumber(row.longitude),
-        startDate: row.start_date,
+        startDate: toDateOnlyString(row.start_date),
         startTime: row.start_time,
         endTime: row.end_time,
         createdAtMs: Number.isFinite(createdAt) ? createdAt : null,

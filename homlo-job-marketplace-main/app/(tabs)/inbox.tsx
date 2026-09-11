@@ -170,7 +170,13 @@ export default function InboxScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/conversations/[id]",
-                  params: { id: item.id },
+                  params: {
+                    id: item.id,
+                    jobId: item.jobId ?? "",
+                    name: item.otherParticipant.name,
+                    jobTitle: item.jobTitle,
+                    applicationStatus: item.applicationStatus ?? "",
+                  },
                 } as never)
               }
               style={({ pressed }) => [styles.row, pressed && styles.pressed]}

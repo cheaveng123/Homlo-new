@@ -61,6 +61,7 @@ export default function ConversationScreen() {
     name?: string;
     jobTitle?: string;
     applicationStatus?: string;
+    jobId?: string;
   }>();
   const conversationIdParam =
     typeof params.id === "string" && UUID_PATTERN.test(params.id) ? params.id : undefined;
@@ -76,6 +77,7 @@ export default function ConversationScreen() {
   const [error, setError] = useState<string | null>(null);
   const [opponentName, setOpponentName] = useState<string>(typeof params.name === "string" ? params.name : "Conversation");
   const [jobTitle, setJobTitle] = useState<string>(typeof params.jobTitle === "string" ? params.jobTitle : "");
+  const [jobId, setJobId] = useState<string>(typeof params.jobId === "string" ? params.jobId : "");
   const [applicationStatus, setApplicationStatus] = useState<string | null>(typeof params.applicationStatus === "string" ? params.applicationStatus : null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
@@ -116,6 +118,7 @@ export default function ConversationScreen() {
           if (summary && mountedRef.current) {
             setOpponentName(summary.otherParticipant.name);
             setJobTitle(summary.jobTitle);
+            setJobId(summary.jobId ?? "");
             setApplicationStatus(summary.applicationStatus);
           }
         }
@@ -343,6 +346,17 @@ export default function ConversationScreen() {
                       <Text style={[styles.bubbleText, own ? styles.bubbleTextOwn : styles.bubbleTextOther]}>
                         {item.message.body}
                       </Text>
+                      {item.message.messageType === "application" && !own && jobId ? (
+                        <ScalePressable
+                          accessibilityLabel="View this job"
+                          hapticFeedback
+                          onPress={() => router.push({ pathname: "/employer/job/[id]", params: { id: jobId } } as never)}
+                          style={styles.jobCta}
+                        >
+                          <Text style={styles.jobCtaText}>View job</Text>
+                          <IconSymbol name="arrow.right" size={14} color="#FFFFFF" />
+                        </ScalePressable>
+                      ) : null}
                       <Text style={styles.bubbleTime}>
                         {new Date(item.message.createdAt).toLocaleTimeString([], {
                           hour: "numeric",
@@ -459,6 +473,18 @@ const styles = StyleSheet.create({
   bubbleText: { fontSize: 14, lineHeight: 19 },
   bubbleTextOwn: { color: "#FFFFFF" },
   bubbleTextOther: { color: "#1B2825" },
+  jobCta: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#16803C",
+    borderRadius: 10,
+    flexDirection: "row",
+    gap: 5,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  jobCtaText: { color: "#FFFFFF", fontSize: 12.5, fontWeight: "700" },
   bubbleTime: { color: "rgba(255,255,255,0.65)", fontSize: 9.5, marginTop: 3, textAlign: "right" },
   bubbleDeleted: { backgroundColor: "#F5F6F5", borderStyle: "dashed", borderWidth: 1, borderColor: "#CBD5D1" },
   bubbleDeletedOwn: {},
