@@ -33,11 +33,12 @@ function makeSummary(overrides: Partial<ConversationSummary> = {}): Conversation
     applicationId: "a1",
     jobId: "j1",
     jobTitle: "Waiter",
-    otherParticipant: { userId: "u2", name: "Sokha", role: "employer" },
+    otherParticipant: { userId: "u2", name: "Sokha", role: "employer", photo: null },
     lastMessageAt: "2026-09-01T10:00:00.000Z",
     lastMessage: "Hello",
     lastMessageAuthorId: "u2",
     unreadCount: 1,
+    applicationStatus: null,
     ...overrides,
   };
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image as RNImage,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +21,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { getMessagingService } from "@/lib/messaging";
 import type { Message } from "@/lib/messaging/types";
 import { haptic } from "@/lib/haptics";
+import { getProfilePhotoUrl } from "@/lib/profile-photo";
 
 type GroupedMessage = { message: Message; showDate: boolean };
 
@@ -28,14 +30,30 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const FULL_MESSAGE_LIMIT = 4000;
 const LIMITED_MESSAGE_LIMIT = 160;
 
+function initialsOf(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?";
+}
+
+function Avatar({ uri, name, size = 34 }: { uri: string | null; name: string; size?: number }) {
+  return (
+    <View style={[styles.avatarBase, { borderRadius: size / 2, height: size, width: size }]}>
+      {uri ? (
+        <RNImage source={{ uri }} style={{ borderRadius: size / 2, height: size, width: size }} />
+      ) : (
+        <Text style={[styles.avatarInitials, { fontSize: Math.round(size * 0.42) }]}>{initialsOf(name)}</Text>
+      )}
+    </View>
+  );
+}
+
 /**
  * Chat screen for a single conversation. Loads history via the messaging
  * service, marks messages read on focus, subscribes to realtime for new
  * inbound messages, and clears the subscription on unmount.
  *
  * Performance:
- *  - Entry screens pass name / jobTitle / applicationStatus via route params
- *    so the header renders immediately and the screen skips a full
+ *  - Entry screens pass name / jobTitle / applicationStatus / photo via route
+ *    params so the header renders immediately and the screen skips a full
  *    `getConversations()` fetch just to resolve one summary.
  *  - Message history is paginated (newest-last, latest page first) with a
  *    "load earlier" affordance instead of downloading the whole thread.
@@ -62,6 +80,7 @@ export default function ConversationScreen() {
     jobTitle?: string;
     applicationStatus?: string;
     jobId?: string;
+    photo?: string;
   }>();
   const conversationIdParam =
     typeof params.id === "string" && UUID_PATTERN.test(params.id) ? params.id : undefined;
@@ -76,6 +95,7 @@ export default function ConversationScreen() {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [opponentName, setOpponentName] = useState<string>(typeof params.name === "string" ? params.name : "Conversation");
+  const [opponentPhoto, setOpponentPhoto] = useState<string | null>(typeof params.photo === "string" ? getProfilePhotoUrl(params.photo) : null);
   const [jobTitle, setJobTitle] = useState<string>(typeof params.jobTitle === "string" ? params.jobTitle : "");
   const [jobId, setJobId] = useState<string>(typeof params.jobId === "string" ? params.jobId : "");
   const [applicationStatus, setApplicationStatus] = useState<string | null>(typeof params.applicationStatus === "string" ? params.applicationStatus : null);
@@ -120,6 +140,7 @@ export default function ConversationScreen() {
             setJobTitle(summary.jobTitle);
             setJobId(summary.jobId ?? "");
             setApplicationStatus(summary.applicationStatus);
+            setOpponentPhoto(getProfilePhotoUrl(summary.otherParticipant.photo));
           }
         }
       } catch (err) {
@@ -248,6 +269,7 @@ export default function ConversationScreen() {
           <ScalePressable accessibilityLabel="Go back" hapticFeedback onPress={() => router.back()} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={20} color="#17201A" />
           </ScalePressable>
+          <Avatar uri={opponentPhoto} name={opponentName} />
           <View style={styles.headerCopy}>
             <Text numberOfLines={1} style={styles.headerTitle}>{opponentName}</Text>
             <Text numberOfLines={1} style={styles.headerJob}>{jobTitle}</Text>
@@ -271,6 +293,7 @@ export default function ConversationScreen() {
           <ScalePressable accessibilityLabel="Go back" hapticFeedback onPress={() => router.back()} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={20} color="#17201A" />
           </ScalePressable>
+          <Avatar uri={opponentPhoto} name={opponentName} />
           <View style={styles.headerCopy}>
             <Text numberOfLines={1} style={styles.headerTitle}>{opponentName}</Text>
             <Text numberOfLines={1} style={styles.headerJob}>{jobTitle || "Job conversation"}</Text>
@@ -337,6 +360,7 @@ export default function ConversationScreen() {
                   </View>
                 )}
                 <View style={[styles.bubbleRow, own ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
+                  {!own && <Avatar uri={opponentPhoto} name={opponentName} size={26} />}
                   {item.message.deletedAt ? (
                     <View style={[styles.bubble, styles.bubbleDeleted, own ? styles.bubbleDeletedOwn : styles.bubbleDeletedOther]}>
                       <Text style={styles.deletedText}>Message deleted</Text>
@@ -439,6 +463,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36,
   },
+  avatarBase: { alignItems: "center", backgroundColor: "#EDF1EE", justifyContent: "center", overflow: "hidden" },
+  avatarInitials: { color: "#16803C", fontWeight: "700" },
   moreButton: {
     alignItems: "center",
     backgroundColor: "#F2F5F3",
@@ -464,10 +490,10 @@ const styles = StyleSheet.create({
   loadEarlierText: { color: "#16803C", fontSize: 12, fontWeight: "700" },
   dateSeparator: { alignItems: "center", marginVertical: 8 },
   dateSeparatorText: { color: "#94A098", fontSize: 11, fontWeight: "600" },
-  bubbleRow: { flexDirection: "row", marginVertical: 2 },
+  bubbleRow: { flexDirection: "row", gap: 6, marginVertical: 2 },
   bubbleRowOwn: { justifyContent: "flex-end" },
   bubbleRowOther: { justifyContent: "flex-start" },
-  bubble: { borderRadius: 16, maxWidth: "80%", paddingHorizontal: 12, paddingVertical: 8 },
+  bubble: { borderRadius: 16, maxWidth: "78%", paddingHorizontal: 12, paddingVertical: 8 },
   bubbleOwn: { backgroundColor: "#16803C", borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: "#EDF1EE", borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14, lineHeight: 19 },

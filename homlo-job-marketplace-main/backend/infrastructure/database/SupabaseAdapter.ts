@@ -26,6 +26,7 @@ export type SupabaseIssuedSession = {
  */
 export class SupabaseAdapter implements DatabaseAdapter {
   private readonly client;
+  private readonly storageClient;
   private readonly sql: ReturnType<typeof postgres> | null;
   private readonly url: string;
   private readonly serviceRoleKey: string;
@@ -34,6 +35,13 @@ export class SupabaseAdapter implements DatabaseAdapter {
     this.url = config.url.replace(/\/+$/, "");
     this.serviceRoleKey = config.serviceRoleKey;
     this.client = createClient(config.url, config.serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    // Dedicated service-role client for Storage only. It is never used for
+    // auth sign-in/refresh, so it never picks up a user session: storage
+    // uploads bypass RLS deterministically instead of riding whichever user
+    // last authenticated on the shared client.
+    this.storageClient = createClient(config.url, config.serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     this.sql = config.databaseUrl
@@ -59,18 +67,18 @@ export class SupabaseAdapter implements DatabaseAdapter {
   }
 
   async getStorageUrl(bucket: string, key: string): Promise<string> {
-    const { data, error } = await this.client.storage.from(bucket).createSignedUrl(key, 60 * 10);
+    const { data, error } = await this.storageClient.storage.from(bucket).createSignedUrl(key, 60 * 10);
     if (error || !data?.signedUrl) throw new Error(`Unable to resolve storage key: ${error?.message ?? key}`);
     return data.signedUrl;
   }
 
   async uploadStorage(bucket: string, key: string, file: Uint8Array, contentType: string): Promise<void> {
-    const { error } = await this.client.storage.from(bucket).upload(key, file, { contentType, upsert: false });
+    const { error } = await this.storageClient.storage.from(bucket).upload(key, file, { contentType, upsert: false });
     if (error) throw new Error(`Unable to upload storage object: ${error.message}`);
   }
 
   async deleteStorage(bucket: string, key: string): Promise<void> {
-    const { error } = await this.client.storage.from(bucket).remove([key]);
+    const { error } = await this.storageClient.storage.from(bucket).remove([key]);
     if (error) throw new Error(`Unable to delete storage object: ${error.message}`);
   }
 

@@ -54,6 +54,7 @@ interface WireConversation {
   job_title: string;
   other_user_id: string;
   other_user_name: string;
+  other_user_photo: string | null;
   last_message_at: string | null;
   last_message: string | null;
   last_message_author: string | null;
@@ -88,6 +89,7 @@ function mapConversationSummary(row: WireConversation): ConversationSummary {
       userId: row.other_user_id,
       name: row.other_user_name || "Homlo user",
       role: "employer",
+      photo: row.other_user_photo ?? null,
     },
     lastMessageAt: row.last_message_at,
     lastMessage: row.last_message,

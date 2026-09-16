@@ -8,6 +8,8 @@ export interface ConversationParticipant {
   userId: string;
   name: string;
   role: "worker" | "employer" | "both";
+  /** Profile picture (URL / data-URI) of this participant, if available. */
+  photo: string | null;
 }
 
 export interface ConversationSummary {
