@@ -1,75 +1,353 @@
-import { useState } from "react";
-import { ActivityIndicator, Modal, FlatList, StyleSheet, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Alert, ImageBackground, ScrollView, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  ArrowLeft,
+  BookOpen,
+  DollarSign,
+  Eye,
+  MapPin,
+  Pause,
+  Play,
+  Star,
+  Trash2,
+  UserSearch,
+  Users,
+} from "lucide-react-native";
 
 import { ScreenContainer } from "@/components/screen-container";
-import { ScalePressable } from "@/components/ui/scale-pressable";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Text } from "@/components/ui/text";
+import ApplicantCard from "@/components/ApplicantCard";
+import JobOptionsMenu from "@/components/JobOptionsMenu";
 import { useAuth } from "@/hooks/use-auth";
 import { haptic } from "@/lib/haptics";
+import {
+  buildJobSavePayload,
+  editableFieldsFromJob,
+  normalizeEmployerJob,
+  normalizeJobApplicant,
+} from "@/lib/job-management";
 import { trpc } from "@/lib/trpc";
+import type { ApplicationStatus, EmployerJob } from "@/backend/domain/models";
 
 const applicantFilters = ["All", "New", "Reviewing", "Interview"] as const;
 type ApplicantFilter = (typeof applicantFilters)[number];
-type GatewayJob = { id: string; title: string; description: string; pay_amount: number | string; pay_currency: string; pay_type: "hourly" | "daily" | "fixed"; location_text: string | null; status: "draft" | "open" | "filled" | "closed" | "expired" | "cancelled"; workers_needed: number; workers_hired: number };
-type GatewayApplication = { id: string; job_id: string; worker_id: string; status: "applied" | "reviewed" | "interview" | "hired" | "declined" | "withdrawn"; message: string | null; created_at: string; updated_at: string; worker_full_name: string; worker_location: string | null; worker_bio: string | null };
 
-function displayStatus(status: GatewayApplication["status"]) { return status === "applied" ? "New" : status === "reviewed" ? "Reviewing" : status === "interview" ? "Interview" : status === "hired" ? "Hired" : status === "declined" ? "Declined" : "Withdrawn"; }
-function statusTone(status: GatewayApplication["status"]) { return status === "declined" ? styles.rejectedText : status === "hired" ? styles.acceptedText : styles.activeText; }
-function formatRelativeDate(value: string) { const date = new Date(value); if (Number.isNaN(date.getTime())) return "recently"; const hours = Math.max(0, Math.floor((Date.now() - date.getTime()) / 3_600_000)); if (hours < 1) return "just now"; if (hours < 24) return `${hours}h ago`; const days = Math.floor(hours / 24); return days === 1 ? "yesterday" : `${days}d ago`; }
-function jobPay(job: GatewayJob) { const interval = job.pay_type === "hourly" ? "hour" : job.pay_type === "daily" ? "day" : "project"; return `${job.pay_currency} ${Number(job.pay_amount).toLocaleString()} / ${interval}`; }
-
-export default function EmployerJobManagementScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
-  const [applicantFilter, setApplicantFilter] = useState<ApplicantFilter>("All");
-  const [deleteVisible, setDeleteVisible] = useState(false);
-  const jobsQuery = trpc.homlo.employer.jobs.useQuery(undefined, { enabled: Boolean(user) });
-  const jobs = ((jobsQuery.data as { jobs?: GatewayJob[] } | undefined)?.jobs ?? []);
-  const job = jobs.find((candidate) => candidate.id === id) ?? null;
-  const applicationsQuery = trpc.homlo.employer.applications.useQuery({ jobId: id ?? "00000000-0000-0000-0000-000000000000" }, { enabled: Boolean(id && job && user) });
-  const applications = ((applicationsQuery.data as { applications?: GatewayApplication[] } | undefined)?.applications ?? []);
-  const visibleApplications = applications.filter((application) => applicantFilter === "All" || displayStatus(application.status) === applicantFilter);
-  const saveJob = trpc.homlo.employer.saveJob.useMutation({ onSuccess: () => jobsQuery.refetch() });
-  const deleteJob = trpc.homlo.employer.deleteJob.useMutation();
-
-  const closeJob = async () => {
-    if (!job) return;
-    try {
-      await saveJob.mutateAsync({ jobId: job.id, categoryId: null, title: job.title, description: job.description, payAmount: Number(job.pay_amount), payCurrency: job.pay_currency, payType: job.pay_type, locationText: job.location_text, workersNeeded: job.workers_needed, status: "closed" });
-      haptic.success();
-    } catch {
-      haptic.selection();
-    }
-  };
-  const removeJob = async () => {
-    if (!job || deleteJob.isPending) return;
-    try {
-      await deleteJob.mutateAsync({ jobId: job.id });
-      haptic.success();
-      router.replace("/employer" as never);
-    } catch {
-      haptic.selection();
-      setDeleteVisible(false);
-    }
-  };
-
-  if (jobsQuery.isLoading) return <ScreenContainer className="items-center justify-center"><ActivityIndicator color="#16803C" /><Text style={styles.loadingText}>Loading job</Text></ScreenContainer>;
-  if (!user) return <MissingJob onBack={() => router.replace("/login" as never)} text="Sign in to access this protected employer workspace." />;
-  if (!job) return <MissingJob onBack={() => router.replace("/employer" as never)} text="This listing is no longer available." />;
-  const active = job.status === "open";
-
-  return <ScreenContainer className="flex-1" containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}><FlatList contentContainerStyle={[styles.content, { paddingBottom: 34 + Math.max(insets.bottom, 10) }]} data={visibleApplications} keyExtractor={(item) => item.id} ListHeaderComponent={<View><View style={styles.topBar}><ScalePressable accessibilityLabel="Back to listed jobs" hapticFeedback onPress={() => router.back()} style={styles.backButton}><IconSymbol name="chevron.left" size={20} color="#17201A" /><Text style={styles.backText}>Back</Text></ScalePressable><Text style={styles.topTitle}>Job management</Text><View style={styles.topSpacer} /></View><View style={styles.jobHeader}><View style={styles.jobIcon}><IconSymbol name="briefcase.fill" size={25} color="#16803C" /></View><View style={styles.jobHeaderCopy}><View style={styles.statusRow}><View style={[styles.statusDot, active ? styles.activeDot : styles.inactiveDot]} /><Text style={[styles.statusText, active ? styles.activeText : styles.inactiveText]}>{active ? "Live" : job.status[0].toUpperCase() + job.status.slice(1)}</Text></View><Text numberOfLines={2} style={styles.jobTitle}>{job.title}</Text><Text numberOfLines={1} style={styles.company}>Your protected listing</Text></View></View><View style={styles.jobMeta}><MetaItem icon="mappin.and.ellipse" value={job.location_text || "Remote"} /><MetaItem icon="clock" value={`${job.workers_hired} of ${job.workers_needed} roles filled`} /><Text numberOfLines={1} style={styles.salary}>{jobPay(job)}</Text></View><View style={styles.managementActions}>{active ? <ScalePressable hapticFeedback onPress={() => void closeJob()} style={[styles.editButton, saveJob.isPending && styles.disabled]}><IconSymbol name="xmark.circle" size={17} color="#16803C" /><Text style={styles.editText}>{saveJob.isPending ? "Closing…" : "Close job"}</Text></ScalePressable> : null}<ScalePressable hapticFeedback onPress={() => setDeleteVisible(true)} style={styles.deleteButton}><IconSymbol name="trash" size={17} color="#B54242" /><Text style={styles.deleteText}>Delete job</Text></ScalePressable></View><View style={styles.sectionDivider} /><View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Applications</Text>{!applicationsQuery.isLoading ? <Text style={styles.countText}>{applications.length}</Text> : null}</View>{applications.length > 0 ? <View style={styles.summaryRow}>{(["New", "Reviewing", "Interview"] as const).filter((label) => applications.some((item) => displayStatus(item.status) === label)).map((label) => <View key={label} style={styles.summaryItem}><Text style={styles.summaryCount}>{applications.filter((item) => displayStatus(item.status) === label).length}</Text><Text style={styles.summaryLabel}>{label}</Text></View>)}</View> : null}{applications.length > 0 ? <View style={styles.filterRow}>{applicantFilters.map((filter) => <ScalePressable key={filter} hapticFeedback onPress={() => setApplicantFilter(filter)} style={[styles.filterChip, applicantFilter === filter && styles.filterChipSelected]}><Text style={[styles.filterChipText, applicantFilter === filter && styles.filterChipTextSelected]}>{filter}</Text></ScalePressable>)}</View> : null}<View style={styles.applicantHeading}><Text style={styles.sectionTitle}>Applicants</Text>{applications.length > 0 ? <Text style={styles.applicantHint}>{visibleApplications.length} shown</Text> : null}</View>{applicationsQuery.isLoading ? <View style={styles.inlineLoading}><ActivityIndicator color="#16803C" /><Text style={styles.loadingText}>Loading applicants</Text></View> : null}</View>} renderItem={({ item }) => <ApplicantRow application={item} onPress={() => router.push({ pathname: "/employer/application/[id]", params: { id: item.id, jobId: job.id } } as never)} />} ListEmptyComponent={!applicationsQuery.isLoading ? <EmptyApplicants /> : null} showsVerticalScrollIndicator={false} /><DeleteJobSheet jobTitle={job.title} onCancel={() => setDeleteVisible(false)} onConfirm={() => void removeJob()} pending={deleteJob.isPending} visible={deleteVisible} /></ScreenContainer>;
+function displayStatus(status: ApplicationStatus): ApplicantFilter {
+  switch (status) {
+    case "applied":
+      return "New";
+    case "reviewed":
+      return "Reviewing";
+    case "interview":
+    case "hired":
+      return "Interview";
+    default:
+      return "All";
+  }
 }
 
-function MetaItem({ icon, value }: { icon: "mappin.and.ellipse" | "clock"; value: string }) { return <View style={styles.metaItem}><IconSymbol name={icon} size={14} color="#66736A" /><Text numberOfLines={1} style={styles.metaText}>{value}</Text></View>; }
-function ApplicantRow({ application, onPress }: { application: GatewayApplication; onPress: () => void }) { const name = application.worker_full_name?.trim() || "Applicant"; const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "A"; return <ScalePressable hapticFeedback onPress={onPress} style={styles.applicantRow}><View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View><View style={styles.applicantCopy}><Text numberOfLines={1} style={styles.applicantName}>{name}</Text><Text numberOfLines={1} style={styles.applicantRole}>{application.worker_bio?.trim() || "Homlo worker"}</Text><Text numberOfLines={1} style={styles.applicantLocation}>{application.worker_location?.trim() || "Location not provided"} · Applied {formatRelativeDate(application.created_at)}</Text></View><View style={styles.applicantStatus}><Text style={[styles.statusPillText, statusTone(application.status)]}>{displayStatus(application.status)}</Text><IconSymbol name="chevron.right" size={17} color="#94A098" /></View></ScalePressable>; }
-function EmptyApplicants() { return <View style={styles.empty}><IconSymbol name="person.fill" size={22} color="#16803C" /><Text style={styles.emptyTitle}>No applications yet</Text><Text style={styles.emptyText}>When people apply for this position, their applications will appear here.</Text></View>; }
-function MissingJob({ onBack, text }: { onBack: () => void; text: string }) { return <ScreenContainer className="items-center justify-center p-6"><Text style={styles.emptyTitle}>{text}</Text><ScalePressable hapticFeedback onPress={onBack} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Back to listed jobs</Text></ScalePressable></ScreenContainer>; }
-function DeleteJobSheet({ jobTitle, onCancel, onConfirm, pending, visible }: { jobTitle: string; onCancel: () => void; onConfirm: () => void; pending: boolean; visible: boolean }) { return <Modal animationType="slide" onRequestClose={onCancel} transparent visible={visible}><View style={styles.overlay}><ScalePressable accessibilityLabel="Dismiss delete confirmation" onPress={onCancel} style={styles.dismiss} /><View style={styles.sheet}><View style={styles.handle} /><View style={styles.deleteIcon}><IconSymbol name="trash" size={21} color="#B54242" /></View><Text style={styles.sheetTitle}>Delete this job?</Text><Text style={styles.sheetCopy}>“{jobTitle}” and its applications will be permanently removed from Homlo.</Text><ScalePressable disabled={pending} hapticFeedback onPress={onConfirm} style={[styles.confirmDelete, pending && styles.disabled]}><Text style={styles.confirmDeleteText}>{pending ? "Deleting…" : "Delete permanently"}</Text></ScalePressable><ScalePressable disabled={pending} hapticFeedback onPress={onCancel} style={styles.cancelButton}><Text style={styles.cancelText}>Keep job</Text></ScalePressable></View></View></Modal>; }
+function jobPay(job: EmployerJob) {
+  const interval = job.payType === "hourly" ? "hour" : job.payType === "daily" ? "day" : "project";
+  return `${job.payCurrency} ${Number(job.payAmount).toLocaleString()} / ${interval}`;
+}
 
-const styles = StyleSheet.create({ content: { padding: 20 }, topBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 22 }, backButton: { alignItems: "center", flexDirection: "row", gap: 3, minHeight: 42, minWidth: 72 }, backText: { color: "#17201A", fontSize: 12.5, fontWeight: "700" }, topTitle: { color: "#17201A", fontSize: 16, fontWeight: "800" }, topSpacer: { width: 72 }, jobHeader: { alignItems: "center", flexDirection: "row" }, jobIcon: { alignItems: "center", backgroundColor: "#EAF6EC", borderRadius: 18, height: 62, justifyContent: "center", width: 62 }, jobHeaderCopy: { flex: 1, marginLeft: 14 }, statusRow: { alignItems: "center", flexDirection: "row", gap: 5 }, statusDot: { borderRadius: 4, height: 7, width: 7 }, activeDot: { backgroundColor: "#22A447" }, inactiveDot: { backgroundColor: "#B98418" }, statusText: { fontSize: 11, fontWeight: "800" }, activeText: { color: "#16803C" }, inactiveText: { color: "#8A6312" }, rejectedText: { color: "#B54242" }, acceptedText: { color: "#23739A" }, jobTitle: { color: "#17201A", fontSize: 23, fontWeight: "800", letterSpacing: -0.55, lineHeight: 28, marginTop: 5 }, company: { color: "#66736A", fontSize: 13.5, marginTop: 4 }, jobMeta: { gap: 8, marginTop: 17 }, metaItem: { alignItems: "center", flexDirection: "row", gap: 5 }, metaText: { color: "#526158", flex: 1, fontSize: 12.5 }, salary: { color: "#16803C", fontSize: 17, fontWeight: "800", marginTop: 2 }, managementActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 17 }, editButton: { alignItems: "center", borderColor: "#B9D9D1", borderRadius: 12, borderWidth: 1, flexDirection: "row", gap: 7, minHeight: 44, paddingHorizontal: 15 }, editText: { color: "#16803C", fontSize: 13, fontWeight: "800" }, deleteButton: { alignItems: "center", borderColor: "#E8C3C3", borderRadius: 12, borderWidth: 1, flexDirection: "row", gap: 7, minHeight: 44, paddingHorizontal: 15 }, deleteText: { color: "#B54242", fontSize: 13, fontWeight: "800" }, sectionDivider: { backgroundColor: "#E2E8E5", height: 1, marginTop: 25 }, sectionHeading: { alignItems: "center", flexDirection: "row", gap: 8, marginTop: 21 }, sectionTitle: { color: "#17201A", fontSize: 18, fontWeight: "800" }, countText: { alignItems: "center", backgroundColor: "#EAF6EC", borderRadius: 11, color: "#16803C", fontSize: 11, fontWeight: "800", minWidth: 24, overflow: "hidden", paddingHorizontal: 8, paddingVertical: 4, textAlign: "center" }, summaryRow: { flexDirection: "row", gap: 25, marginTop: 17 }, summaryItem: { minWidth: 60 }, summaryCount: { color: "#16803C", fontSize: 19, fontWeight: "800" }, summaryLabel: { color: "#66736A", fontSize: 11.5, marginTop: 3 }, filterRow: { flexDirection: "row", gap: 8, marginTop: 19 }, filterChip: { borderColor: "#E2E8E5", borderRadius: 14, borderWidth: 1, minHeight: 34, paddingHorizontal: 13, paddingVertical: 8 }, filterChipSelected: { backgroundColor: "#16803C", borderColor: "#16803C" }, filterChipText: { color: "#66736A", fontSize: 11.5, fontWeight: "700" }, filterChipTextSelected: { color: "#FFFFFF" }, applicantHeading: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginTop: 28, paddingBottom: 10 }, applicantHint: { color: "#94A098", fontSize: 11 }, applicantRow: { alignItems: "center", borderBottomColor: "#E2E8E5", borderBottomWidth: 1, flexDirection: "row", minHeight: 83, paddingVertical: 12 }, avatar: { alignItems: "center", backgroundColor: "#EAF6EC", borderRadius: 21, height: 42, justifyContent: "center", width: 42 }, avatarText: { color: "#16803C", fontSize: 13, fontWeight: "800" }, applicantCopy: { flex: 1, marginLeft: 11, paddingRight: 7 }, applicantName: { color: "#17201A", fontSize: 13.5, fontWeight: "800" }, applicantRole: { color: "#405148", fontSize: 11.5, marginTop: 3 }, applicantLocation: { color: "#94A098", fontSize: 10.5, marginTop: 4 }, applicantStatus: { alignItems: "flex-end", gap: 7 }, statusPillText: { backgroundColor: "#EDF7EF", borderRadius: 8, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: 7, paddingVertical: 4 }, inlineLoading: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 18 }, loadingText: { color: "#66736A", fontSize: 12, marginTop: 8 }, empty: { alignItems: "center", paddingHorizontal: 22, paddingTop: 35 }, emptyTitle: { color: "#17201A", fontSize: 17, fontWeight: "800", textAlign: "center" }, emptyText: { color: "#66736A", fontSize: 12.5, lineHeight: 18, marginTop: 6, textAlign: "center" }, primaryButton: { backgroundColor: "#16803C", borderRadius: 12, marginTop: 16, paddingHorizontal: 16, paddingVertical: 12 }, primaryButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" }, disabled: { opacity: 0.6 }, overlay: { backgroundColor: "rgba(23,32,26,0.32)", flex: 1, justifyContent: "flex-end" }, dismiss: { flex: 1 }, sheet: { backgroundColor: "#F7F8F6", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 30, paddingHorizontal: 22 }, handle: { alignSelf: "center", backgroundColor: "#C9D4CE", borderRadius: 2, height: 4, marginTop: 10, width: 38 }, deleteIcon: { alignItems: "center", backgroundColor: "#FCEEEE", borderRadius: 22, height: 44, justifyContent: "center", marginTop: 20, width: 44 }, sheetTitle: { color: "#17201A", fontSize: 20, fontWeight: "800", letterSpacing: -0.35, marginTop: 16 }, sheetCopy: { color: "#66736A", fontSize: 13, lineHeight: 19, marginTop: 7 }, confirmDelete: { alignItems: "center", backgroundColor: "#B54242", borderRadius: 13, justifyContent: "center", marginTop: 22, minHeight: 52 }, confirmDeleteText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" }, cancelButton: { alignItems: "center", justifyContent: "center", marginTop: 7, minHeight: 48 }, cancelText: { color: "#526158", fontSize: 13, fontWeight: "800" } });
+export default function JobManagementDetailScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<ApplicantFilter>("All");
+
+  const jobsQuery = trpc.homlo.employer.jobs.useQuery(undefined, { enabled: Boolean(user) });
+  const saveJob = trpc.homlo.employer.saveJob.useMutation();
+  const softDeleteJob = trpc.homlo.employer.softDeleteJob.useMutation();
+
+  const job = useMemo(() => {
+    const rawJobs = ((jobsQuery.data as { jobs?: unknown[] } | undefined)?.jobs ?? []).filter(
+      (candidate) => candidate && typeof candidate === "object" && "id" in candidate,
+    );
+    const row = rawJobs.find((candidate) => (candidate as { id?: unknown }).id === id);
+    return row ? normalizeEmployerJob(row as never) : null;
+  }, [jobsQuery.data, id]);
+
+  const applicationsQuery = trpc.homlo.employer.applications.useQuery(
+    { jobId: id ?? "00000000-0000-0000-0000-000000000000" },
+    { enabled: Boolean(id && job && user) },
+  );
+  const applicants = useMemo(() => {
+    const rows = (applicationsQuery.data as { applications?: unknown[] } | undefined)?.applications ?? [];
+    return rows.map((row) => normalizeJobApplicant(row as never));
+  }, [applicationsQuery.data]);
+
+  const visibleApplicants = useMemo(
+    () => applicants.filter((applicant) => filter === "All" || displayStatus(applicant.status) === filter),
+    [applicants, filter],
+  );
+
+  const refetchAfterChange = () => {
+    void applicationsQuery.refetch();
+    void jobsQuery.refetch();
+  };
+
+  function handleBoost() {
+    if (!job) return;
+    router.push({
+      pathname: "/employer/boost/[id]",
+      params: {
+        id: job.id,
+        title: job.title,
+        company: user?.name ?? "Your company",
+        city: job.locationLabel ?? "Remote",
+        salary: jobPay(job),
+      },
+    } as never);
+  }
+
+  function handlePauseOrReopen() {
+    if (!job) return;
+    const isOpen = job.status === "open";
+    const nextStatus = isOpen ? "closed" : "open";
+    Alert.alert(
+      isOpen ? "Close this job?" : "Reopen this job?",
+      isOpen
+        ? "The listing will stop accepting new applications."
+        : "The listing will become visible to applicants again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isOpen ? "Close job" : "Reopen job",
+          onPress: () => {
+            void saveJob
+              .mutateAsync(
+                buildJobSavePayload(editableFieldsFromJob(job), {
+                  jobId: job.id,
+                  imageUrl: job.imageUrl,
+                  status: nextStatus,
+                }),
+              )
+              .then(() => {
+                haptic.success();
+                void jobsQuery.refetch();
+              })
+              .catch(() => {
+                haptic.selection();
+                Alert.alert("Couldn't update the job", "Try again in a moment.");
+              });
+          },
+        },
+      ],
+    );
+  }
+
+  function handleDelete() {
+    if (!job) return;
+    Alert.alert(
+      "Delete this job?",
+      "This hides the listing. Applicants who already applied will still see your job title on their own history.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void softDeleteJob
+              .mutateAsync({ jobId: job.id })
+              .then(() => {
+                haptic.success();
+                router.replace("/employer" as never);
+              })
+              .catch(() => {
+                haptic.selection();
+                Alert.alert("Couldn't delete the job", "Try again in a moment.");
+              });
+          },
+        },
+      ],
+    );
+  }
+
+  if (jobsQuery.isLoading) {
+    return (
+      <ScreenContainer className="items-center justify-center">
+        <ActivityIndicator color="#16803C" />
+        <Text className="mt-3 text-sm text-muted">Loading job</Text>
+      </ScreenContainer>
+    );
+  }
+  if (!user) {
+    return <MissingJob onBack={() => router.replace("/login" as never)} text="Sign in to access this protected employer workspace." />;
+  }
+  if (!job) {
+    return <MissingJob onBack={() => router.replace("/employer" as never)} text="This listing is no longer available." />;
+  }
+
+  const isOpen = job.status === "open";
+
+  return (
+    <ScreenContainer className="flex-1" containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 12 }}>
+        {/* Top bar */}
+        <View className="flex-row items-center justify-between mb-3 px-1">
+          <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+            <ArrowLeft size={20} color="#17201A" />
+          </TouchableOpacity>
+          <Text className="text-[15px] font-semibold text-foreground">Job management</Text>
+          <JobOptionsMenu
+            job={job}
+            onJobUpdated={() => void jobsQuery.refetch()}
+            onJobDeleted={() => router.replace("/employer" as never)}
+          />
+        </View>
+
+        {/* Hero image */}
+        <View className="rounded-2xl overflow-hidden h-[150px] mb-3 bg-primary">
+          {job.imageUrl ? (
+            <ImageBackground source={{ uri: job.imageUrl }} className="flex-1" resizeMode="cover">
+              <HeroOverlay job={job} isOpen={isOpen} />
+            </ImageBackground>
+          ) : (
+            <View className="flex-1 items-center justify-center">
+              <BookOpen size={40} color="#EAF3DE" />
+              <HeroOverlay job={job} isOpen={isOpen} />
+            </View>
+          )}
+        </View>
+
+        {/* Stat grid */}
+        <View className="flex-row flex-wrap gap-2.5 mb-4">
+          <StatTile icon={<MapPin size={18} color="#16803C" />} label="Location" value={job.locationLabel ?? "—"} />
+          <StatTile icon={<DollarSign size={18} color="#16803C" />} label="Pay rate" value={jobPay(job)} />
+          <StatTile
+            icon={<Users size={18} color="#16803C" />}
+            label="Roles filled"
+            value={`${job.rolesFilled} of ${job.rolesTotal}`}
+          />
+          <StatTile icon={<Eye size={18} color="#16803C" />} label="Views" value={String(job.viewsCount)} />
+        </View>
+
+        {/* Action row */}
+        <View className="flex-row gap-2 mb-4">
+          <TouchableOpacity
+            onPress={handleBoost}
+            className="flex-[2] bg-primary rounded-2xl py-3 flex-row items-center justify-center gap-1.5"
+          >
+            <Star size={16} color="#EAF3DE" />
+            <Text className="text-white text-[13px] font-semibold">Boost job</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handlePauseOrReopen}
+            className="flex-1 bg-surface border border-border rounded-2xl py-3 items-center justify-center"
+          >
+            {isOpen ? <Pause size={16} color="#17201A" /> : <Play size={16} color="#17201A" />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDelete}
+            className="flex-1 bg-surface border border-border rounded-2xl py-3 items-center justify-center"
+          >
+            <Trash2 size={16} color="#A32D2D" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Applicant filters */}
+        {applicants.length > 0 ? (
+          <View className="flex-row flex-wrap gap-2 mb-3.5">
+            {applicantFilters.map((option) => {
+              const active = filter === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => setFilter(option)}
+                  className={`rounded-full px-3 py-1.5 ${active ? "bg-primary" : "bg-surface border border-border"}`}
+                >
+                  <Text className={`text-xs font-medium ${active ? "text-white" : "text-muted"}`}>{option}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {/* Applications */}
+        <View className="border-t border-border pt-3.5">
+          <View className="flex-row items-center gap-2 mb-3">
+            <Text className="text-[15px] font-semibold text-foreground">Applications</Text>
+            <View className="bg-surface border border-border rounded-full px-2 py-0.5">
+              <Text className="text-xs text-muted">{applicants.length}</Text>
+            </View>
+          </View>
+
+          {applicants.length === 0 ? (
+            <View className="items-center bg-surface border border-border rounded-2xl py-7 px-4">
+              <UserSearch size={26} color="#94A098" />
+              <Text className="text-sm font-semibold text-foreground mt-2.5 mb-1">No applications yet</Text>
+              <Text className="text-xs text-muted text-center leading-5">
+                When people apply, they will appear here.
+              </Text>
+            </View>
+          ) : (
+            visibleApplicants.map((applicant) => (
+              <ApplicantCard
+                key={applicant.id}
+                applicant={applicant}
+                jobId={job.id}
+                onStatusChange={() => refetchAfterChange()}
+              />
+            ))
+          )}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}
+
+function HeroOverlay({ job, isOpen }: { job: EmployerJob; isOpen: boolean }) {
+  return (
+    <View className="flex-1 justify-between">
+      {/* scrim: uniform dark wash + a heavier band at the bottom so the title stays readable */}
+      <View className="absolute inset-0 bg-black/25" />
+      <View className="absolute inset-x-0 bottom-0 h-14 bg-black/45" />
+
+      {/* top row: Live pill (top-left) + Protected listing pill (top-right) */}
+      <View className="relative z-10 flex-row items-center justify-between px-2.5 pt-2.5">
+        <View className="flex-row items-center gap-1.5 bg-primary rounded-full px-2.5 py-1">
+          <View className="w-1.5 h-1.5 rounded-full bg-white" />
+          <Text className="text-[11px] font-semibold text-white">{isOpen ? "Live" : "Closed"}</Text>
+        </View>
+        <View className="bg-black/40 rounded-full px-2.5 py-1">
+          <Text className="text-[11px] font-medium text-white/90">Protected listing</Text>
+        </View>
+      </View>
+
+      {/* title pinned to the bottom */}
+      <View className="relative z-10 px-3 pb-3">
+        <Text className="text-[16px] font-semibold text-white" numberOfLines={2}>
+          {job.title}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <View className="w-[47%] bg-surface border border-border rounded-2xl px-3 py-2.5 flex-row items-center gap-2">
+      {icon}
+      <View className="flex-1">
+        <Text className="text-[11px] text-muted">{label}</Text>
+        <Text className="text-[13px] font-semibold text-foreground" numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function MissingJob({ onBack, text }: { onBack: () => void; text: string }) {
+  return (
+    <ScreenContainer className="items-center justify-center p-6">
+      <Text className="text-sm font-semibold text-foreground text-center">{text}</Text>
+      <TouchableOpacity onPress={onBack} className="mt-4 bg-primary rounded-2xl px-6 py-3">
+        <Text className="text-white text-sm font-semibold">Back to listed jobs</Text>
+      </TouchableOpacity>
+    </ScreenContainer>
+  );
+}

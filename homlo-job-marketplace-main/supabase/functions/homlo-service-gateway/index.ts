@@ -155,7 +155,15 @@ Deno.serve(async (request) => {
         p_latitude: payload.latitude ?? null,
         p_longitude: payload.longitude ?? null,
       });
-      return json({ profile });
+      let mediaProfile = profile;
+      if (payload.profilePhotoKey != null || payload.bannerImage != null) {
+        mediaProfile = await rpc("homlo_upsert_profile_media", {
+          p_user_id: account.id,
+          p_profile_photo_key: payload.profilePhotoKey ?? null,
+          p_banner_image: payload.bannerImage ?? null,
+        });
+      }
+      return json({ profile: mediaProfile });
     }
 
     if (action === "profile.get") {
@@ -226,12 +234,21 @@ Deno.serve(async (request) => {
         p_country: payload.country ?? null,
         p_postal_code: payload.postalCode ?? null,
         p_banner_image: payload.bannerImage ?? null,
+        p_requirements: payload.requirements ?? null,
       });
       return json({ job });
     }
 
     if (action === "employer.delete-job") {
       const jobId = await rpc<string>("homlo_delete_job", {
+        p_employer_id: account.id,
+        p_job_id: payload.jobId,
+      });
+      return json({ jobId });
+    }
+
+    if (action === "employer.soft-delete-job") {
+      const jobId = await rpc<string>("homlo_soft_delete_job", {
         p_employer_id: account.id,
         p_job_id: payload.jobId,
       });

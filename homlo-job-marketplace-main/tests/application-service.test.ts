@@ -31,7 +31,7 @@ class InMemoryApplicationDatabase implements DatabaseAdapter {
     else if (statement.startsWith("update applications set status")) { if (this.application) { this.application.status = parameters[1]; rows = [this.application]; } }
     else if (statement.startsWith("update jobs set workers_hired")) {
       if ((this.job.workers_hired as number) < (this.job.workers_needed as number)) { this.job.workers_hired = (this.job.workers_hired as number) + 1; rows = [this.job]; }
-    } else if (statement.startsWith("update jobs set category_id")) { this.job.status = parameters[15]; rows = [this.job]; }
+    } else if (statement.startsWith("update jobs set category_id")) { this.job.status = parameters[16]; rows = [this.job]; }
     else if (statement.startsWith("insert into notifications")) rows = [{ id: "notification", user_id: employerId, type: "new_application", title: "New application", body: null, read: false, created_at: this.now }];
     return { rows: rows as Row[], rowCount: rows.length };
   }

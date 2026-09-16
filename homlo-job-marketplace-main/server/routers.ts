@@ -27,6 +27,8 @@ const profileInput = z.object({
   locationText: z.string().trim().max(160).nullable().optional(),
   latitude: z.number().finite().nullable().optional(),
   longitude: z.number().finite().nullable().optional(),
+  profilePhotoKey: z.string().trim().max(2_000_000).nullable().optional(),
+  bannerImage: z.string().trim().max(2_000_000).nullable().optional(),
 });
 
 const jobInput = z.object({
@@ -49,6 +51,7 @@ const jobInput = z.object({
   workersNeeded: z.number().int().min(1).max(500).optional(),
   status: z.enum(["draft", "open", "closed", "cancelled"]).optional(),
   bannerImage: z.string().trim().max(2_000_000).nullable().optional(),
+  requirements: z.string().trim().max(12_000).nullable().optional(),
 });
 
 export const appRouter = router({
@@ -160,6 +163,14 @@ export const appRouter = router({
       upsert: supabaseProtectedProcedure.input(profileInput).mutation(({ ctx, input }) =>
         getHomloDirectService().invoke(ctx.supabaseAccessToken, "profile.upsert", input),
       ),
+      /**
+       * Uploads the profile photo BYTES to the public `profile-photos` bucket
+       * and returns only the Storage object key. The key is persisted on the
+       * next `profile.upsert`; the local picker URI/data URL is never stored.
+       */
+      uploadPhoto: supabaseProtectedProcedure
+        .input(z.object({ photo: z.string().trim().min(1) }))
+        .mutation(({ ctx, input }) => getHomloDirectService().uploadProfilePhoto(ctx.supabaseAccessToken, input.photo)),
     }),
     applications: router({
       list: supabaseProtectedProcedure.query(({ ctx }) =>
@@ -209,6 +220,20 @@ export const appRouter = router({
       deleteJob: supabaseProtectedProcedure.input(z.object({ jobId: z.string().uuid() })).mutation(({ ctx, input }) =>
         getHomloDirectService().invoke(ctx.supabaseAccessToken, "employer.delete-job", input),
       ),
+      softDeleteJob: supabaseProtectedProcedure.input(z.object({ jobId: z.string().uuid() })).mutation(({ ctx, input }) =>
+        getHomloDirectService().invoke(ctx.supabaseAccessToken, "employer.soft-delete-job", input),
+      ),
+      /**
+       * Uploads the job image BYTES to the public `job-images` bucket and
+       * returns the public URL. The URL is persisted on the next
+       * `employer.saveJob` (jobs.banner_image); the local picker URI/data URL
+       * is never stored.
+       */
+      uploadImage: supabaseProtectedProcedure
+        .input(z.object({ jobId: z.string().uuid(), image: z.string().trim().min(1) }))
+        .mutation(({ ctx, input }) =>
+          getHomloDirectService().uploadJobImage(ctx.supabaseAccessToken, input.jobId, input.image),
+        ),
       applications: supabaseProtectedProcedure.input(z.object({ jobId: z.string().uuid() })).query(({ ctx, input }) =>
         getHomloDirectService().invoke(ctx.supabaseAccessToken, "employer.applications", input),
       ),
