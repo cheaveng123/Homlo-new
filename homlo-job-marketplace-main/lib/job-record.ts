@@ -42,6 +42,15 @@ export function formatPostedAt(value: string) {
 }
 
 /**
+ * The jobs schema has no employment-type column, so the card pill is derived
+ * from pay_type: hourly/daily roles read as part-time, fixed-rate as full-time.
+ */
+function employmentTypeForPayType(payType: JobRecord["pay_type"]): string {
+  if (payType === "hourly" || payType === "daily") return "Part-time";
+  return "Full-time";
+}
+
+/**
  * Maps a server job record to the client `Job` model. Remote is inferred the
  * same way the rest of the app already does it: the arrangement keywords are
  * stored in `location_text`, never derived from the description.
@@ -56,7 +65,7 @@ export function normalizePublishedJob(record: JobRecord): Job {
     location,
     schedule: record.pay_type === "hourly" ? "Flexible hours" : "Schedule set by employer",
     pay: formatMoney(record.pay_amount, record.pay_currency, record.pay_type),
-    tag: "Open role",
+    tag: employmentTypeForPayType(record.pay_type),
     category: record.category || "Other",
     image: resolveJobImage(record.banner_image),
     description: record.description,

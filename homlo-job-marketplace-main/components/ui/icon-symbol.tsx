@@ -77,6 +77,10 @@ const MAPPING = {
   "send": "send",
   "share2": "share",
   "arrow.up.right": "open-in-new",
+  "camera": "photo-camera",
+  "photo": "photo",
+  "trash": "delete-outline",
+  "globe": "public",
 } as unknown as IconMapping;
 
 /**

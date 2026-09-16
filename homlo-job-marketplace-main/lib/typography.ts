@@ -4,6 +4,21 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from "@expo-google-fonts/plus-jakarta-sans";
+import {
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+} from "@expo-google-fonts/space-grotesk";
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+} from "@expo-google-fonts/manrope";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import type { TextStyle } from "react-native";
 
@@ -12,6 +27,15 @@ export const fontAssets = {
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
   ...MaterialIcons.font,
 };
 

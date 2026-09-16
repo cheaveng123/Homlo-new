@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useFocusEffect, useLocalSearchParams, usePathname, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,7 +9,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { Text } from "@/components/ui/text";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ScalePressable } from "@/components/ui/scale-pressable";
-import { MarketplaceJobCard } from "@/components/marketplace-job-card";
+import { SearchJobCard } from "@/components/search/search-job-card";
 import { JobListingSkeleton } from "@/components/job-listing-skeleton";
 import { type Job } from "@/components/job-store";
 import { haptic } from "@/lib/haptics";
@@ -46,11 +46,11 @@ const quickChips: QuickChip[] = [
   { label: "More", icon: "ellipsis", tone: "#F1F3F1", color: "#17201A", kind: "more" },
 ];
 
-const popularSearches: { label: string; kind: QuickChip["kind"] }[] = [
-  { label: "Part-time jobs", kind: "part-time" },
-  { label: "Internship opportunities", kind: "internships" },
-  { label: "Weekend jobs", kind: "weekend" },
-  { label: "Remote jobs", kind: "remote" },
+const popularSearches: { label: string; image: number; kind: "part-time" | "full-time" | "weekend" | "remote" }[] = [
+  { label: "Part-time", image: require("../../assets/images/parttime_new-removebg-preview.png"), kind: "part-time" },
+  { label: "Full-time", image: require("../../assets/images/fulltime.png"), kind: "full-time" },
+  { label: "Weekends", image: require("../../assets/images/weekend-removebg-preview.png"), kind: "weekend" },
+  { label: "Remote", image: require("../../assets/images/remote.png"), kind: "remote" },
 ];
 
 function mapFiltersToSearchParams(filters: SearchFilters, keyword: string): JobSearchParams {
@@ -219,8 +219,12 @@ export function SearchResultsPage() {
   );
 
   const handlePopular = useCallback(
-    (kind: QuickChip["kind"]) => {
+    (kind: "part-time" | "full-time" | "weekend" | "remote") => {
       haptic.light();
+      if (kind === "full-time") {
+        router.push({ pathname: "/search-results", params: { employmentType: "Full-time" } } as never);
+        return;
+      }
       router.push(`/discover/${kind}` as never);
     },
     [router],
@@ -266,13 +270,20 @@ export function SearchResultsPage() {
               <IconSymbol name="chevron.left" size={21} color="#17201A" />
             </Pressable>
           ) : null}
-          <View style={styles.heroHeading}>
-            <Text style={styles.topTitle}>What are you looking for?</Text>
-            <Text style={styles.heroSubtitle}>Find flexible work that fits your day</Text>
+          <Text style={styles.brand}>Homlo</Text>
+          <View style={styles.topBarSpacer} />
+          <View style={styles.locationSelector}>
+            <IconSymbol name="mappin" size={16} color="#16803C" />
+            <Text style={styles.locationText}>Phnom Penh</Text>
+            <IconSymbol name="chevron.down" size={12} color="#17201A" />
           </View>
+          <Pressable style={styles.notificationButton}>
+            <IconSymbol name="bell" size={20} color="#17201A" />
+            <View style={styles.notificationBadge} />
+          </Pressable>
         </View>
 
-        <View style={styles.discoveryControls}>
+        <View style={styles.searchContainer}>
           <View style={[styles.searchRow, searchFocused && styles.searchRowFocused]}>
             <IconSymbol name="magnifyingglass" size={20} color="#66736A" style={styles.searchIcon} />
             <TextInput
@@ -287,26 +298,7 @@ export function SearchResultsPage() {
               style={styles.searchInput}
               value={draftKeyword}
             />
-            {draftKeyword ? (
-              <Pressable accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} onPress={clearKeywordOnly} style={styles.clearSearchButton}>
-                <IconSymbol name="xmark.circle.fill" size={18} color="#93A39C" />
-              </Pressable>
-            ) : null}
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open job filters"
-            onPress={openDetailFilters}
-            style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}
-          >
-            <IconSymbol name="slider.horizontal.3" size={18} color="#16803C" />
-            <Text style={styles.filterText}>Filters</Text>
-            {activeFilterCount > 0 ? (
-              <View style={styles.filterCount}>
-                <Text style={styles.filterCountText}>{activeFilterCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={styles.categoryRail} horizontal showsHorizontalScrollIndicator={false}>
@@ -314,17 +306,14 @@ export function SearchResultsPage() {
             const active = chip.kind === "all";
             return (
               <Animated.View entering={FadeInDown.delay(80 + chip.label.length * 4).duration(220)} key={chip.label}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={chip.label}
-                onPress={() => handleChip(chip)}
-                style={({ pressed }) => [styles.categoryItem, active && styles.categoryItemActive, pressed && styles.pressed]}
-              >
-                <View style={[styles.categoryIcon, { backgroundColor: chip.tone }]}>
-                  <IconSymbol name={chip.icon} size={16} color={chip.color} />
-                </View>
-                <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>{chip.label}</Text>
-              </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={chip.label}
+                  onPress={() => handleChip(chip)}
+                  style={({ pressed }) => [styles.categoryItem, active && styles.categoryItemActive, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>{chip.label}</Text>
+                </Pressable>
               </Animated.View>
             );
           })}
@@ -351,7 +340,12 @@ export function SearchResultsPage() {
                 style={({ pressed }) => [styles.popularRow, pressed && styles.pressed]}
               >
                 <View style={styles.popularIcon}>
-                  <IconSymbol name="magnifyingglass" size={16} color="#16803C" />
+                  <Image
+                    accessibilityLabel={`${item.label} icon`}
+                    resizeMode="contain"
+                    source={item.image}
+                    style={styles.popularIconImage}
+                  />
                 </View>
                 <View style={styles.popularCopy}>
                   <Text style={styles.popularTitle}>{item.label}</Text>
@@ -366,16 +360,19 @@ export function SearchResultsPage() {
         </>
       ) : null}
 
-      <View style={styles.contextRow}>
-        <Text style={styles.resultLabel}>{isLoading ? "Loading jobs" : `${results.length} jobs found`}</Text>
+      <View style={styles.jobsNearYouRow}>
+        <View style={styles.jobsNearYouCopy}>
+          <Text style={styles.jobsNearYouTitle}>Jobs near you</Text>
+          <Text style={styles.jobsNearYouSubtitle}>Fresh opportunities in your area</Text>
+        </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Sort search results"
+          accessibilityLabel="Sort"
           onPress={openDetailFilters}
           style={({ pressed }) => [styles.sortButton, pressed && styles.pressed]}
         >
-          <Text style={styles.viewResultsText}>Sort by: {filters.sort}</Text>
-          <IconSymbol name="chevron.down" size={15} color="#16803C" />
+          <IconSymbol name="slider.horizontal.3" size={18} color="#17201A" />
+          <Text style={styles.sortButtonText}>Sort</Text>
         </Pressable>
       </View>
 
@@ -403,7 +400,7 @@ export function SearchResultsPage() {
         ListHeaderComponent={header}
         renderItem={({ item, index }) => (
           <View style={styles.cardRow}>
-            <MarketplaceJobCard
+            <SearchJobCard
               job={item}
               onPress={() => {
                 logJobEvent({ jobId: item.id, eventType: "click", feedContext: "search", feedPosition: index });
@@ -421,41 +418,41 @@ export function SearchResultsPage() {
 }
 
 const styles = StyleSheet.create({
-  flex: { backgroundColor: "#F7F8F6", flex: 1 },
+  flex: { backgroundColor: "#FFFFFF", flex: 1 },
   listContent: {},
 
   heroHeader: {
-    backgroundColor: "#EAF6F3",
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
-    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
     paddingBottom: 18,
     paddingHorizontal: 20,
     position: "relative",
   },
 
   topBar: { alignItems: "center", flexDirection: "row" },
-  backButton: { alignItems: "center", height: 40, justifyContent: "center", marginRight: 4, width: 40 },
-  heroHeading: { flex: 1 },
-  topTitle: { color: "#123B35", fontSize: 24, fontWeight: "800", letterSpacing: -0.55 },
-  heroSubtitle: { color: "#55716B", fontSize: 13, marginTop: 5 },
+  backButton: { alignItems: "center", height: 40, justifyContent: "center", marginRight: 6, width: 36 },
+  brand: { color: "#16803C", fontSize: 20, fontWeight: "800", letterSpacing: -0.4 },
+  topBarSpacer: { flex: 1 },
+  locationSelector: { alignItems: "center", backgroundColor: "#F7F8F6", borderRadius: 20, flexDirection: "row", gap: 6, marginLeft: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  locationText: { color: "#17201A", fontSize: 13, fontWeight: "600" },
+  notificationButton: { marginLeft: 10, padding: 6 },
+  notificationBadge: { backgroundColor: "#ED1E24", borderColor: "#FFFFFF", borderRadius: 5, borderWidth: 1.5, height: 10, position: "absolute", right: 5, top: 5, width: 10 },
 
-  discoveryControls: { alignItems: "center", flexDirection: "row", gap: 10, marginTop: 18 },
-  searchRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCEBE6", borderRadius: 15, borderWidth: 1, flex: 1, flexDirection: "row", height: 50 },
-  searchRowFocused: { borderColor: "#0F7D5E", shadowColor: "#0F7D5E", shadowOpacity: 0.12, shadowRadius: 8 },
-  searchIcon: { marginLeft: 12 },
-  searchInput: { color: "#17201A", flex: 1, fontSize: 14, height: 48, paddingHorizontal: 10 },
-  clearSearchButton: { alignItems: "center", justifyContent: "center", marginRight: 12 },
+  searchContainer: { marginTop: 18 },
+  searchRow: { alignItems: "center", backgroundColor: "#F7F8F6", borderRadius: 15, flex: 1, flexDirection: "row", height: 50, paddingHorizontal: 16 },
+  searchRowFocused: { borderColor: "#0F7D5E", borderWidth: 1 },
+  searchIcon: { marginRight: 10 },
+  searchInput: { color: "#17201A", flex: 1, fontSize: 14, height: 50 },
 
-  filterButton: { alignItems: "center", backgroundColor: "#0F7D5E", borderColor: "#0F7D5E", borderRadius: 15, borderWidth: 1, flexDirection: "row", gap: 4, height: 50, justifyContent: "center", paddingHorizontal: 13 },
-  filterText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  filterCount: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 9.5, height: 19, justifyContent: "center", marginLeft: 2, minWidth: 19, paddingHorizontal: 4 },
-  filterCountText: { color: "#FFFFFF", fontSize: 10.5, fontWeight: "800" },
+  jobsNearYouRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginTop: 24, paddingHorizontal: 20 },
+  jobsNearYouCopy: { flex: 1 },
+  jobsNearYouTitle: { color: "#17201A", fontSize: 18, fontWeight: "800" },
+  jobsNearYouSubtitle: { color: "#94A098", fontSize: 12.5, marginTop: 2 },
+  sortButton: { alignItems: "center", backgroundColor: "#F7F8F6", borderRadius: 12, flexDirection: "row", gap: 6, marginLeft: 12, paddingHorizontal: 12, paddingVertical: 9 },
+  sortButtonText: { color: "#17201A", fontSize: 13, fontWeight: "600" },
 
   categoryRail: { gap: 8, paddingRight: 20, paddingTop: 16 },
-  categoryItem: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 8, paddingHorizontal: 13, paddingVertical: 7 },
-  categoryItemActive: { backgroundColor: "#0F7D5E", borderColor: "#0F7D5E" },
-  categoryIcon: { alignItems: "center", borderRadius: 15, height: 30, justifyContent: "center", width: 30 },
+  categoryItem: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10 },
+  categoryItemActive: { backgroundColor: "#16803C", borderColor: "#16803C" },
   categoryLabel: { color: "#17201A", fontSize: 13, fontWeight: "600" },
   categoryLabelActive: { color: "#FFFFFF", fontWeight: "700" },
 
@@ -466,23 +463,19 @@ const styles = StyleSheet.create({
   seeAllText: { color: "#16803C", fontSize: 13, fontWeight: "700" },
 
   popularList: { gap: 8, paddingHorizontal: 20, paddingTop: 8 },
-  popularRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E8ECEA", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  popularIcon: { alignItems: "center", backgroundColor: "#EAF6EC", borderRadius: 19, height: 38, justifyContent: "center", width: 38 },
+  popularRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E8ECEA", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  popularIcon: { height: 52, justifyContent: "center", width: 52 },
+  popularIconImage: { height: "100%", width: "100%" },
   popularCopy: { flex: 1 },
   popularTitle: { color: "#17201A", fontSize: 14.5, fontWeight: "700" },
   popularSubtitle: { color: "#66736A", fontSize: 11.5, marginTop: 1 },
-
-  contextRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 12 },
-  resultLabel: { color: "#66736A", fontSize: 12.5 },
-  sortButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 4, paddingHorizontal: 10, paddingVertical: 7 },
-  viewResultsText: { color: "#17201A", fontSize: 12.5, fontWeight: "600" },
 
   appliedRow: { alignItems: "center", flexDirection: "row", gap: 10, justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 10 },
   appliedText: { color: "#16803C", flex: 1, fontSize: 12.5, fontWeight: "600" },
   clearText: { color: "#17201A", fontSize: 12.5, fontWeight: "700" },
 
-  cardRow: { paddingBottom: 12, paddingHorizontal: 16 },
-  loadingBody: { backgroundColor: "#F7F8F6", paddingHorizontal: 16, paddingTop: 8 },
+  cardRow: { paddingBottom: 12, paddingHorizontal: 20 },
+  loadingBody: { backgroundColor: "#FFFFFF", paddingHorizontal: 20, paddingTop: 8 },
 
   empty: { alignItems: "center", paddingHorizontal: 32, paddingTop: 40 },
   emptyIcon: { alignItems: "center", backgroundColor: "#EAF6EC", borderRadius: 22, height: 52, justifyContent: "center", width: 52 },

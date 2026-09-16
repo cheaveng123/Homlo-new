@@ -18,6 +18,7 @@ export type Job = {
   experience?: string;
   posted?: string;
   status?: "Featured" | "New" | "Hiring";
+  saved?: boolean;
 };
 
 function listing(job: Job): Job {
