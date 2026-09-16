@@ -62,6 +62,11 @@ const config: ExpoConfig = {
     },
     package: env.androidPackage,
     permissions: ["POST_NOTIFICATIONS", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+    config: {
+      googleMaps: {
+        apiKey: "",
+      },
+    },
     intentFilters: [
       {
         action: "VIEW",
