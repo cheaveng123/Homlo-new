@@ -199,6 +199,8 @@ export default function RootLayout() {
             <Stack.Screen name="job/[id]/apply" options={{ animation: "slide_from_right", animationDuration: 220, presentation: "fullScreenModal" }} />
 
             <Stack.Screen name="employer/index" options={{ animation: "slide_from_right", animationDuration: 220 }} />
+            <Stack.Screen name="employer/listings" options={{ animation: "slide_from_right", animationDuration: 220 }} />
+            <Stack.Screen name="employer/post-job" options={{ animation: "slide_from_right", animationDuration: 240 }} />
             <Stack.Screen name="post-job" options={{ animation: "slide_from_right", animationDuration: 240 }} />
             <Stack.Screen name="employer/jobs" options={{ animation: "slide_from_right", animationDuration: 220 }} />
             <Stack.Screen name="employer/boost/[id]" options={{ animation: "slide_from_right", animationDuration: 240 }} />
