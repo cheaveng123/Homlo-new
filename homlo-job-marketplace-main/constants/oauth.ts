@@ -36,17 +36,25 @@ export function getApiBaseUrl(): string {
     return API_BASE_URL.replace(/\/$/, "");
   }
 
-  // On web, derive from current hostname by replacing port 8081 with 3000
+  // On web, derive from current hostname by replacing the Metro dev port with the API port
   if (ReactNative.Platform.OS === "web" && typeof window !== "undefined" && window.location) {
     const { protocol, hostname, port } = window.location;
-    if ((hostname === "localhost" || hostname === "127.0.0.1") && port === "8081") {
+    // Local dev on any Metro port (8081, 8082, …) -> API server on :3000
+    if ((hostname === "localhost" || hostname === "127.0.0.1") && port) {
       return `${protocol}//${hostname}:3000`;
     }
-    // Pattern: 8081-sandboxid.region.domain -> 3000-sandboxid.region.domain
-    const apiHostname = hostname.replace(/^8081-/, "3000-");
+    // Pattern: 80xx-sandboxid.region.domain -> 3000-sandboxid.region.domain
+    const apiHostname = hostname.replace(/^80\d{2}-/, "3000-");
     if (apiHostname !== hostname) {
       return `${protocol}//${apiHostname}`;
     }
+    // Already an API-style preview host (3000-…/api-…): keep it as-is
+    if (/^(3000|api)-/.test(hostname)) {
+      return `${protocol}//${hostname}`;
+    }
+    // Production origin without an explicit API host: keep the host so requests
+    // never collapse into same-origin relative URLs that silently 404.
+    return `${protocol}//${hostname}`;
   }
 
   // On native (Expo Go / dev client / physical device), Metro exposes the
@@ -61,9 +69,14 @@ export function getApiBaseUrl(): string {
       if (apiHost !== cleaned) {
         return `http://${apiHost}`;
       }
+      const bareHost = cleaned.replace(/:\d+$/, "");
+      if (bareHost) {
+        return `http://${bareHost}:3000`;
+      }
     }
   }
 
+  console.warn("[getApiBaseUrl] No API base URL is configured. Set EXPO_PUBLIC_API_BASE_URL for production builds.");
   // Fallback to empty (will use relative URL)
   return "";
 }
