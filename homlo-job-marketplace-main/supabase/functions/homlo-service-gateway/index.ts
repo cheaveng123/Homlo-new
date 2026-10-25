@@ -1,3 +1,4 @@
+/* eslint-disable-next-line import/no-unresolved -- jsr: specifiers are resolved by the Deno edge runtime, not the Node resolver */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 type AuthUser = { id: string; email?: string | null; user_metadata?: { full_name?: string | null; name?: string | null } };
@@ -10,6 +11,12 @@ type AuthUser = { id: string; email?: string | null; user_metadata?: { full_name
 // PAYMENT_VERIFICATION_MODE to "webhook" and route calls through a signed
 // callback handler once ABA PayWay / Stripe credentials are configured.
 const PAYMENT_VERIFICATION_MODE = Deno.env.get("HOMLO_PAYMENT_VERIFICATION_MODE") ?? "simulated";
+
+const WORK_ARRANGEMENTS: readonly string[] = ["On-site", "Hybrid", "Remote"];
+
+function normalizeWorkArrangement(value: unknown): string | null {
+  return typeof value === "string" && WORK_ARRANGEMENTS.includes(value) ? value : null;
+}
 
 function verifyPaymentResult(payload: Record<string, unknown>): "completed" | "failed" {
   if (PAYMENT_VERIFICATION_MODE === "simulated") {
@@ -140,6 +147,7 @@ Deno.serve(async (request) => {
         p_result: verifyPaymentResult(payload),
       });
       const payment = Array.isArray(verification) ? verification[0] : verification;
+      if (payment?.status !== "completed") return fail("Payment was not completed", 402);
       const subscription = await rpc("homlo_upsert_subscription", { p_user_id: account.id, p_plan: plan });
       return json({ payment, subscription });
     }
@@ -207,6 +215,17 @@ Deno.serve(async (request) => {
       return json({ application });
     }
 
+    // Read receipt for an application. Separate from change-status on purpose:
+    // opening an applicant should not push them along the pipeline, and this is
+    // idempotent, so the client can fire it freely and roll back on failure.
+    if (action === "application.mark-viewed") {
+      const rows = await rpc<Record<string, unknown>[]>("homlo_mark_application_viewed", {
+        p_actor_id: account.id,
+        p_application_id: payload.applicationId,
+      });
+      return json({ application: rows[0] ?? null });
+    }
+
     if (action === "employer.jobs") {
       const jobs = await rpc("homlo_list_employer_jobs_with_boosts", { p_employer_id: account.id });
       return json({ jobs });
@@ -235,6 +254,19 @@ Deno.serve(async (request) => {
         p_postal_code: payload.postalCode ?? null,
         p_banner_image: payload.bannerImage ?? null,
         p_requirements: payload.requirements ?? null,
+        p_auto_close_enabled: typeof payload.autoCloseEnabled === "boolean" ? payload.autoCloseEnabled : null,
+        p_work_arrangement: normalizeWorkArrangement(payload.workArrangement),
+      });
+      return json({ job });
+    }
+
+    if (action === "employer.set-auto-close") {
+      const jobId = typeof payload.jobId === "string" ? payload.jobId : null;
+      if (!jobId) return fail("jobId is required", 400);
+      const job = await rpc("homlo_set_job_auto_close", {
+        p_employer_id: account.id,
+        p_job_id: jobId,
+        p_auto_close_enabled: payload.autoCloseEnabled === false ? false : true,
       });
       return json({ job });
     }
@@ -364,6 +396,25 @@ Deno.serve(async (request) => {
       await rpc("homlo_hide_message", {
         p_message_id: messageId,
         p_user_id: account.id,
+      });
+      return json({ ok: true });
+    }
+
+    // ------------------------------------------------------------------
+    // Notifications (applicant status updates, job-filled)
+    // ------------------------------------------------------------------
+
+    if (action === "notifications.list") {
+      const notifications = await rpc("homlo_list_user_notifications", { p_user_id: account.id });
+      return json({ notifications });
+    }
+
+    if (action === "notifications.mark-read") {
+      const notificationId = typeof payload.notificationId === "string" ? payload.notificationId : null;
+      if (!notificationId) return fail("notificationId is required", 400);
+      await rpc("homlo_mark_notification_read", {
+        p_user_id: account.id,
+        p_notification_id: notificationId,
       });
       return json({ ok: true });
     }
