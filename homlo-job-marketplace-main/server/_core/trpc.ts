@@ -7,10 +7,10 @@ const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   // Never include stack traces or file paths in error responses, in any
   // environment. Stack traces are logged server-side by the error handler.
-  errorFormatter: ({ error }) => ({
-    message: error.message,
-    code: error.code,
-  }),
+  errorFormatter: ({ shape }) => {
+    const { stack, ...data } = shape.data;
+    return { ...shape, data };
+  },
 });
 
 export const router = t.router;
