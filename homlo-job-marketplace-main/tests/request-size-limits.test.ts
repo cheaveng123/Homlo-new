@@ -1,114 +1,105 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
-import express from "express";
+import { createApp } from "../server/_core/index";
 import http from "http";
 import { type AddressInfo } from "node:net";
 
-function createApp() {
-  const app = express();
+const app = createApp();
+let server: http.Server;
 
-  // Same limit logic as server/_core/index.ts:
-  // 16mb for /api/trpc (photo uploads via base64 data URLs), 1mb globally.
-  app.use("/api/trpc", express.json({ limit: "16mb" }));
-  app.use("/api/trpc", express.urlencoded({ limit: "16mb", extended: true }));
-  app.use(express.json({ limit: "1mb" }));
-  app.use(express.urlencoded({ limit: "1mb", extended: true }));
-
-  app.post("/api/regular", (_req, res) => {
-    res.json({ ok: true });
+beforeAll(async () => {
+  server = http.createServer(app);
+  await new Promise<void>((resolve) => {
+    server.listen(0, () => resolve());
   });
+});
 
-  app.post("/api/trpc/upload", (_req, res) => {
-    res.json({ ok: true });
-  });
+afterAll(async () => {
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+});
 
-  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    if (err.type === "entity.too.large") {
-      return res.status(413).json({ error: "Request too large" });
-    }
-    res.status(500).json({ error: "Internal error" });
-  });
-
-  return app;
+function getPort(): number {
+  return (server.address() as AddressInfo).port;
 }
 
-describe("Request size limits", () => {
-  let server: http.Server;
-  let port: number;
-
-  beforeAll(async () => {
-    const app = createApp();
-    server = http.createServer(app);
-    await new Promise<void>((resolve) => {
-      server.listen(0, () => {
-        port = (server.address() as AddressInfo).port;
-        resolve();
-      });
-    });
-  });
-
-  afterAll(async () => {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  });
-
-  function post(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
-    return new Promise((resolve, reject) => {
-      const data = JSON.stringify(body);
-      const req = http.request(
-        {
-          hostname: "localhost",
-          port,
-          path,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(data),
-          },
+function rawPost(path: string, body: unknown): Promise<{ status: number; body: unknown }> {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request(
+      {
+        hostname: "localhost",
+        port: getPort(),
+        path,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
         },
-        (res) => {
-          let chunks = "";
-          res.on("data", (c) => {
-            chunks += c;
+      },
+      (res) => {
+        let chunks = "";
+        res.on("data", (c) => {
+          chunks += c;
+        });
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode!,
+            body: chunks ? JSON.parse(chunks) : {},
           });
-          res.on("end", () => {
-            resolve({
-              status: res.statusCode!,
-              body: chunks ? JSON.parse(chunks) : {},
-            });
-          });
-        }
-      );
-      req.on("error", reject);
-      req.write(data);
-      req.end();
-    });
-  }
+        });
+      },
+    );
+    req.on("error", reject);
+    req.write(data);
+    req.end();
+  });
+}
 
-  it("normal request to regular route passes", async () => {
-    const result = await post("/api/regular", { hello: "world" });
-    expect(result.status).toBe(200);
-    expect(result.body).toEqual({ ok: true });
+function trpcPost(method: string, params: unknown): Promise<{ status: number; body: unknown }> {
+  return rawPost("/api/trpc", {
+    id: "1",
+    jsonrpc: "2.0",
+    method,
+    params,
+  });
+}
+
+describe("Request size limits (real server setup)", () => {
+  it("non-upload trpc procedure under 1mb is accepted (not 413)", async () => {
+    const result = await trpcPost("profile.get", {});
+    // 404/401 from tRPC is fine — the key is body was NOT rejected as too large
+    expect(result.status).not.toBe(413);
   });
 
-  it("5MB body to normal route returns 413 (1mb limit)", async () => {
-    const bigBody = { data: "x".repeat(5 * 1024 * 1024) }; // 5MB > 1MB limit
-    const result = await post("/api/regular", bigBody);
+  it("non-upload trpc procedure over 1mb returns 413", async () => {
+    const bigBody = { data: "x".repeat(2 * 1024 * 1024) }; // 2MB > 1MB
+    const result = await trpcPost("homlo.publicJobs", { padding: bigBody });
     expect(result.status).toBe(413);
   });
 
-  it("normal request to trpc route passes", async () => {
-    const result = await post("/api/trpc/upload", { hello: "world" });
-    expect(result.status).toBe(200);
-  });
-
-  it("valid photo upload to trpc route under 16mb passes", async () => {
+  it("uploadPhoto trpc procedure under 16mb is accepted (not 413)", async () => {
     const photoData = "x".repeat(5 * 1024 * 1024); // 5MB base64-like payload
-    const result = await post("/api/trpc/upload", { photo: photoData });
-    expect(result.status).toBe(200);
+    const result = await trpcPost("profile.uploadPhoto", { photo: photoData });
+    expect(result.status).not.toBe(413);
   });
 
-  it("oversized request to trpc route over 16mb returns 413", async () => {
-    const bigBody = { data: "x".repeat(17 * 1024 * 1024) }; // 17MB > 16MB limit
-    const result = await post("/api/trpc/upload", bigBody);
+  it("uploadImage trpc procedure under 16mb is accepted (not 413)", async () => {
+    const imageData = "x".repeat(5 * 1024 * 1024); // 5MB base64-like payload
+    const result = await trpcPost("employer.uploadImage", {
+      jobId: "00000000-0000-0000-0000-000000000000",
+      image: imageData,
+    });
+    expect(result.status).not.toBe(413);
+  });
+
+  it("uploadPhoto trpc procedure over 16mb returns 413", async () => {
+    const bigBody = { data: "x".repeat(17 * 1024 * 1024) }; // 17MB > 16MB
+    const result = await trpcPost("profile.uploadPhoto", { photo: bigBody.data });
+    expect(result.status).toBe(413);
+  });
+
+  it("non-trpc route over 1mb returns 413", async () => {
+    const bigBody = { data: "x".repeat(2 * 1024 * 1024) };
+    const result = await rawPost("/api/health", bigBody);
     expect(result.status).toBe(413);
   });
 });
