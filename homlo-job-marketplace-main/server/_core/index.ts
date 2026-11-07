@@ -14,13 +14,15 @@ import { configureTrustProxy } from "./requestIp";
 
 validateProductionEnv();
 
-const UPLOAD_PROCEDURES = new Set(["profile.uploadPhoto", "employer.uploadImage"]);
-const TRPC_UPLOAD_LIMIT = 16 * 1024 * 1024; // 16mb — base64 photo uploads
-const DEFAULT_LIMIT = 1 * 1024 * 1024; // 1mb — everything else
-
-interface TrpcRequest extends express.Request {
-  trpcBodySize?: number;
-}
+/** Exact tRPC procedure paths that are allowed the 16mb upload limit.
+ * These are the only two procedures that accept base64 photo/image data URLs.
+ * All other procedures are capped at 1mb by zod input schemas anyway. */
+const UPLOAD_PROCEDURES = new Set([
+  "homlo.profile.uploadPhoto",
+  "homlo.employer.uploadImage",
+]);
+const TRPC_UPLOAD_LIMIT = 16 * 1024 * 1024; // 16mb
+const DEFAULT_LIMIT = 1 * 1024 * 1024; // 1mb
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -41,48 +43,55 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+/** Extract procedure names from a tRPC URL path.
+ *
+ * Path examples (req.path may or may not include the /api/trpc mount prefix):
+ *   "/api/trpc/homlo.profile.uploadPhoto"  → ["homlo.profile.uploadPhoto"]
+ *   "/homlo.profile.uploadPhoto"           → ["homlo.profile.uploadPhoto"]
+ *   "/api/trpc/homlo.profile.uploadPhoto,homlo.profile.get"
+ *                                          → ["homlo.profile.uploadPhoto", "homlo.profile.get"]
+ *   "/api/trpc"                            → []
+ */
+function getProcedureNamesFromPath(path: string): string[] {
+  // Take the last path segment (after the final /), strip query string
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length === 0) return [];
+  const lastPart = parts[parts.length - 1].split("?")[0];
+  if (!lastPart) return [];
+  return lastPart.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/** Returns true only when every procedure named in the URL path is an upload
+ * procedure. Mixed batches (upload + non-upload) return false → 1mb limit.
+ */
+function isUploadOnlyPath(path: string): boolean {
+  const names = getProcedureNamesFromPath(path);
+  return names.length > 0 && names.every((name) => UPLOAD_PROCEDURES.has(name));
+}
+
 /** Build the Express app with all middleware. Exported for testing. */
 export function createApp() {
   const app = express();
 
   configureTrustProxy(app);
-
-  // Strict CORS: only ALLOWED_ORIGINS (plus localhost outside production) may
-  // call the API from a browser with credentials. Native clients send no Origin
-  // and are unaffected by CORS.
   app.use(createCorsMiddleware());
 
-  // Body limits. Non-trpc routes are capped at 1mb. The trpc endpoint allows
-  // up to 16mb raw because profile photo (profile.uploadPhoto) and job image
-  // (employer.uploadImage) uploads send base64 data URLs. A post-parse
-  // middleware enforces 1mb for every non-upload trpc procedure so an attacker
-  // cannot use the 16mb trpc allowance to send oversized payloads to saveJob,
-  // messaging, or any other procedure — those are additionally protected by
-  // zod input schemas with strict string length limits.
-  app.use("/api/trpc", express.json({
-    limit: TRPC_UPLOAD_LIMIT,
-    verify: (req: TrpcRequest, _res, buf) => {
-      req.trpcBodySize = buf.length;
-    },
-  }));
-  app.use("/api/trpc", express.urlencoded({
-    limit: TRPC_UPLOAD_LIMIT,
-    extended: true,
-    verify: (req: TrpcRequest, _res, buf) => {
-      req.trpcBodySize = buf.length;
-    },
-  }));
-
-  // Per-procedure limit enforcement: only uploadPhoto/uploadImage may exceed 1mb.
-  app.use("/api/trpc", (req: TrpcRequest, res, next) => {
-    const body = req.body as { method?: string } | undefined;
-    const isUpload = body?.method ? UPLOAD_PROCEDURES.has(body.method) : false;
-    const size = req.trpcBodySize ?? 0;
-    if (!isUpload && size > DEFAULT_LIMIT) {
-      return res.status(413).json({ error: "Request too large" });
+  // Pre-parse size check for trpc paths: reject oversized non-upload requests
+  // before the body is read, using the Content-Length header. Upload-only
+  // paths are allowed up to 16mb by the express.json limit below. Mixed batches
+  // (upload + non-upload comma-separated in one path) get the 1mb limit.
+  app.use("/api/trpc", (req, res, next) => {
+    if (!isUploadOnlyPath(req.path)) {
+      const size = Number(req.headers["content-length"]) || 0;
+      if (size > DEFAULT_LIMIT) {
+        return res.status(413).json({ error: "Request too large" });
+      }
     }
     next();
   });
+
+  app.use("/api/trpc", express.json({ limit: TRPC_UPLOAD_LIMIT }));
+  app.use("/api/trpc", express.urlencoded({ limit: TRPC_UPLOAD_LIMIT, extended: true }));
 
   app.use(express.json({ limit: DEFAULT_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_LIMIT, extended: true }));
@@ -100,10 +109,18 @@ export function createApp() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      // Never include stack traces or file paths in error responses, in any
+      // environment. Stack traces are logged server-side by the error handler.
+      errorFormatter: ({ error, shape }) => ({
+        message: error.message,
+        code: error.code,
+        httpStatus: error.httpStatus,
+      }),
     }),
   );
 
-  // 413 handler for body-parser entity.too.large errors
+  // Express error handler for body-parser entity.too.large and other errors.
+  // Never includes stack traces in the response body.
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     if (err.type === "entity.too.large") {
       return res.status(413).json({ error: "Request too large" });
@@ -128,4 +145,7 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+// Only start when this file is run directly, not when imported by tests.
+if (process.argv[1] === new URL(import.meta.url).pathname) {
+  startServer().catch(console.error);
+}
