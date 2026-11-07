@@ -56,8 +56,17 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Default body limit: 1mb for all routes. The trpc endpoint is allowed
+  // up to 16mb because profile photo (profile.uploadPhoto) and job image
+  // (employer.uploadImage) uploads send base64 data URLs. All other trpc
+  // procedures are protected by zod input schemas with strict string length
+  // limits, so a 16mb cap on trpc does not create an abuse vector.
+  // Oversized requests return 413 with a generic message from body-parser.
+  app.use("/api/trpc", express.json({ limit: "16mb" }));
+  app.use("/api/trpc", express.urlencoded({ limit: "16mb", extended: true }));
+
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
   registerStorageProxy(app);
   registerSupabaseAuthRoutes(app);
