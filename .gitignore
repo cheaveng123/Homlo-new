@@ -1,0 +1,7 @@
+# Environment files — never commit real credentials
+.env
+.env.*
+!.env.example
+homlo-job-marketplace-main/.env
+homlo-job-marketplace-main/.env.*
+!homlo-job-marketplace-main/.env.example
