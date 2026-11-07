@@ -128,6 +128,4 @@ async function startServer() {
   });
 }
 
-if (import.meta.main) {
-  startServer().catch(console.error);
-}
+startServer().catch(console.error);
