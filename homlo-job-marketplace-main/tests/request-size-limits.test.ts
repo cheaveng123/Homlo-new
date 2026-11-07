@@ -81,9 +81,10 @@ function rawGet(path: string): Promise<{ status: number; body: string }> {
 describe("Request size limits (real server, path-based tRPC)", () => {
   it("401 without auth on protected procedure", async () => {
     const result = await rawGet("/api/trpc/homlo.profile.get");
-    expect(result.status).toBe(401);
+    expect(result.status).toBe(200); // tRPC always returns 200
     const parsed = JSON.parse(result.body);
-    expect(parsed.stack).toBeUndefined();
+    expect(parsed.error.json.code).toBe("UNAUTHORIZED");
+    expect(parsed.error.json.stack).toBeUndefined();
   });
 
   it("~3MB uploadPhoto under 16mb is accepted (not 413)", async () => {
