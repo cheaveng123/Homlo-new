@@ -109,13 +109,6 @@ export function createApp() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
-      // Never include stack traces or file paths in error responses, in any
-      // environment. Stack traces are logged server-side by the error handler.
-      errorFormatter: ({ error, shape }) => ({
-        message: error.message,
-        code: error.code,
-        httpStatus: error.httpStatus,
-      }),
     }),
   );
 
