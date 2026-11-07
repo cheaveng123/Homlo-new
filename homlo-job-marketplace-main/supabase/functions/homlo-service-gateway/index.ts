@@ -3,14 +3,38 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 type AuthUser = { id: string; email?: string | null; user_metadata?: { full_name?: string | null; name?: string | null } };
 
+type WorkerApplicationRow = {
+  id: string;
+  job_id: string;
+  status: string;
+  message: string | null;
+  created_at: string;
+  updated_at: string;
+  job_title: string;
+  job_location_text: string | null;
+  employer_id: string;
+  employer_name: string | null;
+  banner_image: string | null;
+  pay_amount: number | string | null;
+  pay_currency: string | null;
+  pay_type: string | null;
+  work_arrangement: string | null;
+};
+
 // Payment verification is normally performed by a provider webhook that the
 // server confirms against a shared secret. This gateway has no live merchant
 // credentials, so verification in this deployment is "simulated": it still
 // runs through the same idempotent, payment-status-gated SQL path and only
 // activates a boost after a completed payment row exists. Swap
-// PAYMENT_VERIFICATION_MODE to "webhook" and route calls through a signed
+// HOMLO_PAYMENT_VERIFICATION_MODE to "webhook" and route calls through a signed
 // callback handler once ABA PayWay / Stripe credentials are configured.
-const PAYMENT_VERIFICATION_MODE = Deno.env.get("HOMLO_PAYMENT_VERIFICATION_MODE") ?? "simulated";
+//
+// Production safety: if HOMLO_PAYMENT_VERIFICATION_MODE is "simulated" (or
+// unset) while APP_ENV is "production", the gateway refuses to activate any
+// boost or subscription. Payments fail closed — a missing or misconfigured
+// provider must never result in free activation. In development, simulated
+// mode is allowed and simulateResult may be set by the client.
+import { verifyPaymentResult } from "../../../lib/paymentSession";
 
 const WORK_ARRANGEMENTS: readonly string[] = ["On-site", "Hybrid", "Remote"];
 
@@ -18,17 +42,21 @@ function normalizeWorkArrangement(value: unknown): string | null {
   return typeof value === "string" && WORK_ARRANGEMENTS.includes(value) ? value : null;
 }
 
-function verifyPaymentResult(payload: Record<string, unknown>): "completed" | "failed" {
-  if (PAYMENT_VERIFICATION_MODE === "simulated") {
-    return payload.simulateResult === "failed" ? "failed" : "completed";
-  }
-  // In real webhook mode the provider name + event id must be present and
-  // verified against provider-side signatures before reaching this step.
-  return payload.provider === "aba_payway" && payload.providerEventId ? "completed" : "failed";
-}
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const RPC_TIMEOUT_MS = 30_000;
+
+/** Fetch with an AbortController-based timeout; rejects after deadline. */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -44,15 +72,15 @@ function fail(message: string, status = 400) {
 async function getVerifiedUser(request: Request): Promise<AuthUser | null> {
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) return null;
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: SERVICE_ROLE_KEY, Authorization: authorization },
-  });
+  }, RPC_TIMEOUT_MS);
   if (!response.ok) return null;
   return (await response.json()) as AuthUser;
 }
 
 async function rpc<T>(name: string, input: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
       apikey: SERVICE_ROLE_KEY,
@@ -61,10 +89,42 @@ async function rpc<T>(name: string, input: Record<string, unknown>): Promise<T> 
       Prefer: "return=representation",
     },
     body: JSON.stringify(input),
-  });
+  }, RPC_TIMEOUT_MS);
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: "Supabase service request failed" }));
+    console.error("[homlo-service-gateway:rpc] database call failed", {
+      name,
+      status: response.status,
+      statusText: response.statusText,
+      response: error,
+    });
     throw new Error(typeof error.message === "string" ? error.message : "Supabase service request failed");
+  }
+  return (await response.json()) as T;
+}
+
+async function rest<T>(path: string, opts: { method?: string; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
+  const qs = opts.query ? `?${new URLSearchParams(opts.query).toString()}` : "";
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${path}${qs}`, {
+    method: opts.method ?? "GET",
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  }, RPC_TIMEOUT_MS);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: `Supabase REST ${opts.method ?? "GET"} ${path} failed` }));
+    console.error("[homlo-service-gateway:rest] database call failed", {
+      path,
+      method: opts.method ?? "GET",
+      status: response.status,
+      statusText: response.statusText,
+      response: error,
+    });
+    throw new Error(typeof error.message === "string" ? error.message : `Supabase REST request failed (${response.status})`);
   }
   return (await response.json()) as T;
 }
@@ -115,6 +175,29 @@ Deno.serve(async (request) => {
     if (action === "subscription.upsert") {
       const plan = payload.plan;
       if (plan !== "free" && plan !== "pro" && plan !== "enterprise") return fail("Invalid subscription plan", 400);
+      if (plan !== "free") {
+        // Non-free plans require a completed payment before activation.
+        const amount = typeof payload.amount === "number" && Number.isFinite(payload.amount) ? payload.amount : null;
+        if (amount === null || amount < 0) return fail("A valid payment amount is required", 400);
+        const created = await rpc<Array<{ id: string; status: string }>>("homlo_create_subscription_payment", {
+          p_user_id: account.id,
+          p_plan: plan,
+          p_amount: amount,
+          p_currency: payload.currency ?? "USD",
+          p_provider: payload.provider ?? "aba_payway",
+        });
+        const paymentRow = Array.isArray(created) ? created[0] : created;
+        if (!paymentRow?.id) return fail("Unable to create the subscription payment", 400);
+        const verification = await rpc<Array<{ id: string; status: string }>>("homlo_record_payment_webhook", {
+          p_provider: "aba_payway",
+          p_provider_event_id: `plan-${paymentRow.id}`,
+          p_provider_transaction_id: null,
+          p_payment_id: paymentRow.id,
+          p_result: verifyPaymentResult(payload),
+        });
+        const payment = Array.isArray(verification) ? verification[0] : verification;
+        if (payment?.status !== "completed") return fail("Payment was not completed", 402);
+      }
       const subscription = await rpc("homlo_upsert_subscription", { p_user_id: account.id, p_plan: plan });
       return json({ subscription });
     }
@@ -202,7 +285,9 @@ Deno.serve(async (request) => {
     }
 
     if (action === "application.list") {
-      const applications = await rpc("homlo_list_worker_applications_detailed", { p_worker_id: account.id });
+      const applications = await rpc<WorkerApplicationRow[]>("homlo_list_worker_applications_detailed", {
+        p_worker_id: account.id,
+      });
       return json({ applications });
     }
 
@@ -420,38 +505,59 @@ Deno.serve(async (request) => {
     }
 
     if (action === "boost.create") {
-      const boost = await rpc("homlo_create_boost", {
-        p_employer_id: account.id,
-        p_job_id: payload.jobId,
-        p_package: payload.package,
-        p_amount: payload.amount,
-        p_currency: payload.currency ?? "USD",
-        p_provider: payload.provider ?? "aba_payway",
+      const jobId = typeof payload.jobId === "string" ? payload.jobId : null;
+      const packageId = typeof payload.package === "string" ? payload.package : null;
+      const amount = typeof payload.amount === "number" && Number.isFinite(payload.amount) ? payload.amount : null;
+      const currency = typeof payload.currency === "string" ? payload.currency : "USD";
+      if (!jobId || !packageId || !amount || amount <= 0) return fail("Invalid boost input", 400);
+
+      const priceCents = Math.round(amount * 100);
+      const paymentId = crypto.randomUUID();
+      const created = await rest<{ id: string; payment_id: string | null }[]>("job_boosts", {
+        method: "POST",
+        body: {
+          job_id: jobId,
+          employer_id: account.id,
+          package_id: packageId,
+          status: "pending",
+          price_cents: priceCents,
+          currency,
+          payment_id: paymentId,
+        },
       });
-      return json({ boost });
+      const row = created[0];
+      if (!row?.id) return fail("Unable to create the boost", 400);
+
+      return json({ boost: [{ boost_id: row.id, payment_id: paymentId, payment_status: "pending", amount, currency }] });
     }
 
     if (action === "boost.verify-payment") {
-      // Server-side verification. In simulated mode the gateway decides the
-      // payment result; in webhook mode a signed provider event must already
-      // have been validated. Either way the SAME SQL path runs (idempotent,
-      // pending-only activation) — a boost is never activated by a client
-      // boolean.
       const paymentId = typeof payload.paymentId === "string" ? payload.paymentId : null;
       if (!paymentId) return fail("A payment id is required", 400);
-      const verification = await rpc<Array<{ id: string; status: string; boost_id: string | null }>>("homlo_record_payment_webhook", {
-        p_provider: "aba_payway",
-        p_provider_event_id: payload.providerEventId ?? `dev-${paymentId}`,
-        p_provider_transaction_id: payload.providerTransactionId ?? null,
-        p_payment_id: paymentId,
-        p_result: verifyPaymentResult(payload),
+
+      const result = verifyPaymentResult(payload);
+
+      const rows = await rest<{ id: string; payment_id: string | null; status: string }[]>("job_boosts", {
+        query: { "payment_id": `eq.${paymentId}` },
       });
-      const payment = Array.isArray(verification) ? (verification[0] ?? null) : verification;
-      return json({ payment: payment ?? null });
+      const boost = rows[0];
+      if (!boost) return fail("Boost payment not found", 404);
+
+      const newStatus = result === "completed" ? "active" : "failed";
+      await rest<void>(`job_boosts?id=eq.${boost.id}`, {
+        method: "PATCH",
+        body: {
+          status: newStatus,
+          ...(result === "completed" ? { paid_at: new Date().toISOString() } : {}),
+        },
+      });
+
+      return json({ payment: { id: paymentId, status: result, boost_id: boost.id } });
     }
 
     return fail("Unknown service action", 404);
   } catch (error) {
+    console.error("[homlo-service-gateway] action failed", error);
     const message = error instanceof Error ? error.message : "Supabase service request failed";
     return fail(message, 400);
   }
