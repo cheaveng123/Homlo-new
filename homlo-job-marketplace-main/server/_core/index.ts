@@ -9,6 +9,8 @@ import { registerEventLogRoutes } from "./eventLogRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { validateProductionEnv } from "./envValidation";
+import { createCorsMiddleware } from "./cors";
+import { configureTrustProxy } from "./requestIp";
 
 validateProductionEnv();
 
@@ -35,26 +37,15 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin) {
-      res.header("Access-Control-Allow-Origin", origin);
-    }
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Homlo-Client",
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
+  configureTrustProxy(app);
 
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      res.sendStatus(200);
-      return;
-    }
-    next();
-  });
+  app.use(requestId);
+  app.use(requestLogger);
+
+  // Strict CORS: only ALLOWED_ORIGINS (plus localhost outside production) may
+  // call the API from a browser with credentials. Native clients send no Origin
+  // and are unaffected by CORS.
+  app.use(createCorsMiddleware());
 
   // Default body limit: 1mb for all routes. The trpc endpoint is allowed
   // up to 16mb because profile photo (profile.uploadPhoto) and job image
