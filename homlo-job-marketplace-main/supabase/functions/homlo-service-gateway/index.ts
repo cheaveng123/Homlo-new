@@ -34,7 +34,7 @@ type WorkerApplicationRow = {
 // boost or subscription. Payments fail closed — a missing or misconfigured
 // provider must never result in free activation. In development, simulated
 // mode is allowed and simulateResult may be set by the client.
-import { verifyPaymentResult } from "../../../lib/paymentSession";
+import { verifyPaymentResult } from "../_shared/paymentSession.ts";
 import {
   assertBoostCreateOwner,
   assertPaymentOwner,
@@ -46,7 +46,7 @@ import {
   type BoostPackageRow,
   type PaymentOwnershipRow,
   type SubscriptionPlan,
-} from "../../../lib/paymentRules";
+} from "../_shared/paymentRules.ts";
 
 const WORK_ARRANGEMENTS: readonly string[] = ["On-site", "Hybrid", "Remote"];
 
