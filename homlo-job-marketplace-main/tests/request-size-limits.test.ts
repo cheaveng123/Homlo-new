@@ -91,6 +91,37 @@ describe("Request size limits (real server, path-based tRPC)", () => {
     expect(result.status).not.toBe(413);
   });
 
+  it("accepts a realistic few-MB base64 JPEG profile photo (reaches auth, not 413)", async () => {
+    const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]);
+    const bytes = Buffer.concat([jpegHeader, Buffer.alloc(4 * 1024 * 1024, 0)]);
+    const photo = `data:image/jpeg;base64,${bytes.toString("base64")}`;
+    const result = await rawPost("/api/trpc/homlo.profile.uploadPhoto", { photo });
+    expect(result.status).not.toBe(413);
+    expect(result.status).toBe(401);
+  });
+
+  it("accepts a realistic few-MB base64 JPEG job image (reaches auth, not 413)", async () => {
+    const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]);
+    const bytes = Buffer.concat([jpegHeader, Buffer.alloc(4 * 1024 * 1024, 0)]);
+    const image = `data:image/jpeg;base64,${bytes.toString("base64")}`;
+    const result = await rawPost("/api/trpc/homlo.employer.uploadImage", {
+      jobId: "00000000-0000-0000-0000-000000000000",
+      image,
+    });
+    expect(result.status).not.toBe(413);
+    expect(result.status).toBe(401);
+  });
+
+  it("rejects a base64 JPEG data URL whose bytes exceed 16mb with 413", async () => {
+    const bytes = Buffer.alloc(13 * 1024 * 1024, 0);
+    const photo = `data:image/jpeg;base64,${bytes.toString("base64")}`;
+    const result = await rawPost("/api/trpc/homlo.profile.uploadPhoto", { photo });
+    expect(result.status).toBe(413);
+    const parsed = JSON.parse(result.body);
+    expect(parsed.error).toBe("Request too large");
+    expect(parsed.stack).toBeUndefined();
+  });
+
   it("5MB body to normal procedure returns 413", async () => {
     const bigBody = { data: "x".repeat(5 * 1024 * 1024) };
     const result = await rawPost("/api/trpc/homlo.publicJobs", bigBody);
