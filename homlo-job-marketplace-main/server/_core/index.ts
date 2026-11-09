@@ -4,7 +4,6 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerSupabaseAuthRoutes } from "./supabase-auth";
-import { registerStorageProxy } from "./storageProxy";
 import { registerEventLogRoutes } from "./eventLogRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -58,7 +57,6 @@ export function createApp() {
   app.use(express.json({ limit: DEFAULT_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_LIMIT, extended: true }));
 
-  registerStorageProxy(app);
   registerSupabaseAuthRoutes(app);
   registerEventLogRoutes(app);
 
