@@ -1,5 +1,6 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
+import { clearQueryClient } from "@/lib/trpc";
 import { Platform } from "react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -102,6 +103,7 @@ export function useAuth(options?: UseAuthOptions) {
 
   const completeSignIn = useCallback(async (response: Api.HomloAuthResponse) => {
     if (response.session) await Auth.setAuthSession(response.session);
+    clearQueryClient();
     const resolved = toStoredUser(response.user);
     setSnapshot({ user: resolved, loading: false, error: null });
     await Auth.setUserInfo(resolved);
@@ -116,6 +118,7 @@ export function useAuth(options?: UseAuthOptions) {
     } finally {
       await Auth.clearAuthSession();
       await Auth.clearUserInfo();
+      clearQueryClient();
       setSnapshot({ user: null, loading: false, error: null });
     }
   }, []);
