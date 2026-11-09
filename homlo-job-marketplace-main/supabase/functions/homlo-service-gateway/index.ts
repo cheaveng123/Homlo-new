@@ -141,6 +141,40 @@ async function rest<T>(path: string, opts: { method?: string; body?: unknown; qu
   return (await response.json()) as T;
 }
 
+async function createSubscriptionPayment(
+  accountId: string,
+  plan: Exclude<SubscriptionPlan, "free">,
+  payload: Record<string, unknown>,
+): Promise<{ id: string; status: string } | null> {
+  const amount = serverSubscriptionAmount(plan, payload.amount);
+  const currency = typeof payload.currency === "string" ? payload.currency : "USD";
+  const provider = typeof payload.provider === "string" ? payload.provider : "aba_payway";
+  const created = await rpc<Array<{ id: string; status: string }>>("homlo_create_subscription_payment", {
+    p_user_id: accountId,
+    p_plan: plan,
+    p_amount: amount,
+    p_currency: currency,
+    p_provider: provider,
+  });
+  const paymentRow = Array.isArray(created) ? created[0] : created;
+  if (!paymentRow?.id) throw new PaymentRuleError("Unable to create the subscription payment", 400);
+
+  const providerEventId =
+    typeof payload.providerEventId === "string" && payload.providerEventId.length > 0
+      ? payload.providerEventId
+      : `plan-${paymentRow.id}`;
+  const verification = await rpc<Array<{ id: string; status: string }>>("homlo_record_payment_webhook", {
+    p_provider: provider,
+    p_provider_event_id: providerEventId,
+    p_provider_transaction_id:
+      typeof payload.providerTransactionId === "string" ? payload.providerTransactionId : null,
+    p_payment_id: paymentRow.id,
+    p_result: verifyPaymentResult(payload),
+  });
+  const payment = Array.isArray(verification) ? verification[0] : verification;
+  return payment?.id ? payment : null;
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return fail("Method not allowed", 405);
   const user = await getVerifiedUser(request);
@@ -186,28 +220,9 @@ Deno.serve(async (request) => {
 
     if (action === "subscription.upsert") {
       const plan = payload.plan;
-      if (plan !== "free" && plan !== "pro" && plan !== "enterprise") return fail("Invalid subscription plan", 400);
+      if (!isSubscriptionPlan(plan)) return fail("Invalid subscription plan", 400);
       if (plan !== "free") {
-        // Non-free plans require a completed payment before activation.
-        const amount = typeof payload.amount === "number" && Number.isFinite(payload.amount) ? payload.amount : null;
-        if (amount === null || amount < 0) return fail("A valid payment amount is required", 400);
-        const created = await rpc<Array<{ id: string; status: string }>>("homlo_create_subscription_payment", {
-          p_user_id: account.id,
-          p_plan: plan,
-          p_amount: amount,
-          p_currency: payload.currency ?? "USD",
-          p_provider: payload.provider ?? "aba_payway",
-        });
-        const paymentRow = Array.isArray(created) ? created[0] : created;
-        if (!paymentRow?.id) return fail("Unable to create the subscription payment", 400);
-        const verification = await rpc<Array<{ id: string; status: string }>>("homlo_record_payment_webhook", {
-          p_provider: "aba_payway",
-          p_provider_event_id: `plan-${paymentRow.id}`,
-          p_provider_transaction_id: null,
-          p_payment_id: paymentRow.id,
-          p_result: verifyPaymentResult(payload),
-        });
-        const payment = Array.isArray(verification) ? verification[0] : verification;
+        const payment = await createSubscriptionPayment(account.id, plan, payload);
         if (payment?.status !== "completed") return fail("Payment was not completed", 402);
       }
       const subscription = await rpc("homlo_upsert_subscription", { p_user_id: account.id, p_plan: plan });
@@ -215,33 +230,13 @@ Deno.serve(async (request) => {
     }
 
     if (action === "subscription.purchase") {
-      // Full account-plan purchase with a real payment record (same idempotent
-      // verification path as boosts). Free plans skip payment entirely.
       const plan = payload.plan;
-      if (plan !== "free" && plan !== "pro" && plan !== "enterprise") return fail("Invalid subscription plan", 400);
+      if (!isSubscriptionPlan(plan)) return fail("Invalid subscription plan", 400);
       if (plan === "free") {
         const subscription = await rpc("homlo_upsert_subscription", { p_user_id: account.id, p_plan: plan });
         return json({ payment: null, subscription });
       }
-      const amount = typeof payload.amount === "number" && Number.isFinite(payload.amount) ? payload.amount : null;
-      if (amount === null || amount < 0) return fail("A valid payment amount is required", 400);
-      const created = await rpc<Array<{ id: string; status: string }>>("homlo_create_subscription_payment", {
-        p_user_id: account.id,
-        p_plan: plan,
-        p_amount: amount,
-        p_currency: payload.currency ?? "USD",
-        p_provider: payload.provider ?? "aba_payway",
-      });
-      const paymentRow = Array.isArray(created) ? created[0] : created;
-      if (!paymentRow?.id) return fail("Unable to create the subscription payment", 400);
-      const verification = await rpc<Array<{ id: string; status: string }>>("homlo_record_payment_webhook", {
-        p_provider: "aba_payway",
-        p_provider_event_id: `plan-${paymentRow.id}`,
-        p_provider_transaction_id: null,
-        p_payment_id: paymentRow.id,
-        p_result: verifyPaymentResult(payload),
-      });
-      const payment = Array.isArray(verification) ? verification[0] : verification;
+      const payment = await createSubscriptionPayment(account.id, plan, payload);
       if (payment?.status !== "completed") return fail("Payment was not completed", 402);
       const subscription = await rpc("homlo_upsert_subscription", { p_user_id: account.id, p_plan: plan });
       return json({ payment, subscription });
