@@ -35,6 +35,18 @@ type WorkerApplicationRow = {
 // provider must never result in free activation. In development, simulated
 // mode is allowed and simulateResult may be set by the client.
 import { verifyPaymentResult } from "../../../lib/paymentSession";
+import {
+  assertBoostCreateOwner,
+  assertPaymentOwner,
+  isSubscriptionPlan,
+  PaymentRuleError,
+  serverBoostAmountCents,
+  serverSubscriptionAmount,
+  type BoostJobRow,
+  type BoostPackageRow,
+  type PaymentOwnershipRow,
+  type SubscriptionPlan,
+} from "../../../lib/paymentRules";
 
 const WORK_ARRANGEMENTS: readonly string[] = ["On-site", "Hybrid", "Remote"];
 
@@ -507,57 +519,79 @@ Deno.serve(async (request) => {
     if (action === "boost.create") {
       const jobId = typeof payload.jobId === "string" ? payload.jobId : null;
       const packageId = typeof payload.package === "string" ? payload.package : null;
-      const amount = typeof payload.amount === "number" && Number.isFinite(payload.amount) ? payload.amount : null;
       const currency = typeof payload.currency === "string" ? payload.currency : "USD";
-      if (!jobId || !packageId || !amount || amount <= 0) return fail("Invalid boost input", 400);
+      const provider = typeof payload.provider === "string" ? payload.provider : "aba_payway";
+      if (!jobId || !packageId) return fail("Invalid boost input", 400);
 
-      const priceCents = Math.round(amount * 100);
-      const paymentId = crypto.randomUUID();
-      const created = await rest<{ id: string; payment_id: string | null }[]>("job_boosts", {
-        method: "POST",
-        body: {
-          job_id: jobId,
-          employer_id: account.id,
-          package_id: packageId,
-          status: "pending",
-          price_cents: priceCents,
-          currency,
-          payment_id: paymentId,
-        },
+      const [jobRows, packageRows, subscriptionRows] = await Promise.all([
+        rest<BoostJobRow[]>("jobs", {
+          query: { select: "id,employer_id,status,deleted_at", id: `eq.${jobId}`, limit: "1" },
+        }),
+        rest<BoostPackageRow[]>("boost_packages", {
+          query: { select: "id,price_cents,pro_price_cents,active", id: `eq.${packageId}`, limit: "1" },
+        }),
+        rest<Array<{ plan: string; status: string }>>("subscriptions", {
+          query: { select: "plan,status", user_id: `eq.${account.id}`, limit: "1" },
+        }),
+      ]);
+
+      assertBoostCreateOwner(jobRows[0], account.id);
+      const isPro = subscriptionRows[0]?.plan === "pro" && subscriptionRows[0]?.status === "active";
+      const amountCents = serverBoostAmountCents(packageRows[0], isPro, payload.amount);
+      const created = await rpc<Array<{
+        boost_id: string;
+        payment_id: string;
+        payment_status: string;
+        amount: number | string;
+        currency: string;
+      }>>("homlo_create_boost", {
+        p_employer_id: account.id,
+        p_job_id: jobId,
+        p_package: packageId,
+        p_amount: amountCents / 100,
+        p_currency: currency,
+        p_provider: provider,
       });
-      const row = created[0];
-      if (!row?.id) return fail("Unable to create the boost", 400);
 
-      return json({ boost: [{ boost_id: row.id, payment_id: paymentId, payment_status: "pending", amount, currency }] });
+      return json({ boost: created });
     }
 
     if (action === "boost.verify-payment") {
       const paymentId = typeof payload.paymentId === "string" ? payload.paymentId : null;
       if (!paymentId) return fail("A payment id is required", 400);
 
-      const result = verifyPaymentResult(payload);
+      const paymentRows = await rest<Array<PaymentOwnershipRow & { status?: string; boost_id?: string | null; provider?: string | null }>>(
+        "payments",
+        { query: { select: "id,user_id,status,boost_id,provider", id: `eq.${paymentId}`, user_id: `eq.${account.id}`, limit: "1" } },
+      );
+      const paymentRow = paymentRows[0];
+      assertPaymentOwner(paymentRow, account.id);
 
-      const rows = await rest<{ id: string; payment_id: string | null; status: string }[]>("job_boosts", {
-        query: { "payment_id": `eq.${paymentId}` },
-      });
-      const boost = rows[0];
-      if (!boost) return fail("Boost payment not found", 404);
-
-      const newStatus = result === "completed" ? "active" : "failed";
-      await rest<void>(`job_boosts?id=eq.${boost.id}`, {
-        method: "PATCH",
-        body: {
-          status: newStatus,
-          ...(result === "completed" ? { paid_at: new Date().toISOString() } : {}),
+      const providerEventId =
+        typeof payload.providerEventId === "string" && payload.providerEventId.length > 0
+          ? payload.providerEventId
+          : `boost-${paymentId}`;
+      const verification = await rpc<Array<{ id: string; status: string; boost_id: string | null }>>(
+        "homlo_record_payment_webhook",
+        {
+          p_provider: typeof paymentRow.provider === "string" ? paymentRow.provider : "aba_payway",
+          p_provider_event_id: providerEventId,
+          p_provider_transaction_id:
+            typeof payload.providerTransactionId === "string" ? payload.providerTransactionId : null,
+          p_payment_id: paymentId,
+          p_result: verifyPaymentResult(payload),
         },
-      });
+      );
+      const payment = Array.isArray(verification) ? verification[0] : verification;
+      if (!payment?.id) return fail("Unable to verify the boost payment", 400);
 
-      return json({ payment: { id: paymentId, status: result, boost_id: boost.id } });
+      return json({ payment: { id: payment.id, status: payment.status, boost_id: payment.boost_id } });
     }
 
     return fail("Unknown service action", 404);
   } catch (error) {
     console.error("[homlo-service-gateway] action failed", error);
+    if (error instanceof PaymentRuleError) return fail(error.message, error.status);
     const message = error instanceof Error ? error.message : "Supabase service request failed";
     return fail(message, 400);
   }
