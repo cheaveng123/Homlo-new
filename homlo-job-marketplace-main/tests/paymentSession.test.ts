@@ -3,10 +3,12 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 const origEnv = process.env.APP_ENV;
 const origMode = process.env.HOMLO_PAYMENT_VERIFICATION_MODE;
 
-async function setEnv(appEnv: string, mode: string) {
+async function setEnv(appEnv: string | undefined, mode: string | undefined) {
   vi.resetModules();
-  process.env.APP_ENV = appEnv;
-  process.env.HOMLO_PAYMENT_VERIFICATION_MODE = mode;
+  if (appEnv === undefined) delete process.env.APP_ENV;
+  else process.env.APP_ENV = appEnv;
+  if (mode === undefined) delete process.env.HOMLO_PAYMENT_VERIFICATION_MODE;
+  else process.env.HOMLO_PAYMENT_VERIFICATION_MODE = mode;
   return await import("../lib/paymentSession");
 }
 
@@ -20,6 +22,19 @@ function resetEnv() {
 
 describe("paymentSession - production fail-closed", () => {
   afterEach(resetEnv);
+
+  it("unset APP_ENV defaults to production, logs a fatal error, and refuses payments", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const mod = await setEnv(undefined, "simulated");
+    expect(mod.APP_ENV).toBe("production");
+    expect(mod.APP_ENV_CONFIGURED).toBe(false);
+    expect(mod.IS_PRODUCTION).toBe(true);
+    expect(mod.IS_DEVELOPMENT).toBe(false);
+    expect(mod.clientMayDecidePayment()).toBe(false);
+    expect(mod.verifyPaymentResult({ simulateResult: "completed" })).toBe("failed");
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("APP_ENV is not set"));
+    errorSpy.mockRestore();
+  });
 
   it("simulated mode in production: verifyPaymentResult returns 'failed' even with simulateResult=completed", async () => {
     const mod = await setEnv("production", "simulated");

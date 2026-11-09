@@ -5,6 +5,7 @@
  * to decide whether a payment result should be accepted as "completed".
  *
  * Production safety rules:
+ *  - If APP_ENV is unset, it defaults to production and payments fail closed.
  *  - If APP_ENV=production and HOMLO_PAYMENT_VERIFICATION_MODE is "simulated"
  *    (or unset), payments fail closed: verifyPaymentResult() always returns
  *    "failed", so no boost or subscription can be activated.
@@ -16,12 +17,22 @@
  *    is implemented.
  */
 
-export const APP_ENV = (process.env.APP_ENV ?? "development") as string;
+const configuredAppEnv = process.env.APP_ENV?.trim();
+
+export const APP_ENV_CONFIGURED = Boolean(configuredAppEnv);
+export const APP_ENV = (configuredAppEnv || "production") as string;
 export const PAYMENT_VERIFICATION_MODE =
-  (process.env.HOMLO_PAYMENT_VERIFICATION_MODE ?? "simulated") as string;
+  (process.env.HOMLO_PAYMENT_VERIFICATION_MODE?.trim() || "simulated") as string;
 
 export const IS_PRODUCTION = APP_ENV === "production";
 export const IS_DEVELOPMENT = APP_ENV === "development";
+
+if (!APP_ENV_CONFIGURED) {
+  console.error(
+    "[homlo-service-gateway] FATAL: APP_ENV is not set. Defaulting to production and failing payments closed. " +
+      "Set APP_ENV=development only for local development.",
+  );
+}
 
 // Fail closed: in production, simulated payment verification is not allowed.
 if (IS_PRODUCTION && PAYMENT_VERIFICATION_MODE === "simulated") {
