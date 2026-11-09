@@ -1,9 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import http from "http";
 import { type AddressInfo } from "node:net";
 
 import { createApp } from "../server/_core/index";
 import {
+  getHomloDirectService,
   SUPABASE_ACCESS_COOKIE,
   SUPABASE_REFRESH_COOKIE,
 } from "../server/homlo-direct-service";
@@ -20,6 +21,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function getPort(): number {
@@ -86,5 +91,46 @@ describe("Supabase auth HTTP routes (real server, no credentials needed)", () =>
     expect(joined).toContain(`${SUPABASE_ACCESS_COOKIE}=`);
     expect(joined).toContain(`${SUPABASE_REFRESH_COOKIE}=`);
     expect(joined).toMatch(/Expires=Thu, 01 Jan 1970/i);
+  });
+
+  it("returns a generic 401 when sign-in fails without exposing Supabase details", async () => {
+    const service = getHomloDirectService();
+    const error = new Error("Invalid login credentials for user@example.com");
+    vi.spyOn(service, "signIn").mockRejectedValue(error);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await request("POST", "/api/supabase-auth/sign-in", {
+      email: "user@example.com",
+      password: "password123",
+    });
+
+    expect(result.status).toBe(401);
+    expect(JSON.parse(result.body)).toEqual({ error: "Invalid email or password" });
+    expect(result.body).not.toContain("user@example.com");
+    expect(log).toHaveBeenCalledWith("[supabase-auth] sign-in failed", error);
+  });
+
+  it("returns the same generic sign-up error whether or not the email already exists", async () => {
+    const service = getHomloDirectService();
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const signUp = vi.spyOn(service, "signUp");
+
+    signUp.mockRejectedValueOnce(new Error("User already registered: existing@example.com"));
+    const existing = await request("POST", "/api/supabase-auth/sign-up", {
+      email: "existing@example.com",
+      password: "password123",
+    });
+
+    signUp.mockRejectedValueOnce(new Error("database unavailable"));
+    const otherFailure = await request("POST", "/api/supabase-auth/sign-up", {
+      email: "new@example.com",
+      password: "password123",
+    });
+
+    expect(existing.status).toBe(400);
+    expect(existing.body).toBe(otherFailure.body);
+    expect(JSON.parse(existing.body)).toEqual({ error: "Unable to create account" });
+    expect(existing.body).not.toContain("already registered");
+    expect(log).toHaveBeenCalledWith("[supabase-auth] sign-up failed", expect.any(Error));
   });
 });

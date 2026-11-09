@@ -33,9 +33,32 @@ function publicAuthResponse(req: Request, result: HomloAuthResult) {
   };
 }
 
-function sendAuthError(res: Response, error: unknown) {
-  const message = error instanceof Error ? error.message : "Authentication request failed";
-  res.status(400).json({ error: message });
+type AuthErrorCarrier = {
+  code?: unknown;
+  status?: unknown;
+  statusCode?: unknown;
+  httpStatus?: unknown;
+  data?: { code?: unknown; httpStatus?: unknown };
+};
+
+function isHttpStatus(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 400 && value <= 599;
+}
+
+function authErrorStatus(error: unknown, fallback: number): number {
+  const candidate = error as AuthErrorCarrier | null;
+  const statuses = [candidate?.httpStatus, candidate?.data?.httpStatus, candidate?.status, candidate?.statusCode];
+  for (const status of statuses) {
+    if (isHttpStatus(status)) return status;
+  }
+  if (candidate?.code === "UNAUTHORIZED" || candidate?.data?.code === "UNAUTHORIZED") return 401;
+  if (error instanceof Error && /invalid login credentials|invalid credentials|invalid grant|invalid token|jwt|refresh token|session/i.test(error.message)) return 401;
+  return fallback;
+}
+
+function sendAuthError(res: Response, error: unknown, scope: string, message: string, status: number) {
+  console.error(`[supabase-auth] ${scope} failed`, error);
+  return res.status(status).json({ error: message });
 }
 
 export function registerSupabaseAuthRoutes(app: Express) {
@@ -52,7 +75,7 @@ export function registerSupabaseAuthRoutes(app: Express) {
       setSessionCookies(req, res, result);
       return res.status(201).json(publicAuthResponse(req, result));
     } catch (error) {
-      return sendAuthError(res, error);
+      return sendAuthError(res, error, "sign-up", "Unable to create account", 400);
     }
   });
 
@@ -68,7 +91,7 @@ export function registerSupabaseAuthRoutes(app: Express) {
         setSessionCookies(req, res, result);
         return res.json(publicAuthResponse(req, result));
       } catch (error) {
-        return sendAuthError(res, error);
+        return sendAuthError(res, error, "sign-in", "Invalid email or password", authErrorStatus(error, 401));
       }
     },
   );
@@ -84,7 +107,7 @@ export function registerSupabaseAuthRoutes(app: Express) {
       return res.json(publicAuthResponse(req, result));
     } catch (error) {
       clearSessionCookies(req, res);
-      return sendAuthError(res, error);
+      return sendAuthError(res, error, "refresh", "Unable to refresh session", authErrorStatus(error, 401));
     }
   });
 
