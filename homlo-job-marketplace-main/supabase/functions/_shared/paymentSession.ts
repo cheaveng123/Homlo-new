@@ -1,3 +1,5 @@
+// KEEP IN SYNC with lib/paymentSession.ts.
+// This copy exists because the edge function cannot import files outside supabase/functions. Change both together.
 /**
  * Payment session verification logic.
  *

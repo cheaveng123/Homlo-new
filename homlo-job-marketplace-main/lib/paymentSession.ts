@@ -1,3 +1,5 @@
+// KEEP IN SYNC with supabase/functions/_shared/paymentSession.ts.
+// This file is duplicated because the edge function cannot import files outside supabase/functions. Change both together.
 /**
  * Payment session verification logic.
  *

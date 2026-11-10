@@ -1,3 +1,5 @@
+// KEEP IN SYNC with lib/paymentRules.ts.
+// This copy exists because the edge function cannot import files outside supabase/functions. Change both together.
 export type SubscriptionPlan = "free" | "pro" | "enterprise";
 
 export const SUBSCRIPTION_PLAN_PRICE_CENTS: Record<SubscriptionPlan, number> = {
