@@ -25,7 +25,8 @@ Deno.serve(async (request) => {
 
   const data = response.json ? await response.json().catch(() => ({ error: "Supabase service request failed" })) : [];
   if (!response.ok) {
-    return new Response(JSON.stringify({ error: typeof data?.message === "string" ? data.message : "Unable to load published jobs" }), {
+    console.error("[homlo-public-job-feed] database call failed", { status: response.status, message: data?.message });
+    return new Response(JSON.stringify({ error: "Unable to load published jobs" }), {
       status: 502,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
