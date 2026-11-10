@@ -77,6 +77,16 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/** An error whose message was written for end users (for example a SQL RAISE EXCEPTION). */
+class SafeError extends Error {}
+
+/** PostgREST reports a plain RAISE EXCEPTION as SQLSTATE P0001. Only those messages may reach clients. */
+function dbError(body: unknown, fallback: string): Error {
+  const b = body as { code?: unknown; message?: unknown } | null;
+  if (b?.code === "P0001" && typeof b.message === "string") return new SafeError(b.message);
+  return new Error(fallback);
+}
+
 function fail(message: string, status = 400) {
   return json({ error: message }, status);
 }
@@ -110,7 +120,7 @@ async function rpc<T>(name: string, input: Record<string, unknown>): Promise<T> 
       statusText: response.statusText,
       response: error,
     });
-    throw new Error(typeof error.message === "string" ? error.message : "Supabase service request failed");
+    throw dbError(error, "Supabase service request failed");
   }
   return (await response.json()) as T;
 }
@@ -136,7 +146,7 @@ async function rest<T>(path: string, opts: { method?: string; body?: unknown; qu
       statusText: response.statusText,
       response: error,
     });
-    throw new Error(typeof error.message === "string" ? error.message : `Supabase REST request failed (${response.status})`);
+    throw dbError(error, `Supabase REST request failed (${response.status})`);
   }
   return (await response.json()) as T;
 }
@@ -188,7 +198,7 @@ Deno.serve(async (request) => {
         { p_provider: "supabase", p_provider_user_id: user.id },
       );
       const resolved = account[0];
-      if (!resolved) throw new Error("Unable to resolve the Homlo account");
+      if (!resolved) throw new SafeError("Unable to resolve the Homlo account");
       return {
         id: resolved.user_id,
         status: resolved.user_status,
@@ -587,7 +597,7 @@ Deno.serve(async (request) => {
   } catch (error) {
     console.error("[homlo-service-gateway] action failed", error);
     if (error instanceof PaymentRuleError) return fail(error.message, error.status);
-    const message = error instanceof Error ? error.message : "Supabase service request failed";
-    return fail(message, 400);
+    if (error instanceof SafeError) return fail(error.message, 400);
+    return fail("Request failed", 400);
   }
 });
