@@ -133,4 +133,21 @@ describe("Supabase auth HTTP routes (real server, no credentials needed)", () =>
     expect(existing.body).not.toContain("already registered");
     expect(log).toHaveBeenCalledWith("[supabase-auth] sign-up failed", expect.any(Error));
   });
+
+  it("returns 429 from sign-up when Supabase reports an email rate limit", async () => {
+    const service = getHomloDirectService();
+    const error = new Error("email rate limit exceeded");
+    vi.spyOn(service, "signUp").mockRejectedValueOnce(error);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await request("POST", "/api/supabase-auth/sign-up", {
+      email: "new@example.com",
+      password: "password123",
+    });
+
+    expect(result.status).toBe(429);
+    expect(JSON.parse(result.body)).toEqual({ error: "Please try again later" });
+    expect(result.body).not.toContain("rate limit");
+    expect(log).toHaveBeenCalledWith("[supabase-auth] sign-up failed", error);
+  });
 });

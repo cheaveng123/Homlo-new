@@ -75,6 +75,9 @@ export function registerSupabaseAuthRoutes(app: Express) {
       setSessionCookies(req, res, result);
       return res.status(201).json(publicAuthResponse(req, result));
     } catch (error) {
+      if (error instanceof Error && /rate limit|too many requests/i.test(error.message)) {
+        return sendAuthError(res, error, "sign-up", "Please try again later", 429);
+      }
       return sendAuthError(res, error, "sign-up", "Unable to create account", 400);
     }
   });
