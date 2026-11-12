@@ -10,9 +10,9 @@ const sql = postgres(process.env.SUPABASE_DB_URL!, { max: 10 });
 
 // Create the feed store and service
 const store = createPostgresFeedStore({
-  query: async (text: string, params?: unknown[]) => {
+  query: async <T = unknown>(text: string, params?: unknown[] | undefined): Promise<{ rows: T[] }> => {
     const result = await sql.unsafe(text, params as any[]);
-    return { rows: result };
+    return { rows: result as unknown as T[] };
   },
 });
 
@@ -47,7 +47,7 @@ export function registerFeedRoutes(app: Express) {
   app.all('/feed/*', async (req: Request, res: Response) => {
     try {
       const { method, path, query, body } = req;
-      const response = await handle({ method, path, query, body });
+      const response = await handle({ method, path, query: req.query as Record<string, string | undefined>, body });
       res.status(response.status).json(response.body);
     } catch (error) {
       console.error('[feed] unhandled error', error);

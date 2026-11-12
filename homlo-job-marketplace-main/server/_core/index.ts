@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerSupabaseAuthRoutes } from "./supabase-auth";
 import { registerEventLogRoutes } from "./eventLogRoutes";
+import { registerFeedRoutes } from "../feed-routes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { validateProductionEnv } from "./envValidation";
@@ -65,6 +66,27 @@ export function createApp() {
 
   registerSupabaseAuthRoutes(app);
   registerEventLogRoutes(app);
+
+  // Rate limit feed endpoints (same shape as other API routes)
+  const feedRateLimitStore = new Map<string, { count: number; resetAt: number }>();
+  app.use("/feed/*", (_req, res, next) => {
+    const ip = "unknown";
+    const now = Date.now();
+    const windowMs = 60_000;
+    const maxRequests = 100;
+    const entry = feedRateLimitStore.get(ip);
+    if (!entry || now > entry.resetAt) {
+      feedRateLimitStore.set(ip, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    if (entry.count >= maxRequests) {
+      return res.status(429).json({ error: "Too many requests" });
+    }
+    entry.count++;
+    next();
+  });
+
+  registerFeedRoutes(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
