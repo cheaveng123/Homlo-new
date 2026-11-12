@@ -57,6 +57,12 @@ export function createApp() {
   app.use(express.json({ limit: DEFAULT_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_LIMIT, extended: true }));
 
+  // Auth responses must never be cached by browsers or intermediate proxies.
+  app.use("/api/supabase-auth/*", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
+
   registerSupabaseAuthRoutes(app);
   registerEventLogRoutes(app);
 

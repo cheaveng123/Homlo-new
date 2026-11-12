@@ -150,4 +150,18 @@ describe("Supabase auth HTTP routes (real server, no credentials needed)", () =>
     expect(result.body).not.toContain("rate limit");
     expect(log).toHaveBeenCalledWith("[supabase-auth] sign-up failed", error);
   });
+
+  it("sets Cache-Control: no-store on auth responses", async () => {
+    const signIn = await request("POST", "/api/supabase-auth/sign-in", {
+      email: "user@example.com",
+      password: "short",
+    });
+    expect(signIn.headers["cache-control"]).toContain("no-store");
+
+    const me = await request("GET", "/api/supabase-auth/me");
+    expect(me.headers["cache-control"]).toContain("no-store");
+
+    const logout = await request("POST", "/api/supabase-auth/logout");
+    expect(logout.headers["cache-control"]).toContain("no-store");
+  });
 });
