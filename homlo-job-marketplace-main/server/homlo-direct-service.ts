@@ -7,6 +7,7 @@ import {
 } from "../lib/profile-photo-shared";
 import { JOB_IMAGES_BUCKET } from "../lib/job-images-shared";
 import { SupabaseAdapter, type SupabaseIssuedSession } from "../backend/infrastructure/database/SupabaseAdapter";
+import type { WorkArrangement } from "../backend/domain/work-arrangement";
 import { CandidateRetrievalService, type RetrievalInput, type RetrievalResult } from "../backend/ranking/candidate-retrieval";
 import { RankingScoringService, type ScoreCandidatesInput, type ScoredCandidate } from "../backend/ranking/scoring-service";
 import { RecommendationFeedService, type FeedAssemblyResult } from "../backend/ranking/recommendation-feed";
@@ -38,6 +39,7 @@ export type PublishedJobRecord = {
   pay_currency: string;
   pay_type: "hourly" | "daily" | "fixed";
   location_text: string | null;
+  work_arrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workers_needed: number;
@@ -46,12 +48,22 @@ export type PublishedJobRecord = {
   employer_name: string | null;
   employer_photo_key: string | null;
   banner_image?: string | null;
+  status?: string | null;
+  workers_hired?: number | null;
+  boosted?: boolean;
 };
 
 export type SearchJobRecord = PublishedJobRecord & {
   relevance_score: number;
   banner_image: string | null;
 };
+
+/** Rounds a coordinate to 2 decimals (about 1.1 km) so a public profile never shows an exact location. */
+export function coarsenCoordinate(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
 
 class HomloDirectService {
   constructor(private readonly adapter: SupabaseAdapter) {}
@@ -176,7 +188,33 @@ class HomloDirectService {
   }
 
   async listPublishedJobs(): Promise<{ jobs: PublishedJobRecord[] }> {
-    return this.adapter.invokePublicFunction<{ jobs: PublishedJobRecord[] }>("homlo-public-job-feed");
+    const result = await this.adapter.invokePublicFunction<{ jobs: PublishedJobRecord[] }>(
+      "homlo-public-job-feed",
+    );
+    return { jobs: await this.withActiveBoosts(result.jobs ?? []) };
+  }
+
+  /** Adds the job-seeker ad flag without leaking price, plan, or end time. */
+  private async withActiveBoosts<T extends { id: string; boosted?: boolean }>(rows: T[]): Promise<T[]> {
+    if (rows.length === 0) return rows;
+    const { rows: active } = await this.adapter.query<{ job_id: string }>(
+      `select distinct b.job_id
+         from public.boosts b
+        where b.job_id = any($1::uuid[])
+          and b.status = 'active'
+          and b.start_at <= now()
+          and b.expires_at > now()`,
+      [`{${rows.map((row) => row.id).join(",")}}`],
+    );
+    const boosted = new Set(active.map((row) => row.job_id));
+    return rows.map((row) => ({ ...row, boosted: boosted.has(row.id) }));
+  }
+
+  async listCategories(): Promise<{ categories: Array<{ id: string; name: string; slug: string }> }> {
+    const { rows } = await this.adapter.query<{ id: string; name: string; slug: string }>(
+      `select id, name, slug from categories order by name asc`
+    );
+    return { categories: rows };
   }
 
   async searchJobs(input: {
@@ -230,7 +268,7 @@ class HomloDirectService {
     );
 
     return {
-      jobs: rows,
+      jobs: await this.withActiveBoosts(rows),
       total: rows.length,
     };
   }
@@ -396,6 +434,50 @@ class HomloDirectService {
   getRefreshToken(request: Request): string | null {
     const cookies = parseCookieHeader(request.headers.cookie ?? "");
     return cookies[SUPABASE_REFRESH_COOKIE] ?? null;
+  }
+
+  /**
+   * Returns the public employer profile (name, photo, banner, verified, about,
+   * location) from `profiles`. Matches by exact full_name first, then a
+   * case-insensitive prefix match so derived ids like `emp-meng-cheaveng`
+   * resolve to the real profile. Role is used only to break ties: anyone who
+   * has posted a job can be an employer even if their role flag is still
+   * `worker`, so filtering by role would hide legitimate profiles.
+   */
+  async getEmployerProfile(name: string): Promise<{
+    fullName: string | null; profilePhotoKey: string | null;
+    bannerImage: string | null; verified: boolean; about: string | null;
+    locationText: string | null; latitude: number | null; longitude: number | null;
+  } | null> {
+    const { rows } = await this.adapter.query<{
+      full_name: string | null; profile_photo_key: string | null;
+      banner_image: string | null; verified: boolean; bio: string | null;
+      location_text: string | null; latitude: number | null; longitude: number | null;
+    }>(
+      `select full_name, profile_photo_key, banner_image, verified, bio,
+              location_text, latitude, longitude
+       from profiles
+       where full_name is not null
+         and (lower(full_name) = lower($1) or full_name ilike $2)
+       order by
+         (lower(full_name) = lower($1)) desc,
+         (role in ('employer', 'both')) desc,
+         length(full_name) asc
+       limit 1`,
+      [name, `${name}%`],
+    );
+    return rows[0]
+      ? {
+          fullName: rows[0].full_name,
+          profilePhotoKey: rows[0].profile_photo_key,
+          bannerImage: rows[0].banner_image,
+          verified: rows[0].verified,
+          about: rows[0].bio,
+          locationText: rows[0].location_text,
+          latitude: coarsenCoordinate(rows[0].latitude),
+          longitude: coarsenCoordinate(rows[0].longitude),
+        }
+      : null;
   }
 }
 
