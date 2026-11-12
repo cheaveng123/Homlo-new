@@ -76,7 +76,7 @@ export default function HomeScreenNewAdapter() {
   const router = useRouter();
   const { user } = useAuth();
   const { isSaved, toggleSaved, savedIds } = useJobStore();
-  const { coordinates, locationLabel } = useSearchLocation();
+  const { coordinates, locationLabel } = useSearchLocation({ requestOnMount: false });
   const { nearby, recommended, more, loading: homeFeedLoading } = useHomeFeed({
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
