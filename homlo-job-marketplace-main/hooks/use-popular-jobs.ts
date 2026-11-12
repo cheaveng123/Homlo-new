@@ -26,7 +26,7 @@ export function usePopularJobs({ limit, period = "week" }: Options = {}) {
   const [state, setState] = useState<State>(INITIAL_STATE);
   const [jobIds, setJobIds] = useState<string[]>([]);
   const client = useFeedClient();
-  const { coordinates } = useSearchLocation();
+  const { coordinates } = useSearchLocation({ requestOnMount: false });
 
   useEffect(() => {
     let active = true;
