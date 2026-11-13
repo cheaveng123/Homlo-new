@@ -55,7 +55,24 @@ function normalizeWorkArrangement(value: unknown): string | null {
 }
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+function loadSecretKey(): string {
+  const raw = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (!raw) throw new Error("SUPABASE_SECRET_KEYS is not set");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("SUPABASE_SECRET_KEYS is not valid JSON");
+  }
+  const key = (parsed as Record<string, unknown> | null)?.default;
+  if (typeof key !== "string" || !key.startsWith("sb_secret_")) {
+    throw new Error('SUPABASE_SECRET_KEYS needs a "default" entry starting with sb_secret_');
+  }
+  return key;
+}
+
+const SECRET_KEY = loadSecretKey();
 
 const RPC_TIMEOUT_MS = 30_000;
 
@@ -95,7 +112,7 @@ async function getVerifiedUser(request: Request): Promise<AuthUser | null> {
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) return null;
   const response = await fetchWithTimeout(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SERVICE_ROLE_KEY, Authorization: authorization },
+    headers: { apikey: SECRET_KEY, Authorization: authorization },
   }, RPC_TIMEOUT_MS);
   if (!response.ok) return null;
   return (await response.json()) as AuthUser;
@@ -105,8 +122,7 @@ async function rpc<T>(name: string, input: Record<string, unknown>): Promise<T> 
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      apikey: SECRET_KEY,
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
@@ -130,8 +146,7 @@ async function rest<T>(path: string, opts: { method?: string; body?: unknown; qu
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${path}${qs}`, {
     method: opts.method ?? "GET",
     headers: {
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      apikey: SECRET_KEY,
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
