@@ -388,7 +388,11 @@ class HomloDirectService {
       throw new Error("We could not upload the job image. Please try again.");
     }
     await this.deletePreviousJobImage(jobId, employerFolder, key);
-    const url = await this.adapter.getStorageUrl(JOB_IMAGES_BUCKET, key);
+    const baseUrl = (process.env.SUPABASE_URL ?? "").replace(/\/+$/, "");
+    if (!baseUrl) {
+      throw new Error("SUPABASE_URL is required to build the public job image URL");
+    }
+    const url = `${baseUrl}/storage/v1/object/public/${JOB_IMAGES_BUCKET}/${key}`;
     return { url };
   }
 
