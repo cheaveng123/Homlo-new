@@ -2,6 +2,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { authorizeFeedRequest } from "../_shared/feed-auth.ts";
+import { publicBannerUrl } from "../_shared/public-job-feed.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 
@@ -65,12 +66,7 @@ Deno.serve(async (request) => {
   const jobs = Array.isArray(data)
     ? data.map((job) => ({
         ...job,
-        banner_image:
-          typeof job?.banner_image === "string"
-            ? job.banner_image
-            : typeof job?.bannerImage === "string"
-            ? job.bannerImage
-            : null,
+        banner_image: publicBannerUrl(job?.banner_image) ?? publicBannerUrl(job?.bannerImage),
       }))
     : data;
 
