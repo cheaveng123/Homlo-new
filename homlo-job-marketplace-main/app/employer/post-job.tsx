@@ -1,21 +1,24 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
-  useWindowDimensions,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, X, Camera, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { JobLocationPicker, PickedAddress } from '@/components/JobLocationPicker';
-import { PostJobExitModal } from '@/components/PostJobExitModal';
-import { opportunityCategories } from '@/lib/category-data';
+import { AppIcon } from "@/components/ui/AppIcon";
+
+import PostJobFlow, {
+  type JobDraft,
+  type JobType,
+  type Arrangement,
+  type SalaryPeriod,
+} from '@/components/jobs-v2/PostJobFlow';
+import { JobLocationPicker } from '@/components/JobLocationPicker';
 import {
   buildJobSaveInput,
   defaultJobPosting,
@@ -24,108 +27,184 @@ import {
   type JobSaveInput,
   type WorkArrangement,
 } from '@/lib/job-posting';
-import { pickerImageToJpegDataUrl } from '@/lib/profile-photo';
 import { useAuth } from '@/hooks/use-auth';
 import { trpc } from '@/lib/trpc';
+import { categorySlug, CATEGORY_NAMES } from '@/components/jobs-v2/categories';
+import { uploadJobImage } from '@/lib/job-management';
+import { pickerImageToJpegDataUrl } from '@/lib/profile-photo';
 
-const CATEGORIES = opportunityCategories.map((category) => category.title);
+/**
+ * Route for the employer "post a job" wizard.
+ *
+ * This file owns persistence only. The step machine, draft object and all of the
+ * UI live in `PostJobFlow`, which hands a finished `JobDraft` back through
+ * `onPublish` / `onSaveDraft` / `onDiscard`.
+ *
+ * Failure handling: publish and draft-save errors used to be swallowed by an
+ * empty catch, so a rejected save looked like "nothing happens". Errors are now
+ * logged and shown to the employer. The wizard stays mounted underneath the
+ * failure screen so none of their answers are lost when they tap "Try again".
+ */
 
-const EMPLOYMENT_TYPES = ['Part time', 'Full time', 'Weekends', 'Contract'];
-const ARRANGEMENTS = ['On-site', 'Hybrid', 'Remote'] as const;
-const SALARY_TYPES = ['Hourly', 'Monthly', 'Yearly'] as const;
-
-const SALARY_BOUNDS: Record<(typeof SALARY_TYPES)[number], [number, number]> = {
-  Hourly: [1, 30],
-  Monthly: [100, 1500],
-  Yearly: [1200, 18000],
+const EMPLOYMENT_TYPE: Record<JobType, EmploymentType> = {
+  'part-time': 'Part-time',
+  'full-time': 'Full-time',
+  weekends: 'Part-time',
 };
 
-const TOTAL_STEPS = 7; // steps 0-6 are questions/preview; step 7 is success
+const WORK_ARRANGEMENT: Record<Arrangement, WorkArrangement> = {
+  'on-site': 'On-site',
+  hybrid: 'Hybrid',
+  remote: 'Remote',
+};
+
+const SALARY_PERIOD: Record<SalaryPeriod, JobPostingDraft['salaryPeriod']> = {
+  hourly: 'Per hour',
+  monthly: 'Per month',
+  yearly: 'Per year',
+};
+
+type Category = { id: string; name: string; slug: string };
+
+type SaveFailure = { kind: 'limit' | 'error'; message: string };
+
+/**
+ * Turns whatever the mutation threw into something showable. A plan/listing
+ * limit is recognised from the tRPC code or from the server's message, so the
+ * employer sees an upgrade prompt instead of a generic error.
+ */
+function describeFailure(err: unknown): SaveFailure {
+  const e = (err ?? {}) as { message?: string; data?: { code?: string } };
+  const message = (e.message ?? '').trim();
+  const code = e.data?.code ?? '';
+  const looksLikeLimit =
+    code === 'TOO_MANY_REQUESTS' || /limit|quota|maximum|upgrade/i.test(message);
+  if (looksLikeLimit) {
+    return {
+      kind: 'limit',
+      message: message || 'Your account has reached its limit for live listings.',
+    };
+  }
+  return {
+    kind: 'error',
+    message: message || 'Something went wrong while saving your listing. Please try again.',
+  };
+}
 
 export default function PostJobWizard() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
-  const [step, setStep] = useState(0);
-  const [exitModalVisible, setExitModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null);
-
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
-  const [employmentType, setEmploymentType] = useState<string | null>(null);
-  const [arrangement, setArrangement] = useState<(typeof ARRANGEMENTS)[number] | null>(
-    null
-  );
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [address, setAddress] = useState<PickedAddress | null>(null);
-  const [description, setDescription] = useState('');
-  const [requirements, setRequirements] = useState('');
-  const [salaryType, setSalaryType] =
-    useState<(typeof SALARY_TYPES)[number]>('Monthly');
-  const [salaryMax, setSalaryMax] = useState(650);
+  const [failure, setFailure] = useState<SaveFailure | null>(null);
+  /**
+   * Set once the listing has gone live. Guards every destructive path: a live
+   * job must never be sent back through the draft save (which would set
+   * p_status='draft' on a real listing) or deleted by a stray discard.
+   */
+  const [published, setPublished] = useState(false);
 
   const { user } = useAuth();
   const saveJob = trpc.homlo.employer.saveJob.useMutation();
+  const deleteJob = trpc.homlo.employer.deleteJob.useMutation();
   const utils = trpc.useUtils();
 
-  const [minBound, maxBound] = SALARY_BOUNDS[salaryType];
+  const { data: categoriesData, isLoading: categoriesLoading } = trpc.homlo.categories.useQuery();
+  const dbCategories: Category[] = categoriesData?.categories ?? [];
+  const localCats = (CATEGORY_NAMES || []).map((name, idx) => ({
+    id: `local-${idx}`,
+    name,
+    slug: categorySlug(name) || name.toLowerCase().replace(/\s+/g, '-'),
+  }));
+  const categories: Category[] = dbCategories.length > 0 ? dbCategories : localCats;
 
-  const goTo = (i: number) => {
-    const next = Math.max(0, Math.min(7, i));
-    setStep(next);
-    scrollRef.current?.scrollTo({ x: next * width, animated: true });
-  };
-
-  const onMomentumEnd = (e: any) => {
-    setStep(Math.round(e.nativeEvent.contentOffset.x / width));
-  };
-
-  const toSaveInput = (status: 'draft' | 'open'): JobSaveInput => {
+  const toSaveInput = (
+    d: JobDraft,
+    status: 'draft' | 'open',
+    options?: { bannerImage?: string; jobId?: string | null },
+  ): JobSaveInput => {
+    const slug = categorySlug(d.category ?? '');
+    const category = categories.find((c) => c.slug === slug);
+    if (d.category && !category) {
+      // The wizard offers a category the database does not have, so the job
+      // is saved with no category id. Logged so a rejected save is traceable.
+      console.warn('[post-job] no database category matches', d.category, '->', slug);
+    }
     const draft: JobPostingDraft = {
       ...defaultJobPosting,
-      title,
-      category,
-      employmentType: (employmentType ?? '') as EmploymentType,
-      workArrangement: (arrangement ?? '') as WorkArrangement,
-      salaryMax: String(salaryMax),
+      title: d.name.trim(),
+      category: d.category ?? '',
+      employmentType: d.type ? EMPLOYMENT_TYPE[d.type] : '',
+      workArrangement: d.arrangement ? WORK_ARRANGEMENT[d.arrangement] : '',
+      salaryMin: String(d.salaryMin),
+      salaryMax: String(d.salaryMax),
       salaryCurrency: 'USD',
       salaryVisible: true,
-      salaryPeriod:
-        salaryType === 'Hourly' ? 'Per hour' : salaryType === 'Yearly' ? 'Per year' : 'Per month',
-      description,
-      requirements,
-      bannerImage: photoUri ?? '',
-      latitude: address?.latitude ?? null,
-      longitude: address?.longitude ?? null,
-      city: address?.city ?? 'Phnom Penh',
-      district: address?.district ?? '',
-      address: address?.street ?? '',
+      salaryPeriod: SALARY_PERIOD[d.salaryPeriod],
+      description: d.description,
+      requirements: d.requirements.filter((r) => r.trim()).join('\n'),
+      bannerImage: options?.bannerImage ?? '',
+      latitude: d.latitude ?? null,
+      longitude: d.longitude ?? null,
+      city: 'Phnom Penh',
+      district: '',
+      address: d.address.trim(),
       country: 'Cambodia',
+      workersNeeded: d.positions,
+      autoCloseEnabled: d.autoClose,
     };
-    return buildJobSaveInput(draft, status, savedDraftId);
+    const input = buildJobSaveInput(draft, status, options?.jobId ?? savedDraftId);
+    // Override categoryId with the actual UUID from database
+    return { ...input, categoryId: category?.id ?? null };
   };
 
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!permission.granted) return undefined;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
     });
-    if (result.canceled || !result.assets?.[0]) return;
-    setPhotoUri(await pickerImageToJpegDataUrl(result.assets[0], { maxWidth: 1600 }));
+    if (result.canceled) return undefined;
+    return result.assets[0]?.uri;
   };
 
-  const publish = async () => {
+  const publish = async (d: JobDraft) => {
     if (publishing) return;
     if (!user) { router.replace('/login' as never); return; }
+    setFailure(null);
     setPublishing(true);
     try {
-      const response = await saveJob.mutateAsync(toSaveInput('open'));
+      const draftResponse = await saveJob.mutateAsync(toSaveInput(d, 'draft', { bannerImage: '' }));
+      const draftJob = (draftResponse as { job?: { id?: string } }).job;
+      const draftId = draftJob?.id ?? savedDraftId;
+      if (!draftId) throw new Error('Could not prepare the listing. Please try again.');
+      setSavedDraftId(draftId);
+
+      let bannerImage = '';
+      let bannerUploadFailed = false;
+      if (d.photoUri) {
+        try {
+          const image = await pickerImageToJpegDataUrl({ uri: d.photoUri });
+          const uploaded = await uploadJobImage(draftId, image);
+          bannerImage = uploaded.url;
+        } catch (err) {
+          bannerUploadFailed = true;
+          console.warn('[post-job] banner upload failed', err);
+        }
+      }
+
+      const response = await saveJob.mutateAsync(toSaveInput(d, 'open', { bannerImage, jobId: draftId }));
       const job = (response as { job?: { id?: string } }).job;
       if (job?.id) setSavedDraftId(job.id);
+      setPublished(true);
+      if (bannerUploadFailed) {
+        Alert.alert(
+          'Published without a photo',
+          "We couldn't upload your banner photo, so your listing is live without one.",
+        );
+      }
       // Targeted invalidation (never a global cache flush): refresh the scopes
       // the new listing must appear in — the employer hub, Home live list and
       // the Jobs search.
@@ -133,9 +212,9 @@ export default function PostJobWizard() {
       void utils.homlo.publicJobs.invalidate();
       void utils.homlo.searchJobs.invalidate();
       void utils.homlo.homeFeed.invalidate();
-      goTo(7);
-    } catch {
-      // Stay on the preview step; the job is not published.
+    } catch (err) {
+      console.warn('[post-job] publish failed', err);
+      setFailure(describeFailure(err));
     } finally {
       setPublishing(false);
     }
@@ -145,305 +224,68 @@ export default function PostJobWizard() {
     router.replace({ pathname: '/employer/listings', params: { tab: 'live' } });
   };
 
-  const saveDraft = async () => {
-    if (saving) return;
+  const saveDraft = async (d: JobDraft) => {
+    // Once the job is live, "save as draft" would re-save it with
+    // p_status='draft' and pull the listing out of search. Refuse outright.
+    if (saving || published) return;
     if (!user) { router.replace('/login' as never); return; }
     setSaving(true);
     try {
-      const response = await saveJob.mutateAsync(toSaveInput('draft'));
+      const response = await saveJob.mutateAsync(toSaveInput(d, 'draft'));
       const job = (response as { job?: { id?: string } }).job;
       if (job?.id) setSavedDraftId(job.id);
       void utils.homlo.employer.jobs.invalidate();
-      setExitModalVisible(false);
       router.back();
-    } catch {
-      // Keep the modal open so the employer can retry or discard.
+    } catch (err) {
+      // Keep the sheet open so the employer can retry or discard, and say why.
+      console.warn('[post-job] save draft failed', err);
+      Alert.alert("Couldn't save draft", describeFailure(err).message);
     } finally {
       setSaving(false);
     }
   };
 
-  const discard = () => {
-    setExitModalVisible(false);
-    router.back();
+  /**
+   * Discards the in-progress listing. "Discard" used to only navigate away,
+   * which left a draft saved earlier in this session sitting in the employer's
+   * dashboard forever, so the modal's promise to "discard it" was never kept.
+   * The draft is now actually deleted when this session created one.
+   */
+  const discard = async () => {
+    if (discarding) return;
+    setDiscarding(true);
+    try {
+      if (savedDraftId && !published) {
+        await deleteJob.mutateAsync({ jobId: savedDraftId });
+        void utils.homlo.employer.jobs.invalidate();
+      }
+    } catch (err) {
+      // A failed delete must not strand the employer on the sheet for a listing
+      // they have already chosen to throw away.
+      console.warn('[post-job] discard failed', err);
+    } finally {
+      setDiscarding(false);
+      router.back();
+    }
   };
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => goTo(step - 1)}
-          hitSlop={10}
-          style={[styles.iconBtn, (step === 0 || step === 7) && styles.iconBtnHidden]}
-        >
-          <ChevronLeft size={18} color="#12271F" />
-        </Pressable>
-
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${Math.min(100, ((step + 1) / TOTAL_STEPS) * 100)}%` },
-            ]}
-          />
-        </View>
-
-        {step < 7 && <Text style={styles.stepLabel}>{step + 1} / {TOTAL_STEPS}</Text>}
-
-        <Pressable
-          onPress={() => setExitModalVisible(true)}
-          hitSlop={10}
-          style={[styles.iconBtn, step === 7 && styles.iconBtnHidden]}
-        >
-          <X size={16} color="#12271F" />
-        </Pressable>
+  // Show loading while categories fetch
+  if (categoriesLoading) {
+    return (
+      <View style={styles.safe}>
+        <ActivityIndicator size="large" color="#5DCAA5" style={{ flex: 1, justifyContent: 'center' }} />
       </View>
+    );
+  }
 
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        scrollEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onMomentumEnd}
-      >
-        {/* ---------- Step 1: title + category ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Job details</Text>
-          <Text style={styles.subheading}>Title and category</Text>
-
-          <Text style={styles.label}>Job title</Text>
-          <TextInput
-            style={styles.input}
-            value={title}
-            onChangeText={setTitle}
-            placeholder="e.g. Barista"
-            placeholderTextColor="#8FA69B"
-          />
-
-          <Text style={[styles.label, { marginTop: 16 }]}>Category</Text>
-          <View style={styles.chipWrap}>
-            {CATEGORIES.map((c) => {
-              const active = category === c;
-              return (
-                <Pressable
-                  key={c}
-                  style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => setCategory(c)}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                    {c}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable
-            style={[styles.cta, !title && styles.ctaDisabled]}
-            disabled={!title}
-            onPress={() => goTo(1)}
-          >
-            <Text style={styles.ctaText}>Continue</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 2: employment + arrangement ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Employment</Text>
-          <Text style={styles.subheading}>Type and work arrangement</Text>
-
-          <View style={styles.grid}>
-            {EMPLOYMENT_TYPES.map((t) => {
-              const active = employmentType === t;
-              return (
-                <Pressable
-                  key={t}
-                  style={[styles.gridCell, active && styles.cellActive]}
-                  onPress={() => setEmploymentType(t)}
-                >
-                  <Text style={[styles.cellText, active && styles.cellTextActive]}>
-                    {t}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Text style={[styles.label, { marginTop: 18 }]}>Work arrangement</Text>
-          <View style={styles.rowGroup}>
-            {ARRANGEMENTS.map((a) => {
-              const active = arrangement === a;
-              return (
-                <Pressable
-                  key={a}
-                  style={[styles.rowChip, active && styles.cellActive]}
-                  onPress={() => setArrangement(a)}
-                >
-                  <Text style={[styles.rowChipText, active && styles.cellTextActive]}>
-                    {a}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable
-            style={[styles.cta, !(employmentType && arrangement) && styles.ctaDisabled]}
-            disabled={!(employmentType && arrangement)}
-            onPress={() => goTo(2)}
-          >
-            <Text style={styles.ctaText}>Continue</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 3: photo ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Job photo</Text>
-          <Text style={styles.subheading}>Shown on the job card</Text>
-
-          <Pressable style={styles.photoBox} onPress={pickPhoto}>
-            <Camera size={26} color="#5F7A6E" />
-            <Text style={styles.photoHint}>
-              {photoUri ? 'Photo selected' : 'Tap to upload a photo'}
-            </Text>
-          </Pressable>
-
-          <Pressable style={styles.cta} onPress={() => goTo(3)}>
-            <Text style={styles.ctaText}>Continue</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 4: location ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Location</Text>
-          <Text style={styles.subheading}>Search or drop a pin</Text>
-
-          <JobLocationPicker onSelect={setAddress} />
-
-          <Pressable
-            style={[styles.cta, !address && styles.ctaDisabled]}
-            disabled={!address}
-            onPress={() => goTo(4)}
-          >
-            <Text style={styles.ctaText}>Continue</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 5: description + requirements ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Description</Text>
-          <Text style={styles.subheading}>What the job is, and what it takes</Text>
-
-          <Text style={styles.label}>Job description</Text>
-          <TextInput
-            style={styles.textarea}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="What will they do day to day?"
-            placeholderTextColor="#8FA69B"
-            multiline
-            numberOfLines={4}
-          />
-
-          <Text style={[styles.label, { marginTop: 14 }]}>Requirements</Text>
-          <TextInput
-            style={styles.textarea}
-            value={requirements}
-            onChangeText={setRequirements}
-            placeholder="Experience, skills, certifications..."
-            placeholderTextColor="#8FA69B"
-            multiline
-            numberOfLines={4}
-          />
-
-          <Pressable style={styles.cta} onPress={() => goTo(5)}>
-            <Text style={styles.ctaText}>Continue</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 6: salary ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Salary range</Text>
-          <Text style={styles.subheading}>Pick a pay period</Text>
-
-          <View style={styles.salaryTypeRow}>
-            {SALARY_TYPES.map((t) => {
-              const active = salaryType === t;
-              return (
-                <Pressable
-                  key={t}
-                  style={[styles.rowChip, active && styles.cellActive]}
-                  onPress={() => {
-                    setSalaryType(t);
-                    setSalaryMax(
-                      Math.round((SALARY_BOUNDS[t][0] + SALARY_BOUNDS[t][1]) / 2)
-                    );
-                  }}
-                >
-                  <Text style={[styles.rowChipText, active && styles.cellTextActive]}>
-                    {t}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={styles.sliderLabels}>
-            <Text style={styles.sliderValue}>${minBound}</Text>
-            <Text style={styles.sliderValue}>${salaryMax}</Text>
-          </View>
-          <Slider
-            style={{ width: '100%', height: 36 }}
-            minimumValue={minBound}
-            maximumValue={maxBound}
-            step={salaryType === 'Hourly' ? 1 : 10}
-            value={salaryMax}
-            onValueChange={setSalaryMax}
-            minimumTrackTintColor="#5DCAA5"
-            maximumTrackTintColor="#E1E8E3"
-            thumbTintColor="#0F3D2B"
-          />
-
-          <Pressable style={styles.cta} onPress={() => goTo(6)}>
-            <Text style={styles.ctaText}>Preview listing</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 7: preview ---------- */}
-        <ScrollView style={{ width }} contentContainerStyle={styles.page}>
-          <Text style={styles.heading}>Preview</Text>
-          <Text style={styles.subheading}>Check before publishing</Text>
-
-          <View style={styles.previewCard}>
-            <View style={styles.previewThumb} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.previewTitle}>{title || 'Job title'}</Text>
-              <Text style={styles.previewMeta}>
-                {employmentType ?? '—'} · {arrangement ?? '—'}
-              </Text>
-              <View style={styles.previewTag}>
-                <Text style={styles.previewTagText}>
-                  ${salaryMax}/{salaryType === 'Hourly' ? 'hr' : salaryType === 'Yearly' ? 'yr' : 'mo'}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <Text style={styles.previewHint}>
-            This job container is exactly how it will appear to job seekers. Go
-            back to any step to edit.
-          </Text>
-
-          <Pressable style={[styles.cta, publishing && styles.ctaDisabled]} onPress={() => void publish()} disabled={publishing}>
-            <Text style={styles.ctaText}>{publishing ? 'Publishing…' : 'Publish'}</Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* ---------- Step 8: success ---------- */}
-        <View style={{ width, ...styles.successPage }}>
+  // Success is terminal: the listing is live and must not be re-saved as a
+  // draft or deleted from here.
+  if (published) {
+    return (
+      <View style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.successPage}>
           <View style={styles.successBadge}>
-            <Check size={28} color="#04342C" />
+            <AppIcon name="check" size={28} color="#04342C" />
           </View>
           <Text style={styles.successTitle}>Your listing is live</Text>
           <Text style={styles.successSubtitle}>
@@ -452,16 +294,79 @@ export default function PostJobWizard() {
           <Pressable style={styles.cta} onPress={goToListings}>
             <Text style={styles.ctaText}>Go to listings</Text>
           </Pressable>
-        </View>
-      </ScrollView>
+          {savedDraftId ? (
+            <Pressable
+              style={styles.successSecondary}
+              onPress={() =>
+                router.push({ pathname: '/boost/plan', params: { jobId: savedDraftId } } as never)
+              }
+            >
+              <Text style={styles.successSecondaryText}>Boost this listing</Text>
+            </Pressable>
+          ) : null}
+        </ScrollView>
+      </View>
+    );
+  }
 
-      <PostJobExitModal
-        visible={exitModalVisible}
-        onSaveDraft={() => void saveDraft()}
-        onDiscard={discard}
-        onCancel={() => setExitModalVisible(false)}
+  return (
+    <View style={styles.safe}>
+      <PostJobFlow
+        categories={categories.map((c) => c.name)}
+        onPublish={(d) => void publish(d)}
+        onSaveDraft={(d) => void saveDraft(d)}
+        onDiscard={() => void discard()}
+        onPickPhoto={pickPhoto}
+        renderMap={({ onChange }) => (
+          <JobLocationPicker
+            onSelect={(address) =>
+              onChange({
+                address:
+                  address.formatted || [address.street, address.district, address.city].filter(Boolean).join(', '),
+                latitude: address.latitude,
+                longitude: address.longitude,
+              })
+            }
+          />
+        )}
       />
-    </SafeAreaView>
+
+      {/*
+        Failure screen. Rendered on top of the wizard (not instead of it) so the
+        employer's answers survive and "Try again" returns to the final step.
+      */}
+      {failure ? (
+        <View style={styles.failureOverlay}>
+          <View style={styles.failureBadge}>
+            <Text style={styles.failureBadgeText}>!</Text>
+          </View>
+          <Text style={styles.failureTitle}>
+            {failure.kind === 'limit' ? "You've reached your listing limit" : "Couldn't publish your listing"}
+          </Text>
+          <Text style={styles.failureSubtitle}>{failure.message}</Text>
+          {failure.kind === 'limit' ? (
+            <Pressable
+              style={styles.cta}
+              onPress={() => {
+                setFailure(null);
+                router.push('/account-plans' as never);
+              }}
+            >
+              <Text style={styles.ctaText}>See plans</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={styles.cta} onPress={() => setFailure(null)}>
+              <Text style={styles.ctaText}>Try again</Text>
+            </Pressable>
+          )}
+          <Pressable style={styles.successSecondary} onPress={() => setFailure(null)}>
+            <Text style={styles.successSecondaryText}>
+              {failure.kind === 'limit' ? 'Back to my listing' : 'Back to editing'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -469,146 +374,11 @@ export default function PostJobWizard() {
 // Do not substitute percentages, flex sizing, or a theme spacing scale.
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 6,
-  },
-  iconBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F4F7F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnHidden: { opacity: 0 },
-  progressTrack: {
-    flex: 1,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#E1E8E3',
-    overflow: 'hidden',
-  },
-  progressFill: { height: '100%', backgroundColor: '#5DCAA5' },
-  stepLabel: { fontSize: 11, color: '#5F7A6E' },
-
-  page: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 32 },
-  heading: { fontSize: 20, fontWeight: '600', color: '#12271F', marginBottom: 2 },
-  subheading: { fontSize: 12, color: '#5F7A6E', marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '500', color: '#12271F', marginBottom: 6 },
-
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 44,
-    fontSize: 14,
-    color: '#12271F',
-  },
-  textarea: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#12271F',
-    minHeight: 84,
-    textAlignVertical: 'top',
-  },
-
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  chipActive: { backgroundColor: '#5DCAA5', borderColor: '#5DCAA5' },
-  chipText: { fontSize: 12, color: '#12271F' },
-  chipTextActive: { color: '#04342C', fontWeight: '500' },
-
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  gridCell: {
-    width: '47%',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-  },
-  cellActive: { backgroundColor: '#5DCAA5', borderColor: '#5DCAA5' },
-  cellText: { fontSize: 13, color: '#12271F' },
-  cellTextActive: { color: '#04342C', fontWeight: '500' },
-
-  rowGroup: { flexDirection: 'row', gap: 8 },
-  rowChip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-    alignItems: 'center',
-  },
-  rowChipText: { fontSize: 12, color: '#12271F' },
-
-  photoBox: {
-    height: 150,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#DCE5E0',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  photoHint: { fontSize: 12, color: '#5F7A6E' },
-
-  salaryTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  sliderValue: { fontSize: 13, fontWeight: '500', color: '#12271F' },
-
-  previewCard: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 16,
-  },
-  previewThumb: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    backgroundColor: '#EAF6EF',
-  },
-  previewTitle: { fontSize: 14, fontWeight: '500', color: '#12271F' },
-  previewMeta: { fontSize: 12, color: '#5F7A6E', marginTop: 2, marginBottom: 6 },
-  previewTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EAF6EF',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  previewTagText: { fontSize: 11, color: '#04342C' },
-  previewHint: { fontSize: 12, color: '#5F7A6E', marginBottom: 16 },
 
   successPage: {
+    flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 40,
+    justifyContent: 'center',
     alignItems: 'center',
   } as any,
   successBadge: {
@@ -620,7 +390,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  successTitle: { fontSize: 18, fontWeight: '600', color: '#12271F', marginBottom: 6 },
+  successTitle: { fontSize: 18, fontWeight: '600', color: '#12271F', marginBottom: 6, textAlign: 'center' },
   successSubtitle: {
     fontSize: 13,
     color: '#5F7A6E',
@@ -628,14 +398,46 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
+  failureOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 120,
+    alignItems: 'center',
+  },
+  failureBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FBEAE6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  failureBadgeText: { fontSize: 28, fontWeight: '700', color: '#C0392B' },
+
   cta: {
     marginTop: 20,
     height: 48,
     borderRadius: 999,
-    backgroundColor: '#5DCAA5',
+    backgroundColor: '#C0392B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  successSecondary: {
+    marginTop: 10,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ctaDisabled: { opacity: 0.45 },
-  ctaText: { fontSize: 15, fontWeight: '600', color: '#04342C' },
+  successSecondaryText: { fontSize: 14, fontWeight: '600', color: '#C0392B' },
+  ctaText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  failureTitle: { fontSize: 18, fontWeight: '600', color: '#C0392B', marginBottom: 6, textAlign: 'center' },
+  failureSubtitle: {
+    fontSize: 13,
+    color: '#C0392B',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
 });
