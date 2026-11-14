@@ -11,6 +11,7 @@ import { createContext } from "./context";
 import { validateProductionEnv } from "./envValidation";
 import { createCorsMiddleware } from "./cors";
 import { configureTrustProxy } from "./requestIp";
+import { createApiRateLimiters } from "./apiRateLimit";
 
 validateProductionEnv();
 
@@ -43,6 +44,13 @@ export function createApp() {
   configureTrustProxy(app);
   app.use(createCorsMiddleware());
 
+  const { trpcGeneral, trpcPublic, upload, feed } = createApiRateLimiters();
+
+  // Reject excess uploads before the large body parsers run, so oversized
+  // bodies from a limited IP are not read into memory first.
+  app.use("/api/trpc/homlo.profile.uploadPhoto", upload);
+  app.use("/api/trpc/homlo.employer.uploadImage", upload);
+
   // Two body parsers for /api/trpc:
   //  - 16mb only on the exact upload procedure paths (single call):
   //      /api/trpc/homlo.profile.uploadPhoto
@@ -68,29 +76,16 @@ export function createApp() {
   registerEventLogRoutes(app);
 
   // Rate limit feed endpoints (same shape as other API routes)
-  const feedRateLimitStore = new Map<string, { count: number; resetAt: number }>();
-  app.use("/feed/*", (_req, res, next) => {
-    const ip = "unknown";
-    const now = Date.now();
-    const windowMs = 60_000;
-    const maxRequests = 100;
-    const entry = feedRateLimitStore.get(ip);
-    if (!entry || now > entry.resetAt) {
-      feedRateLimitStore.set(ip, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-    if (entry.count >= maxRequests) {
-      return res.status(429).json({ error: "Too many requests" });
-    }
-    entry.count++;
-    next();
-  });
+  app.use("/feed/*", feed);
 
   registerFeedRoutes(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
   });
+
+  app.use("/api/trpc", trpcPublic);
+  app.use("/api/trpc", trpcGeneral);
 
   app.use(
     "/api/trpc",
