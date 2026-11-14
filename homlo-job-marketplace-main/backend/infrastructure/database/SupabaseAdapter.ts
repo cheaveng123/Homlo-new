@@ -7,6 +7,27 @@ type QueryExecutor = {
   unsafe: (statement: string, parameters?: readonly unknown[]) => Promise<unknown[]>;
 };
 
+const RPC_TIMEOUT_MS = 30_000;
+
+/** Fetch with an AbortController-based timeout; rejects after deadline. */
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Race a promise against a deadline; rejects after deadline. */
+function promiseWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Request timed out")), timeoutMs)),
+  ]);
+}
+
 export type SupabaseAdapterConfig = {
   url: string;
   serviceRoleKey: string;
@@ -83,9 +104,30 @@ export class SupabaseAdapter implements DatabaseAdapter {
   }
 
   async verifySupabaseToken(token: string): Promise<User | null> {
-    const { data, error } = await this.client.auth.getUser(token);
+    const getUser = this.client.auth.getUser(token);
+    const { data, error } = await promiseWithTimeout(getUser, RPC_TIMEOUT_MS);
     if (error) return null;
     return data.user ?? null;
+  }
+
+  /**
+   * Supabase's client surfaces transport failures (DNS failure, connection
+   * refused, timeouts) as a bare "fetch failed". Keep genuine auth errors
+   * (e.g. "Invalid login credentials") intact, but make an unreachable project
+   * actionable instead of opaque.
+   */
+  private describeAuthError(error: { message?: string } | null | undefined): string {
+    const message = error?.message ?? "Authentication request failed";
+    if (/fetch failed|failed to fetch|network request failed|ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(message)) {
+      let host = this.url;
+      try {
+        host = new URL(this.url).host;
+      } catch {
+        // Keep the raw URL if it cannot be parsed.
+      }
+      return `Unable to reach the authentication service at ${host}. The Supabase project may be paused or deleted — verify SUPABASE_URL and your network connection.`;
+    }
+    return message;
   }
 
   async signUpWithEmailPassword(email: string, password: string, fullName?: string): Promise<{ user: User | null; session: SupabaseIssuedSession | null }> {
@@ -94,19 +136,19 @@ export class SupabaseAdapter implements DatabaseAdapter {
       password,
       options: fullName ? { data: { full_name: fullName } } : undefined,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(this.describeAuthError(error));
     return { user: data.user ?? null, session: mapIssuedSession(data.session) };
   }
 
   async signInWithEmailPassword(email: string, password: string): Promise<{ user: User | null; session: SupabaseIssuedSession | null }> {
     const { data, error } = await this.client.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(this.describeAuthError(error));
     return { user: data.user ?? null, session: mapIssuedSession(data.session) };
   }
 
   async refreshAuthSession(refreshToken: string): Promise<{ user: User | null; session: SupabaseIssuedSession | null }> {
     const { data, error } = await this.client.auth.refreshSession({ refresh_token: refreshToken });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(this.describeAuthError(error));
     return { user: data.user ?? null, session: mapIssuedSession(data.session) };
   }
 
@@ -121,7 +163,7 @@ export class SupabaseAdapter implements DatabaseAdapter {
   }
 
   async invokeAuthenticatedFunction<T>(functionName: string, accessToken: string, body: Record<string, unknown>): Promise<T> {
-    const response = await fetch(`${this.url}/functions/v1/${functionName}`, {
+    const response = await fetchWithTimeout(`${this.url}/functions/v1/${functionName}`, {
       method: "POST",
       headers: {
         apikey: this.serviceRoleKey,
@@ -129,21 +171,37 @@ export class SupabaseAdapter implements DatabaseAdapter {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-    });
+    }, RPC_TIMEOUT_MS);
     const data = await response.json().catch(() => ({ error: "Supabase service request failed" }));
     if (!response.ok) {
+      console.error("[supabase:gateway] authenticated function failed", {
+        functionName,
+        status: response.status,
+        statusText: response.statusText,
+        response: data,
+      });
       throw new Error(typeof data?.error === "string" ? data.error : "Supabase service request failed");
     }
     return data as T;
   }
 
   async invokePublicFunction<T>(functionName: string): Promise<T> {
+    const feedSecret = process.env.HOMLO_FEED_SECRET;
     const response = await fetch(`${this.url}/functions/v1/${functionName}`, {
       method: "GET",
-      headers: { apikey: this.serviceRoleKey },
+      headers: {
+        apikey: this.serviceRoleKey,
+        ...(feedSecret ? { "x-homlo-feed-secret": feedSecret } : {}),
+      },
     });
     const data = await response.json().catch(() => ({ error: "Supabase public service request failed" }));
     if (!response.ok) {
+      console.error("[supabase:gateway] public function failed", {
+        functionName,
+        status: response.status,
+        statusText: response.statusText,
+        response: data,
+      });
       throw new Error(typeof data?.error === "string" ? data.error : "Supabase public service request failed");
     }
     return data as T;
