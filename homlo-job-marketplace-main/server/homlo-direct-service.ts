@@ -5,7 +5,7 @@ import {
   PROFILE_PHOTOS_BUCKET,
   PROFILE_PHOTO_MAX_BYTES,
 } from "../lib/profile-photo-shared";
-import { JOB_IMAGES_BUCKET } from "../lib/job-images-shared";
+import { JOB_IMAGES_BUCKET, buildPublicJobImageUrl } from "../lib/job-images-shared";
 import { SupabaseAdapter, type SupabaseIssuedSession } from "../backend/infrastructure/database/SupabaseAdapter";
 import type { WorkArrangement } from "../backend/domain/work-arrangement";
 import { CandidateRetrievalService, type RetrievalInput, type RetrievalResult } from "../backend/ranking/candidate-retrieval";
@@ -388,11 +388,7 @@ class HomloDirectService {
       throw new Error("We could not upload the job image. Please try again.");
     }
     await this.deletePreviousJobImage(jobId, employerFolder, key);
-    const baseUrl = (process.env.SUPABASE_URL ?? "").replace(/\/+$/, "");
-    if (!baseUrl) {
-      throw new Error("SUPABASE_URL is required to build the public job image URL");
-    }
-    const url = `${baseUrl}/storage/v1/object/public/${JOB_IMAGES_BUCKET}/${key}`;
+    const url = buildPublicJobImageUrl(process.env.SUPABASE_URL ?? "", key);
     return { url };
   }
 

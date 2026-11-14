@@ -1,6 +1,8 @@
 /* eslint-disable-next-line import/no-unresolved -- jsr: specifiers are resolved by the Deno edge runtime, not the Node resolver */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+import { authorizeFeedRequest } from "../_shared/feed-auth.ts";
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 
 function loadSecretKey(): string {
@@ -22,17 +24,6 @@ function loadSecretKey(): string {
 const SECRET_KEY = loadSecretKey();
 const FEED_SECRET = Deno.env.get("HOMLO_FEED_SECRET")?.trim() ?? "";
 
-function timingSafeEqual(a: string, b: string): boolean {
-  const aBytes = new TextEncoder().encode(a);
-  const bBytes = new TextEncoder().encode(b);
-  let diff = aBytes.length ^ bBytes.length;
-  const length = Math.max(aBytes.length, bBytes.length);
-  for (let i = 0; i < length; i += 1) {
-    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
-  }
-  return diff === 0;
-}
-
 Deno.serve(async (request) => {
   if (request.method !== "GET") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
@@ -41,18 +32,13 @@ Deno.serve(async (request) => {
     });
   }
 
-  if (!FEED_SECRET) {
-    console.error("[homlo-public-job-feed] HOMLO_FEED_SECRET is not set");
-    return new Response(JSON.stringify({ error: "Public feed is not configured" }), {
-      status: 503,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-    });
-  }
-
-  const providedSecret = request.headers.get("x-homlo-feed-secret") ?? "";
-  if (!providedSecret || !timingSafeEqual(providedSecret, FEED_SECRET)) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
+  const auth = authorizeFeedRequest(FEED_SECRET, request.headers.get("x-homlo-feed-secret"));
+  if (!auth.ok) {
+    if (auth.status === 503) {
+      console.error("[homlo-public-job-feed] HOMLO_FEED_SECRET is not set");
+    }
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   }
