@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 
 import { rankingConfig } from "../backend/config/rankingConfig";
 import { RecommendationFeedService } from "../backend/ranking/recommendation-feed";
@@ -13,6 +13,24 @@ import { router, supabaseProtectedProcedure } from "../server/_core/trpc";
 import type { TrpcContext } from "../server/_core/context";
 import type { HomloSessionUser } from "../server/homlo-direct-service";
 import { appRouter } from "../server/routers";
+
+// Mock fetch globally so the authenticated service-layer test does not
+// contact the live Supabase Edge Function. It verifies that the tRPC
+// procedure reaches the service layer and fails at the Supabase level
+// with INTERNAL_SERVER_ERROR, not that Supabase itself responds.
+const mockedFetch = vi.fn().mockResolvedValue({
+  ok: false,
+  status: 502,
+  json: async () => ({ error: "Bad Gateway" }),
+} as unknown as Response);
+
+beforeAll(() => {
+  vi.stubGlobal("fetch", mockedFetch);
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -468,5 +486,5 @@ describe("appRouter — homlo.recommendations.feed wiring", () => {
   it("reaches the service layer once authenticated (fails only on missing Supabase credentials)", async () => {
     const caller = appRouter.createCaller({ homloUser: HOMLO_USER, supabaseAccessToken: "tok-1" } as TrpcContext);
     await expect(caller.homlo.recommendations.feed({})).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
-  });
+  }, 15000);
 });
