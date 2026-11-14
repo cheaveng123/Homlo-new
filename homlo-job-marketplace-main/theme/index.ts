@@ -1,7 +1,7 @@
-import { colors as tokensColors } from "./tokens";
-import { colors as legacyColors, fonts, font, radii as legacyRadii } from "./legacy";
+import { colors as tokensColors, fontFamily as tokensFontFamily } from "./tokens";
+import { colors as legacyColors, fonts, font, radii as legacyRadii, fontFamily as legacyFontFamily } from "./legacy";
 
-export const colors = { ...tokensColors, ...legacyColors };
+export const colors = { ...tokensColors, ...legacyColors, textPrimary: legacyColors.text, textSecondary: legacyColors.muted };
 export const radii = {
   ...legacyRadii,
   searchBar: 16,
@@ -10,6 +10,6 @@ export const radii = {
 export { fonts, font };
 export { radius } from "./tokens";
 export { spacing } from "./tokens";
-export { fontFamily } from "./tokens";
+export const fontFamily = { ...tokensFontFamily, ...legacyFontFamily };
 export { type } from "./tokens";
 export { sizes } from "./tokens";
