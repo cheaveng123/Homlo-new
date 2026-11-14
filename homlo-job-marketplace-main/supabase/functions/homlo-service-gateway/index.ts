@@ -74,6 +74,9 @@ function loadSecretKey(): string {
 
 const SECRET_KEY = loadSecretKey();
 
+const PAYMENT_CURRENCY = "USD";
+const PAYMENT_PROVIDER = Deno.env.get("PAYMENT_PROVIDER")?.trim() || "aba_payway";
+
 const RPC_TIMEOUT_MS = 30_000;
 
 /** Fetch with an AbortController-based timeout; rejects after deadline. */
@@ -172,8 +175,8 @@ async function createSubscriptionPayment(
   payload: Record<string, unknown>,
 ): Promise<{ id: string; status: string } | null> {
   const amount = serverSubscriptionAmount(plan, payload.amount);
-  const currency = typeof payload.currency === "string" ? payload.currency : "USD";
-  const provider = typeof payload.provider === "string" ? payload.provider : "aba_payway";
+  const currency = PAYMENT_CURRENCY;
+  const provider = PAYMENT_PROVIDER;
   const created = await rpc<Array<{ id: string; status: string }>>("homlo_create_subscription_payment", {
     p_user_id: accountId,
     p_plan: plan,
@@ -539,8 +542,8 @@ Deno.serve(async (request) => {
     if (action === "boost.create") {
       const jobId = typeof payload.jobId === "string" ? payload.jobId : null;
       const packageId = typeof payload.package === "string" ? payload.package : null;
-      const currency = typeof payload.currency === "string" ? payload.currency : "USD";
-      const provider = typeof payload.provider === "string" ? payload.provider : "aba_payway";
+      const currency = PAYMENT_CURRENCY;
+      const provider = PAYMENT_PROVIDER;
       if (!jobId || !packageId) return fail("Invalid boost input", 400);
 
       const [jobRows, packageRows, subscriptionRows] = await Promise.all([
