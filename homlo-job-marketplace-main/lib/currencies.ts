@@ -1,163 +1,79 @@
-export type Currency = {
-  code: string;
-  name: string;
-};
+// ESTIMATED rates per 1 USD, for display only. Replace with a real rates feed later.
+const RAW = `USD|US Dollar|$|1
+KHR|Cambodian Riel|៛|4050
+THB|Thai Baht|฿|35
+VND|Vietnamese Dong|₫|25400
+LAK|Lao Kip|₭|21800
+MMK|Myanmar Kyat|K|2100
+MYR|Malaysian Ringgit|RM|4.5
+SGD|Singapore Dollar|S$|1.34
+IDR|Indonesian Rupiah|Rp|16200
+PHP|Philippine Peso|₱|57
+BND|Brunei Dollar|B$|1.34
+CNY|Chinese Yuan|¥|7.2
+HKD|Hong Kong Dollar|HK$|7.8
+MOP|Macanese Pataca|MOP$|8
+TWD|New Taiwan Dollar|NT$|32
+JPY|Japanese Yen|¥|150
+KRW|South Korean Won|₩|1350
+EUR|Euro|€|0.92
+GBP|British Pound|£|0.78
+AUD|Australian Dollar|A$|1.5
+NZD|New Zealand Dollar|NZ$|1.65
+CAD|Canadian Dollar|C$|1.37
+CHF|Swiss Franc|CHF|0.88
+INR|Indian Rupee|₹|84
+BDT|Bangladeshi Taka|৳|120
+LKR|Sri Lankan Rupee|Rs|300
+NPR|Nepalese Rupee|Rs|134
+PKR|Pakistani Rupee|₨|280
+BTN|Bhutanese Ngultrum|Nu|84
+MVR|Maldivian Rufiyaa|Rf|15.4
+MNT|Mongolian Tögrög|₮|3400
+KZT|Kazakhstani Tenge|₸|480
+UZS|Uzbekistani Som|UZS|12700
+AED|UAE Dirham|AED|3.67
+SAR|Saudi Riyal|SAR|3.75
+QAR|Qatari Riyal|QAR|3.64
+KWD|Kuwaiti Dinar|KWD|0.31
+BHD|Bahraini Dinar|BHD|0.38
+OMR|Omani Rial|OMR|0.38
+ILS|Israeli Shekel|₪|3.7
+TRY|Turkish Lira|₺|42
+RUB|Russian Ruble|₽|90
+UAH|Ukrainian Hryvnia|₴|41
+PLN|Polish Złoty|zł|4
+CZK|Czech Koruna|Kč|23
+HUF|Hungarian Forint|Ft|360
+RON|Romanian Leu|lei|4.6
+SEK|Swedish Krona|kr|10.5
+NOK|Norwegian Krone|kr|10.7
+DKK|Danish Krone|kr|6.9
+EGP|Egyptian Pound|E£|50
+ZAR|South African Rand|R|18
+NGN|Nigerian Naira|₦|1550
+KES|Kenyan Shilling|KSh|129
+GHS|Ghanaian Cedi|GH₵|15
+MAD|Moroccan Dirham|MAD|9.8
+BRL|Brazilian Real|R$|5.5
+MXN|Mexican Peso|MX$|18
+ARS|Argentine Peso|AR$|1000
+CLP|Chilean Peso|CLP|940
+COP|Colombian Peso|COL$|4100
+PEN|Peruvian Sol|S/|3.8`;
 
-export const validCurrencies: readonly Currency[] = [
-  { code: "AED", name: "United Arab Emirates Dirham" },
-  { code: "AFN", name: "Afghan Afghani" },
-  { code: "ALL", name: "Albanian Lek" },
-  { code: "AMD", name: "Armenian Dram" },
-  { code: "ANG", name: "Netherlands Antillean Guilder" },
-  { code: "AOA", name: "Angolan Kwanza" },
-  { code: "ARS", name: "Argentine Peso" },
-  { code: "AUD", name: "Australian Dollar" },
-  { code: "AWG", name: "Aruban Florin" },
-  { code: "AZN", name: "Azerbaijani Manat" },
-  { code: "BAM", name: "Bosnia-Herzegovina Convertible Mark" },
-  { code: "BBD", name: "Barbadian Dollar" },
-  { code: "BDT", name: "Bangladeshi Taka" },
-  { code: "BGN", name: "Bulgarian Lev" },
-  { code: "BHD", name: "Bahraini Dinar" },
-  { code: "BIF", name: "Burundian Franc" },
-  { code: "BMD", name: "Bermudian Dollar" },
-  { code: "BND", name: "Brunei Dollar" },
-  { code: "BOB", name: "Bolivian Boliviano" },
-  { code: "BRL", name: "Brazilian Real" },
-  { code: "BSD", name: "Bahamian Dollar" },
-  { code: "BTN", name: "Bhutanese Ngultrum" },
-  { code: "BWP", name: "Botswanan Pula" },
-  { code: "BYN", name: "Belarusian Ruble" },
-  { code: "BZD", name: "Belize Dollar" },
-  { code: "CAD", name: "Canadian Dollar" },
-  { code: "CDF", name: "Congolese Franc" },
-  { code: "CHF", name: "Swiss Franc" },
-  { code: "CLP", name: "Chilean Peso" },
-  { code: "CNY", name: "Chinese Yuan" },
-  { code: "COP", name: "Colombian Peso" },
-  { code: "CRC", name: "Costa Rican Colón" },
-  { code: "CUP", name: "Cuban Peso" },
-  { code: "CVE", name: "Cape Verdean Escudo" },
-  { code: "CZK", name: "Czech Koruna" },
-  { code: "DJF", name: "Djiboutian Franc" },
-  { code: "DKK", name: "Danish Krone" },
-  { code: "DOP", name: "Dominican Peso" },
-  { code: "DZD", name: "Algerian Dinar" },
-  { code: "EGP", name: "Egyptian Pound" },
-  { code: "ERN", name: "Eritrean Nakfa" },
-  { code: "ETB", name: "Ethiopian Birr" },
-  { code: "EUR", name: "Euro" },
-  { code: "FJD", name: "Fijian Dollar" },
-  { code: "FKP", name: "Falkland Islands Pound" },
-  { code: "GBP", name: "British Pound" },
-  { code: "GEL", name: "Georgian Lari" },
-  { code: "GHS", name: "Ghanaian Cedi" },
-  { code: "GIP", name: "Gibraltar Pound" },
-  { code: "GMD", name: "Gambian Dalasi" },
-  { code: "GNF", name: "Guinean Franc" },
-  { code: "GTQ", name: "Guatemalan Quetzal" },
-  { code: "GYD", name: "Guyanaese Dollar" },
-  { code: "HKD", name: "Hong Kong Dollar" },
-  { code: "HNL", name: "Honduran Lempira" },
-  { code: "HUF", name: "Hungarian Forint" },
-  { code: "IDR", name: "Indonesian Rupiah" },
-  { code: "ILS", name: "Israeli New Shekel" },
-  { code: "INR", name: "Indian Rupee" },
-  { code: "IQD", name: "Iraqi Dinar" },
-  { code: "IRR", name: "Iranian Rial" },
-  { code: "ISK", name: "Icelandic Króna" },
-  { code: "JMD", name: "Jamaican Dollar" },
-  { code: "JOD", name: "Jordanian Dinar" },
-  { code: "JPY", name: "Japanese Yen" },
-  { code: "KES", name: "Kenyan Shilling" },
-  { code: "KGS", name: "Kyrgystani Som" },
-  { code: "KHR", name: "Cambodian Riel" },
-  { code: "KMF", name: "Comorian Franc" },
-  { code: "KPW", name: "North Korean Won" },
-  { code: "KRW", name: "South Korean Won" },
-  { code: "KWD", name: "Kuwaiti Dinar" },
-  { code: "KYD", name: "Cayman Islands Dollar" },
-  { code: "KZT", name: "Kazakhstani Tenge" },
-  { code: "LAK", name: "Laotian Kip" },
-  { code: "LBP", name: "Lebanese Pound" },
-  { code: "LKR", name: "Sri Lankan Rupee" },
-  { code: "LRD", name: "Liberian Dollar" },
-  { code: "LSL", name: "Lesotho Loti" },
-  { code: "LYD", name: "Libyan Dinar" },
-  { code: "MAD", name: "Moroccan Dirham" },
-  { code: "MDL", name: "Moldovan Leu" },
-  { code: "MGA", name: "Malagasy Ariary" },
-  { code: "MKD", name: "Macedonian Denar" },
-  { code: "MMK", name: "Myanmar Kyat" },
-  { code: "MNT", name: "Mongolian Tugrik" },
-  { code: "MOP", name: "Macanese Pataca" },
-  { code: "MRU", name: "Mauritanian Ouguiya" },
-  { code: "MUR", name: "Mauritian Rupee" },
-  { code: "MVR", name: "Maldivian Rufiyaa" },
-  { code: "MWK", name: "Malawian Kwacha" },
-  { code: "MXN", name: "Mexican Peso" },
-  { code: "MYR", name: "Malaysian Ringgit" },
-  { code: "MZN", name: "Mozambican Metical" },
-  { code: "NAD", name: "Namibian Dollar" },
-  { code: "NGN", name: "Nigerian Naira" },
-  { code: "NIO", name: "Nicaraguan Córdoba" },
-  { code: "NOK", name: "Norwegian Krone" },
-  { code: "NPR", name: "Nepalese Rupee" },
-  { code: "NZD", name: "New Zealand Dollar" },
-  { code: "OMR", name: "Omani Rial" },
-  { code: "PAB", name: "Panamanian Balboa" },
-  { code: "PEN", name: "Peruvian Sol" },
-  { code: "PGK", name: "Papua New Guinean Kina" },
-  { code: "PHP", name: "Philippine Peso" },
-  { code: "PKR", name: "Pakistani Rupee" },
-  { code: "PLN", name: "Polish Złoty" },
-  { code: "PYG", name: "Paraguayan Guarani" },
-  { code: "QAR", name: "Qatari Rial" },
-  { code: "RON", name: "Romanian Leu" },
-  { code: "RSD", name: "Serbian Dinar" },
-  { code: "RUB", name: "Russian Ruble" },
-  { code: "RWF", name: "Rwandan Franc" },
-  { code: "SAR", name: "Saudi Riyal" },
-  { code: "SBD", name: "Solomon Islands Dollar" },
-  { code: "SCR", name: "Seychellois Rupee" },
-  { code: "SDG", name: "Sudanese Pound" },
-  { code: "SEK", name: "Swedish Krona" },
-  { code: "SGD", name: "Singapore Dollar" },
-  { code: "SHP", name: "Saint Helena Pound" },
-  { code: "SLE", name: "Sierra Leonean Leone" },
-  { code: "SOS", name: "Somali Shilling" },
-  { code: "SRD", name: "Surinamese Dollar" },
-  { code: "SSP", name: "South Sudanese Pound" },
-  { code: "STN", name: "São Tomé & Príncipe Dobra" },
-  { code: "SYP", name: "Syrian Pound" },
-  { code: "SZL", name: "Swazi Lilangeni" },
-  { code: "THB", name: "Thai Baht" },
-  { code: "TJS", name: "Tajikistani Somoni" },
-  { code: "TMT", name: "Turkmenistani Manat" },
-  { code: "TND", name: "Tunisian Dinar" },
-  { code: "TOP", name: "Tongan Paʻanga" },
-  { code: "TRY", name: "Turkish Lira" },
-  { code: "TTD", name: "Trinidad & Tobago Dollar" },
-  { code: "TWD", name: "New Taiwan Dollar" },
-  { code: "TZS", name: "Tanzanian Shilling" },
-  { code: "UAH", name: "Ukrainian Hryvnia" },
-  { code: "UGX", name: "Ugandan Shilling" },
-  { code: "USD", name: "US Dollar" },
-  { code: "UYU", name: "Uruguayan Peso" },
-  { code: "UZS", name: "Uzbekistani Som" },
-  { code: "VES", name: "Venezuelan Bolívar" },
-  { code: "VND", name: "Vietnamese Dong" },
-  { code: "VUV", name: "Vanuatu Vatu" },
-  { code: "WST", name: "Samoan Tala" },
-  { code: "XAF", name: "Central African CFA Franc" },
-  { code: "XCD", name: "East Caribbean Dollar" },
-  { code: "XOF", name: "West African CFA Franc" },
-  { code: "XPF", name: "CFP Franc" },
-  { code: "YER", name: "Yemeni Rial" },
-  { code: "ZAR", name: "South African Rand" },
-  { code: "ZMW", name: "Zambian Kwacha" },
-  { code: "ZWL", name: "Zimbabwean Dollar" },
-];
+export type Currency = { code: string; name: string; symbol: string; perUsd: number };
+
+export const CURRENCIES: Currency[] = RAW.split('\n').map((line) => {
+  const [code, name, symbol, rate] = line.split('|');
+  return { code, name, symbol, perUsd: Number(rate) };
+});
+
+export const formatRate = (v: number) =>
+  v >= 100 ? Math.round(v).toLocaleString('en-US') : v.toFixed(2);
+
+// ── Legacy exports kept for existing consumers (tests/currencies.test.ts) ──
+export const validCurrencies: readonly Currency[] = CURRENCIES;
 
 export const currencyOptions: readonly string[] = validCurrencies.map((currency) => `${currency.code} · ${currency.name}`);
 

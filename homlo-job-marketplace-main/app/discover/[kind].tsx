@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { jobs, type Job } from "@/components/job-store";
-import { JobCard } from "@/components/job-card";
+import { JobCardItem } from "@/components/jobs/JobCardItem";
 import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";
 import { ScalePressable } from "@/components/ui/scale-pressable";
 import { PostTabButton } from "@/components/post-tab-button";
+import { useJobSearch } from "@/hooks/use-job-search";
 import { haptic } from "@/lib/haptics";
 import { goBack } from "@/lib/navigation";
 
@@ -59,16 +59,40 @@ export default function DiscoverScreen() {
   const [sort, setSort] = useState<SortMode>("Recent");
   const [filterVisible, setFilterVisible] = useState(false);
 
+  // Build server-side search params from discover kind and filters
+  const searchParams = useMemo(() => {
+    const base: Record<string, unknown> = { limit: 50, sort: "recommended" };
+    if (kind === "part-time") base.employmentType = "Part-time";
+    if (kind === "remote") base.arrangement = "Remote";
+    if (location === "Remote") base.arrangement = "Remote";
+    else if (location === "Phnom Penh") base.location = "Phnom Penh";
+    if (payRange === "Under $400") base.salaryMax = 400;
+    else if (payRange === "$400+") base.salaryMin = 400;
+    return base;
+  }, [kind, location, payRange]);
+
+  const { jobs: serverJobs, loading: searchLoading } = useJobSearch(searchParams as any);
+
   const results = useMemo(() => {
-    const base = jobs.filter((job) => {
-      const kindMatches = kind === "part-time" ? job.tag === "Part-time" : kind === "internships" ? job.tag === "Internship" : kind === "weekend" ? job.tag === "Weekend" : job.arrangement === "Remote";
-      const locationMatches = location === "All locations" || (location === "Remote" ? job.arrangement === "Remote" : job.location.includes("Phnom Penh"));
+    const filtered = serverJobs.filter((job) => {
+      const kindMatches =
+        kind === "part-time"
+          ? job.tag === "Part-time"
+          : kind === "internships"
+            ? true
+            : kind === "weekend"
+              ? /(saturday|sunday)/i.test(job.schedule ?? "")
+              : true;
+      const locationMatches =
+        location === "All locations" ||
+        (location === "Remote" ? job.arrangement === "Remote" : job.location.includes("Phnom Penh"));
       const pay = parsePay(job.pay);
-      const payMatches = payRange === "Any pay" || (payRange === "Under $400" ? pay < 400 : pay >= 400);
+      const payMatches =
+        payRange === "Any pay" || (payRange === "Under $400" ? pay < 400 : pay >= 400);
       return kindMatches && locationMatches && payMatches && matchesPrimary(kind, primaryFilter, job);
     });
-    return [...base].sort((left, right) => sort === "Pay" ? parsePay(right.pay) - parsePay(left.pay) : 0);
-  }, [kind, location, payRange, primaryFilter, sort]);
+    return [...filtered].sort((left, right) => sort === "Pay" ? parsePay(right.pay) - parsePay(left.pay) : 0);
+  }, [serverJobs, kind, location, payRange, primaryFilter, sort]);
 
   const activeFilterCount = [primaryFilter !== config.primaryOptions[0], location !== "All locations", payRange !== "Any pay", sort !== "Recent"].filter(Boolean).length;
   const resetFilters = () => { setPrimaryFilter(config.primaryOptions[0]); setLocation("All locations"); setPayRange("Any pay"); setSort("Recent"); };
@@ -76,15 +100,19 @@ export default function DiscoverScreen() {
   return (
     <ScreenContainer className="flex-1" containerClassName="bg-[#FFFFFF]" edges={["left", "right", "bottom"]}>
       <View style={styles.screen}>
-        <FlatList
-          contentContainerStyle={[styles.content, { paddingBottom: 94 + Math.max(insets.bottom, 8) }]}
-          data={results}
-          keyExtractor={(job) => job.id}
-          ListEmptyComponent={<EmptyState onReset={resetFilters} />}
-          ListHeaderComponent={<View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}><View style={styles.topBar}><ScalePressable accessibilityLabel="Go back" hapticFeedback onPress={() => goBack(router)} style={styles.backButton}><IconSymbol name="chevron.left" size={21} color="#17201A" /></ScalePressable><View style={styles.headingCopy}><Text style={styles.topTitle}>{config.title}</Text><Text style={styles.resultCount}>{results.length} jobs found</Text></View><Pressable accessibilityLabel={`Open filters${activeFilterCount ? `, ${activeFilterCount} active` : ""}`} onPress={() => { haptic.light(); setFilterVisible(true); }} style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}><IconSymbol name="slider.horizontal.3" size={19} color="#17201A" />{activeFilterCount ? <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View> : null}</Pressable></View><View style={styles.headerRule} /></View>}
-          renderItem={({ item }) => <JobCard compact job={item} />}
-          showsVerticalScrollIndicator={false}
-        />
+        {searchLoading && results.length === 0 ? (
+          <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#16803C" /></View>
+        ) : (
+          <FlatList
+            contentContainerStyle={[styles.content, { paddingBottom: 94 + Math.max(insets.bottom, 8) }]}
+            data={results}
+            keyExtractor={(job) => job.id}
+            ListEmptyComponent={<EmptyState onReset={resetFilters} />}
+            ListHeaderComponent={<View style={[styles.header, { paddingTop: Math.max(insets.top, 12) }]}><View style={styles.topBar}><ScalePressable accessibilityLabel="Go back" hapticFeedback onPress={() => goBack(router)} style={styles.backButton}><AppIcon name="back" size={21} color="#17201A" /></ScalePressable><View style={styles.headingCopy}><Text style={styles.topTitle}>{config.title}</Text><Text style={styles.resultCount}>{results.length} jobs found</Text></View><Pressable accessibilityLabel={`Open filters${activeFilterCount ? `, ${activeFilterCount} active` : ""}`} onPress={() => { haptic.light(); setFilterVisible(true); }} style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}><AppIcon name="sliders" size={19} color="#17201A" />{activeFilterCount ? <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View> : null}</Pressable></View><View style={styles.headerRule} /></View>}
+            renderItem={({ item }) => <JobCardItem job={item} />}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
         <DiscoveryTabBar insetsBottom={Math.max(insets.bottom, 8)} router={router} />
       </View>
       <DiscoveryFilterSheet config={config} filterVisible={filterVisible} location={location} onClose={() => setFilterVisible(false)} onPrimaryChange={setPrimaryFilter} onLocationChange={setLocation} onPayChange={setPayRange} onReset={resetFilters} onSortChange={setSort} payRange={payRange} primaryFilter={primaryFilter} sort={sort} />
@@ -94,7 +122,7 @@ export default function DiscoverScreen() {
 
 
 function DiscoveryFilterSheet({ config, filterVisible, location, onClose, onPrimaryChange, onLocationChange, onPayChange, onReset, onSortChange, payRange, primaryFilter, sort }: { config: DiscoveryConfig; filterVisible: boolean; location: string; onClose: () => void; onPrimaryChange: (value: string) => void; onLocationChange: (value: string) => void; onPayChange: (value: string) => void; onReset: () => void; onSortChange: (value: SortMode) => void; payRange: string; primaryFilter: string; sort: SortMode }) {
-  return <Modal animationType="slide" onRequestClose={onClose} transparent visible={filterVisible}><View style={styles.sheetOverlay}><Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.sheetDismiss} /><View style={styles.sheet}><View style={styles.sheetHandle} /><View style={styles.sheetHeader}><View><Text style={styles.sheetTitle}>Filter jobs</Text><Text style={styles.sheetSubtitle}>Refine this search without leaving the results.</Text></View><Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.sheetClose}><IconSymbol name="chevron.down" size={20} color="#17201A" /></Pressable></View><ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}><FilterGroup label={config.primaryLabel} onSelect={onPrimaryChange} options={config.primaryOptions} selected={primaryFilter} /><FilterGroup label="Location" onSelect={onLocationChange} options={locationOptions} selected={location} /><FilterGroup label="Pay range" onSelect={onPayChange} options={payOptions} selected={payRange} /><FilterGroup label="Sort by" onSelect={(value) => onSortChange(value as SortMode)} options={sortOptions.map((option) => option.label)} selected={sortOptions.find((option) => option.value === sort)?.label || "Most recent"} valueMap={sortOptions.reduce<Record<string, string>>((map, option) => { map[option.label] = option.value; return map; }, {})} /></ScrollView><View style={styles.sheetFooter}><Pressable onPress={onReset} style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}><Text style={styles.resetText}>Reset</Text></Pressable><ScalePressable hapticFeedback onPress={onClose} style={styles.applyButton}><Text style={styles.applyText}>Show results</Text></ScalePressable></View></View></View></Modal>;
+  return <Modal animationType="slide" onRequestClose={onClose} transparent visible={filterVisible}><View style={styles.sheetOverlay}><Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.sheetDismiss} /><View style={styles.sheet}><View style={styles.sheetHandle} /><View style={styles.sheetHeader}><View><Text style={styles.sheetTitle}>Filter jobs</Text><Text style={styles.sheetSubtitle}>Refine this search without leaving the results.</Text></View><Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.sheetClose}><AppIcon name="chevron" size={20} color="#17201A" style={{ transform: [{ rotate: "90deg" }] }} /></Pressable></View><ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}><FilterGroup label={config.primaryLabel} onSelect={onPrimaryChange} options={config.primaryOptions} selected={primaryFilter} /><FilterGroup label="Location" onSelect={onLocationChange} options={locationOptions} selected={location} /><FilterGroup label="Pay range" onSelect={onPayChange} options={payOptions} selected={payRange} /><FilterGroup label="Sort by" onSelect={(value) => onSortChange(value as SortMode)} options={sortOptions.map((option) => option.label)} selected={sortOptions.find((option) => option.value === sort)?.label || "Most recent"} valueMap={sortOptions.reduce<Record<string, string>>((map, option) => { map[option.label] = option.value; return map; }, {})} /></ScrollView><View style={styles.sheetFooter}><Pressable onPress={onReset} style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}><Text style={styles.resetText}>Reset</Text></Pressable><ScalePressable hapticFeedback onPress={onClose} style={styles.applyButton}><Text style={styles.applyText}>Show results</Text></ScalePressable></View></View></View></Modal>;
 }
 
 function FilterGroup({ label, onSelect, options, selected, valueMap }: { label: string; onSelect: (value: string) => void; options: string[]; selected: string; valueMap?: Record<string, string> }) {
@@ -102,15 +130,15 @@ function FilterGroup({ label, onSelect, options, selected, valueMap }: { label: 
 }
 
 function EmptyState({ onReset }: { onReset: () => void }) {
-  return <View style={styles.emptyState}><View style={styles.emptyIcon}><IconSymbol name="briefcase.fill" size={24} color="#16803C" /></View><Text style={styles.emptyTitle}>No jobs found</Text><Text style={styles.emptyCopy}>Try widening your filters to see more opportunities.</Text><ScalePressable hapticFeedback onPress={onReset} style={styles.emptyButton}><Text style={styles.emptyButtonText}>Reset filters</Text></ScalePressable></View>;
+  return <View style={styles.emptyState}><View style={styles.emptyIcon}><AppIcon name="brief" size={24} color="#16803C" /></View><Text style={styles.emptyTitle}>No jobs found</Text><Text style={styles.emptyCopy}>Try widening your filters to see more opportunities.</Text><ScalePressable hapticFeedback onPress={onReset} style={styles.emptyButton}><Text style={styles.emptyButtonText}>Reset filters</Text></ScalePressable></View>;
 }
 
 function DiscoveryTabBar({ insetsBottom, router }: { insetsBottom: number; router: ReturnType<typeof useRouter> }) {
-  const tabs = [{ label: "Home", icon: "house.fill" as const, route: "/" }, { label: "Jobs", icon: "magnifyingglass" as const, route: "/explore" }, { label: "Inbox", icon: "bell" as const, route: "/inbox" }, { label: "Profile", icon: "person" as const, route: "/profile" }];
-  return <View style={[styles.tabBar, { paddingBottom: insetsBottom }]}>{tabs.slice(0, 2).map((tab) => { const active = tab.label === "Jobs"; return <Pressable accessibilityLabel={tab.label} key={tab.label} onPress={() => router.replace(tab.route as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><IconSymbol name={tab.icon} size={27} color={active ? "#16803C" : "#66736A"} /><Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text></Pressable>; })}<View style={styles.tabItem}><PostTabButton /></View><Pressable accessibilityLabel="Inbox" onPress={() => router.replace("/inbox" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><IconSymbol name="bell" size={27} color="#66736A" /><Text style={styles.tabLabel}>Inbox</Text></Pressable><Pressable accessibilityLabel="Profile" onPress={() => router.replace("/profile" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><IconSymbol name="person" size={27} color="#66736A" /><Text style={styles.tabLabel}>Profile</Text></Pressable></View>;
+  const tabs = [{ label: "Home", icon: "home" as const, route: "/" }, { label: "Jobs", icon: "search" as const, route: "/explore" }, { label: "Inbox", icon: "bell" as const, route: "/inbox" }, { label: "Profile", icon: "user" as const, route: "/profile" }];
+  return <View style={[styles.tabBar, { paddingBottom: insetsBottom }]}>{tabs.slice(0, 2).map((tab) => { const active = tab.label === "Jobs"; return <Pressable accessibilityLabel={tab.label} key={tab.label} onPress={() => router.replace(tab.route as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name={tab.icon} size={27} color={active ? "#16803C" : "#66736A"} /><Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text></Pressable>; })}<View style={styles.tabItem}><PostTabButton /></View><Pressable accessibilityLabel="Inbox" onPress={() => router.replace("/inbox" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name="bell" size={27} color="#66736A" /><Text style={styles.tabLabel}>Inbox</Text></Pressable><Pressable accessibilityLabel="Profile" onPress={() => router.replace("/profile" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name="user" size={27} color="#66736A" /><Text style={styles.tabLabel}>Profile</Text></Pressable></View>;
 }
 
-function matchesPrimary(kind: DiscoveryKind, selected: string, job: Job) {
+function matchesPrimary(kind: DiscoveryKind, selected: string, job: any) {
   if (selected.startsWith("Any") || selected === "All fields") return true;
   if (kind === "internships") return job.category === selected;
   if (kind === "remote") return selected === "No experience" ? job.noExperience : selected === "Entry level" ? job.experience === "Entry level" : selected === "2+ years" ? job.experience === "2–3 years" : true;
@@ -178,4 +206,5 @@ const styles = StyleSheet.create({
   resetText: { color: "#526158", fontSize: 13, fontWeight: "800" },
   applyButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 12, flex: 1, justifyContent: "center", minHeight: 48, paddingHorizontal: 20 },
   applyText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: 80 },
 });

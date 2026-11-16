@@ -1,11 +1,10 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../drizzle/schema";
 import { getHomloDirectService, type HomloSessionUser } from "../homlo-direct-service";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: User | null;
+  user: HomloSessionUser | null;
   homloUser: HomloSessionUser | null;
   supabaseAccessToken: string | null;
 };

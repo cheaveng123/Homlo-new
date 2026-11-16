@@ -6,6 +6,7 @@ export type JobCardVariant = 'carousel' | 'featured' | 'row' | 'grid';
 // adapter (toJobCardData) so the card never depends on database shapes.
 export interface JobCardData {
   id: string;
+  employerId?: string;
   title: string;
   employerName: string;
   employerInitials?: string;
@@ -21,4 +22,8 @@ export interface JobCardData {
   locationLabel?: string | null;
   positionsLeft?: number | null;
   positionsTotal?: number | null;
+  /** Shown on boosted listings: "Ads" to the public, "Boosted" to the employer. */
+  boosted?: boolean;
+  /** Job-seeker safe ad flag. */
+  boost?: { isSponsored: true } | null;
 }

@@ -1,27 +1,19 @@
-import * as Location from "expo-location";
+import { locationService } from "@/lib/location-service";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { ArrowLeft, ChevronDown, Search, Zap } from "lucide-react-native";
+import { View } from "react-native";
 
-import { JobCard, type Job } from "@/components/JobCard";
+import { SearchResultsScreenNew, type ResultFilterNew } from "@/src/new/screens/SearchResultsScreenNew";
+import { JobSummaryNew, ScreenStateNew } from "@/src/new/types/jobNew";
+import type { JobCardData, WorkArrangement } from "@/components/jobs/jobCardTypes";
+import { logoColorFor } from "@/components/jobs/toJobCardData";
 import { useJobStore } from "@/components/job-store";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { defaultSearchCenter } from "@/lib/job-geography";
+import { computePositionsLeft } from "@/lib/positions";
 import type { JobSearchParams, SearchJobRecord } from "@/hooks/use-job-search";
 import { consumeAppliedFilters, type DetailSearchPayload } from "@/lib/detail-search-store";
-import { FALLBACK_JOB_IMAGE } from "@/lib/job-banner";
-import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
 import { polygonToBboxString } from "@/lib/polygon";
 import {
@@ -36,6 +28,18 @@ import {
 // matching how the rest of the app converts salary bounds before querying.
 const HOURS_PER_PERIOD: Record<string, number> = { Hourly: 1, Monthly: 160, Yearly: 2080 };
 const NEAR_RADIUS_KM = 35;
+
+const FILTERS = ["All", "Full-time", "Part-time", "Weekend", "Remote"];
+
+// `?jobType=` -> the matching FILTERS pill. `applyPill` clears employmentType and
+// arrangement before re-applying the active pill, so an incoming jobType has to
+// become the active pill or it is dropped before the query runs.
+const JOB_TYPE_TO_PILL: Record<string, string> = {
+  "Part time": "Part-time",
+  "Full time": "Full-time",
+  Weekends: "Weekend",
+  Remote: "Remote",
+};
 
 function paramValue(raw: Record<string, string | string[] | undefined>, key: string): string {
   const value = raw?.[key];
@@ -62,15 +66,6 @@ function parsePolygon(raw: string): MapCoordinate[] {
   }
 }
 
-// Banner image → employer logo → generic category placeholder.
-function resolveJobImage(record: SearchJobRecord): string {
-  const banner = record.banner_image?.trim();
-  if (banner) return banner;
-  const logo = getProfilePhotoUrl(record.employer_photo_key);
-  if (logo) return logo;
-  return FALLBACK_JOB_IMAGE;
-}
-
 function payParts(record: SearchJobRecord): { priceRange: string; priceUnit: string } {
   const amount = Number(record.pay_amount);
   const currency = (record.pay_currency || "USD").toUpperCase();
@@ -82,25 +77,44 @@ function payParts(record: SearchJobRecord): { priceRange: string; priceUnit: str
   return { priceRange: `${symbol}${formatted}`, priceUnit };
 }
 
-function jobTypeLabel(record: SearchJobRecord): string {
-  // The DB infers employment type from pay_type: hourly jobs read as
-  // part-time-friendly, daily/fixed as fuller schedules.
-  return record.pay_type === "hourly" ? "Part-time" : "Full-time";
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "H";
+  return parts.map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-function toQuickJob(record: SearchJobRecord, index: number, saved: boolean): Job {
+// Real search record → the card's view-model. Data mapping only.
+function toCardData(record: SearchJobRecord, arrangement: WorkArrangement): JobCardData {
   const { priceRange, priceUnit } = payParts(record);
+  const company = record.employer_name?.trim() || "Homlo employer";
+  const place = record.location_text?.trim() || "";
   return {
     id: record.id,
-    image: resolveJobImage(record),
-    jobType: jobTypeLabel(record),
     title: record.title,
-    company: record.employer_name?.trim() || "Homlo employer",
-    location: record.location_text?.trim() || "Location to be confirmed",
-    priceRange,
-    priceUnit,
-    imageHeight: index === 0 ? 190 : 170,
-    saved,
+    employerName: company,
+    employerColor: logoColorFor(company),
+    imageUrl: record.banner_image || null,
+    payLabel: `${priceRange}${priceUnit}`,
+    workArrangement: arrangement,
+    locationLabel: arrangement === "remote" ? null : place || null,
+    positionsLeft: computePositionsLeft(record.workers_needed, record.workers_hired),
+    positionsTotal: record.workers_needed > 0 ? record.workers_needed : null,
+  };
+}
+
+function toSummary(d: JobCardData, liked: boolean): JobSummaryNew {
+  return {
+    id: d.id,
+    title: d.title,
+    locationLabel: d.locationLabel ?? (d.workArrangement === "remote" ? "Remote" : ""),
+    payLabel: d.payLabel,
+    positionsLeft: d.positionsLeft ?? 0,
+    positionsTotal: d.positionsTotal ?? 0,
+    employerInitials: initialsOf(d.employerName),
+    imageUri: d.imageUrl ?? undefined,
+    typeLabel: d.workArrangement === "remote" ? "Remote" : undefined,
+    liked,
+    boosted: d.boosted === true || d.boost?.isSponsored === true,
   };
 }
 
@@ -143,6 +157,19 @@ function appliedToSearchParams(applied: DetailSearchPayload): JobSearchParams {
   return searchParams;
 }
 
+// The filter pill row layers on top of whichever params the route/wizard
+// produced. It owns the two dimensions the pills represent, so both keys are
+// cleared first and only the active pill's one is re-applied — "All" therefore
+// really means all, instead of leaving a wizard-supplied type in place.
+function applyPill(params: JobSearchParams, pill: string): JobSearchParams {
+  const next: JobSearchParams = { ...params };
+  delete next.employmentType;
+  delete next.arrangement;
+  if (pill === "Remote") next.arrangement = "Remote";
+  else if (pill !== "All") next.employmentType = pill;
+  return next;
+}
+
 // Maps the wizard route params (and generic search params used elsewhere in
 // the app) onto the real search query.
 function buildWizardSearchParams(raw: Record<string, string | string[]>, center: MapCoordinate): JobSearchParams {
@@ -175,7 +202,8 @@ function buildWizardSearchParams(raw: Record<string, string | string[]>, center:
 
   const minSalary = Number(paramValue(raw, "minSalary"));
   const maxSalary = Number(paramValue(raw, "maxSalary"));
-  const hours = HOURS_PER_PERIOD[paramValue(raw, "salaryType")] ?? HOURS_PER_PERIOD.Monthly;
+  const salaryType = paramValue(raw, "salaryType");
+  const hours = HOURS_PER_PERIOD[salaryType] ?? HOURS_PER_PERIOD.Monthly;
   if (Number.isFinite(minSalary) && minSalary > 0) searchParams.salaryMin = minSalary / hours;
   if (Number.isFinite(maxSalary) && maxSalary > 0) searchParams.salaryMax = maxSalary / hours;
 
@@ -185,7 +213,7 @@ function buildWizardSearchParams(raw: Record<string, string | string[]>, center:
     searchParams.latitude = center.latitude;
     searchParams.longitude = center.longitude;
     searchParams.radiusKm = NEAR_RADIUS_KM;
-  } else if (locationMode === "draw" && polygon.length >= 3) {
+  } else if (polygon.length >= 3) {
     searchParams.bbox = polygonToBboxString(polygon);
   }
 
@@ -204,14 +232,33 @@ function buildWizardSearchParams(raw: Record<string, string | string[]>, center:
   return searchParams;
 }
 
+const FILTERS_NEW: ResultFilterNew[] = FILTERS.map((f) => ({ id: f, label: f }));
+
 export default function SearchResultsScreen() {
   const router = useRouter();
   const rawParams = useLocalSearchParams();
   const { isSaved, toggleSaved } = useJobStore();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  // The pill row layers over whatever the route supplied. `pillOverride` is only
+  // the user's own tap, so an incoming ?jobType= keeps winning until they choose
+  // a pill themselves - deriving it avoids setState-in-effect and keeps the route
+  // authoritative when the same screen is pushed again with new params.
+  const routePill = JOB_TYPE_TO_PILL[paramValue(rawParams, "jobType")] ?? "All";
+  const [pillOverride, setPillOverride] = useState<string | null>(null);
+  const activeFilter = pillOverride ?? routePill;
   const [appliedFilters, setAppliedFilters] = useState<DetailSearchPayload | null>(null);
   const [center, setCenter] = useState<MapCoordinate>(defaultSearchCenter);
+
+  // The typed term goes to the server rather than filtering the current page in
+  // memory — otherwise a query that matches nothing on the first 20 rows shows an
+  // empty list even though the backend has matches. Debounced so each keystroke
+  // doesn't fire a request.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   // Detailed-search "Apply" publishes filters that the results screen consumes
   // on focus — keep that flow working alongside the wizard's route params.
@@ -226,11 +273,9 @@ export default function SearchResultsScreen() {
     let active = true;
     (async () => {
       try {
-        const position =
-          (await Location.getLastKnownPositionAsync({ maxAge: 300_000 })) ??
-          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-        if (active && position?.coords) {
-          setCenter({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        const position = await locationService.getBestAvailablePosition(300_000);
+        if (active && position) {
+          setCenter({ latitude: position.latitude, longitude: position.longitude });
         }
       } catch {
         // Location is optional — fall back to the default search center.
@@ -241,29 +286,43 @@ export default function SearchResultsScreen() {
     };
   }, []);
 
-  const searchParams = useMemo(
-    () => (appliedFilters ? appliedToSearchParams(appliedFilters) : buildWizardSearchParams(rawParams, center)),
-    [appliedFilters, rawParams, center],
-  );
+  const searchParams = useMemo(() => {
+    const base = appliedFilters
+      ? appliedToSearchParams(appliedFilters)
+      : buildWizardSearchParams(rawParams, center);
+    const next = applyPill(base, activeFilter);
+    // A typed term wins over any query the route/wizard supplied, so the box
+    // always reflects what the user is actually searching for.
+    const typed = debouncedQuery.trim();
+    if (typed) next.query = typed;
+    return next;
+  }, [appliedFilters, rawParams, center, activeFilter, debouncedQuery]);
 
-  const { data, error, isFetching, isLoading } = trpc.homlo.searchJobs.useQuery(searchParams, {
+  const { data, error, isFetching, isLoading, refetch } = trpc.homlo.searchJobs.useQuery(searchParams, {
     enabled: true,
     staleTime: 30_000,
   });
 
-  const jobs = useMemo(
-    () => (data?.jobs ?? []).map((record, index) => toQuickJob(record, index, isSaved(record.id))),
-    [data?.jobs, isSaved],
+  // The record carries no arrangement column, so the card reads it off the
+  // filter that produced these results.
+  const arrangement: WorkArrangement = activeFilter === "Remote" ? "remote" : "onsite";
+
+  // The server already applied `query`, so no second client-side pass here.
+  const results = useMemo(
+    () => (data?.jobs ?? []).map((record) => toSummary(toCardData(record, arrangement), isSaved(record.id))),
+    [data?.jobs, arrangement, isSaved],
   );
 
-  const results = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return needle
-      ? jobs.filter((job) => `${job.title} ${job.company} ${job.location}`.toLowerCase().includes(needle))
-      : jobs;
-  }, [jobs, query]);
-
   const loading = isLoading || (isFetching && (data?.jobs?.length ?? 0) === 0);
+
+  let state: ScreenStateNew = "ready";
+  if (loading) state = "loading";
+  else if (error) state = "error";
+  else if (results.length === 0) state = "empty";
+
+  const openJob = (id: string) => {
+    router.push({ pathname: "/job/[id]", params: { id } } as never);
+  };
 
   const toggleSave = (id: string) => {
     if (!user) {
@@ -273,130 +332,30 @@ export default function SearchResultsScreen() {
     toggleSaved(id);
   };
 
-  const openJob = (id: string) => {
-    router.push({ pathname: "/job/[id]", params: { id } } as never);
-  };
+  const handleClearFilters = useCallback(() => {
+    setPillOverride("All");
+    setQuery("");
+  }, []);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <View style={styles.searchRow}>
-          <Pressable style={styles.circleBtn} onPress={() => router.back()}>
-            <ArrowLeft size={16} color="#12271F" />
-          </Pressable>
-
-          <View style={styles.searchBar}>
-            <Search size={16} color="#5F7A6E" />
-            <TextInput
-              style={styles.searchInput}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Barista, warehouse, driver..."
-              placeholderTextColor="#5F7A6E"
-              returnKeyType="search"
-            />
-          </View>
-
-          <Pressable
-            style={styles.quickBtn}
-            onPress={() => router.push("/quick-search" as never)}
-          >
-            <Zap size={16} color="#04342C" />
-          </Pressable>
-        </View>
-
-        <View style={styles.resultHeader}>
-          <Text style={styles.resultCount}>{results.length} jobs found</Text>
-          <Pressable style={styles.sortBtn}>
-            <Text style={styles.sortText}>Best match</Text>
-            <ChevronDown size={14} color="#5F7A6E" />
-          </Pressable>
-        </View>
-
-        <FlatList
-          data={results}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <JobCard
-              job={item}
-              onPressApply={openJob}
-              onToggleSave={toggleSave}
-            />
-          )}
-          ListEmptyComponent={
-            loading ? (
-              <ActivityIndicator color="#5DCAA5" style={{ marginTop: 40, alignSelf: "center" }} />
-            ) : error ? (
-              <Text style={styles.empty}>Something went wrong. Please try again.</Text>
-            ) : (
-              <Text style={styles.empty}>No jobs match these filters yet.</Text>
-            )
-          }
-        />
-      </View>
-    </SafeAreaView>
+    <View style={{ flex: 1 }}>
+      <SearchResultsScreenNew
+        state={state}
+        query={query}
+        onBack={() => router.back()}
+        onEditQuery={() => {}}
+        onChangeQuery={setQuery}
+        onPressFilter={() => {}}
+        filters={FILTERS_NEW}
+        activeFilterId={activeFilter}
+        onSelectFilter={(id) => setPillOverride(id)}
+        resultCount={results.length}
+        results={results}
+        onPressJob={openJob}
+        onToggleLike={toggleSave}
+        onClearFilters={handleClearFilters}
+        onRetry={() => void refetch()}
+      />
+    </View>
   );
 }
-
-// Fixed pixel values are intentional — they match the approved mockup exactly.
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  circleBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F4F7F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F4F7F5',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    height: 38,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: '#12271F',
-    padding: 0,
-  },
-  quickBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#5DCAA5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 10,
-  },
-  resultCount: { fontSize: 14, fontWeight: '500', color: '#12271F' },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sortText: { fontSize: 12, color: '#5F7A6E' },
-  listContent: { paddingBottom: 24 },
-  empty: {
-    fontSize: 13,
-    color: '#5F7A6E',
-    textAlign: 'center',
-    marginTop: 40,
-  },
-});

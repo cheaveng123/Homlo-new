@@ -21,7 +21,6 @@ import {
   Platform,
   LayoutChangeEvent,
   BackHandler,
-  type ImageSourcePropType,
 } from 'react-native';
 import Animated, {
   FadeIn,
@@ -54,6 +53,7 @@ import { fonts, familyForWeight } from '@/lib/typography';
 import { jobCardTokens as card } from '@/components/jobs/jobCardTokens';
 import { jobCategoryTheme } from '@/components/jobs/jobCategoryTheme';
 import { JOB_FIELDS } from '@/lib/job-fields';
+import { JobFieldArtwork } from '@/components/shared/JobFieldArtwork';
 import OptionPickerSheet from '@/components/employer-job/OptionPickerSheet';
 import { JobLocationPicker, type PickedAddress } from '@/components/JobLocationPicker';
 import { pickerImageToJpegDataUrl } from '@/lib/profile-photo';
@@ -235,7 +235,7 @@ function Selectable({
 }
 
 /**
- * Tile artwork. Field tiles use the app's own PNG per category rather than a
+ * Tile artwork. Field tiles use the app's own SVG per category rather than a
  * generic glyph, so a listing's category looks identical here and on the rail.
  */
 function TileArt({
@@ -243,19 +243,12 @@ function TileArt({
   on,
   size,
 }: {
-  field?: { title: string; image: ImageSourcePropType | null };
+  field?: { title: string; svg: string };
   on: boolean;
   size: number;
 }) {
-  const source = field?.image ?? null;
-  if (!source) return <AppIcon name="brief" size={size} color={on ? C.white : C.mint} />;
-  return (
-    <Image
-      source={source}
-      style={{ width: size, height: size, borderRadius: size * 0.22 }}
-      resizeMode="contain"
-    />
-  );
+  if (!field?.svg) return <AppIcon name="brief" size={size} color={on ? C.white : C.mint} />;
+  return <JobFieldArtwork xml={field.svg} width={size} height={size} />;
 }
 
 const IconBubble = ({
@@ -427,7 +420,7 @@ function CardPreview({ d }: { d: JobDraft }) {
         )}
         <View style={styles.cardPill}>
           <Text style={styles.cardPillTx}>
-            {d.positions} position{d.positions > 1 ? 's' : ''} left
+            0/{d.positions} position{d.positions === 1 ? '' : 's'}
           </Text>
         </View>
       </View>

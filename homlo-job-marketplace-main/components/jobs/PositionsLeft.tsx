@@ -1,5 +1,5 @@
-import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { formatPositionsLabel } from '@/lib/positions';
 import { jobCardTokens as t } from './jobCardTokens';
 
 interface Props {
@@ -9,13 +9,15 @@ interface Props {
 
 const MAX_BARS = 6;
 
-// Mini container: one bar per position, filled for each open one.
-// 3+ left = mint, 1-2 left = orange, 0 = muted "Filled".
+// Mini container: one bar per position, filled for each accepted position.
+// 3+ open = mint, 1-2 open = orange, 0 = muted.
 export function PositionsLeft({ left, total }: Props) {
-  const safeLeft = Math.max(0, left);
-  const all = Math.max(total ?? safeLeft, safeLeft, 1);
+  if (total == null || total <= 0) return null;
+  const all = Math.max(total, 1);
+  const safeLeft = Math.max(0, Math.min(left, all));
+  const accepted = all - safeLeft;
   const bars = Math.min(all, MAX_BARS);
-  const filled = safeLeft === 0 ? 0 : Math.max(1, Math.round((safeLeft / all) * bars));
+  const filled = Math.round((accepted / all) * bars);
 
   const state = safeLeft === 0 ? 'filled' : safeLeft <= 2 ? 'low' : 'ok';
   const bg = state === 'filled' ? t.color.filledBg : state === 'low' ? t.color.lowBg : t.color.mintTint;
@@ -27,16 +29,14 @@ export function PositionsLeft({ left, total }: Props) {
     <View
       style={[styles.wrap, { backgroundColor: bg }]}
       accessible
-      accessibilityLabel={safeLeft === 0 ? 'All positions filled' : `${safeLeft} of ${all} positions left`}
+      accessibilityLabel={`${accepted} of ${all} positions filled`}
     >
-      {state !== 'filled' && (
-        <View style={styles.bars}>
-          {Array.from({ length: bars }).map((_, i) => (
-            <View key={i} style={[styles.bar, { backgroundColor: i < filled ? barOn : barOff }]} />
-          ))}
-        </View>
-      )}
-      <Text style={[styles.label, { color: fg }]}>{state === 'filled' ? 'Filled' : `${safeLeft} left`}</Text>
+      <View style={styles.bars}>
+        {Array.from({ length: bars }).map((_, i) => (
+          <View key={i} style={[styles.bar, { backgroundColor: i < filled ? barOn : barOff }]} />
+        ))}
+      </View>
+      <Text style={[styles.label, { color: fg }]}>{formatPositionsLabel(accepted, all)}</Text>
     </View>
   );
 }

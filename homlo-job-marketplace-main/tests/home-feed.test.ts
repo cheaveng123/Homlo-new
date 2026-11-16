@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { WorkArrangement } from "../backend/domain/work-arrangement";
 import type { DatabaseAdapter, QueryResult, SqlParameter } from "../backend/infrastructure/database/DatabaseAdapter";
 import type { SpecializedField } from "../lib/specialized-fields";
 import { HomeFeedService } from "../server/home-feed";
+import { normalizePublishedJob } from "../lib/job-record";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -25,6 +27,7 @@ type HomeSeed = {
   payCurrency: string;
   payType: "hourly" | "daily" | "fixed";
   locationText: string | null;
+  workArrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workersNeeded: number;
@@ -46,6 +49,7 @@ function seed(id: string, overrides: Partial<HomeSeed> = {}): HomeSeed {
     payCurrency: "USD",
     payType: "hourly",
     locationText: "Test City",
+    workArrangement: "On-site",
     latitude: 11.5564,
     longitude: 104.9282,
     workersNeeded: 2,
@@ -101,6 +105,7 @@ class InMemoryHomeFeedDatabase implements DatabaseAdapter {
       pay_currency: j.payCurrency,
       pay_type: j.payType,
       location_text: j.locationText,
+      work_arrangement: j.workArrangement,
       latitude: j.latitude,
       longitude: j.longitude,
       workers_needed: j.workersNeeded,
@@ -186,6 +191,7 @@ class InMemoryHomeFeedDatabase implements DatabaseAdapter {
         pay_currency: j.payCurrency,
         pay_type: j.payType,
         location_text: j.locationText,
+        work_arrangement: j.workArrangement,
         latitude: j.latitude,
         longitude: j.longitude,
         workers_needed: j.workersNeeded,
@@ -218,6 +224,7 @@ describe("HomeFeedService — section composition", () => {
       featured: [],
       specialized: [],
       remote: [],
+      weekend: [],
       more: [],
       total: 0,
     });
@@ -231,8 +238,10 @@ describe("HomeFeedService — section composition", () => {
         seed("s1", { categoryId: "cat-sales", category: "Sales", createdAt: createdAgo(3) }),
         seed("h1", { categoryId: "cat-hosp", category: "Hospitality", createdAt: createdAgo(1) }),
         seed("f1", { createdAt: createdAgo(6) }),
-        seed("r1", { locationText: "Remote — anywhere in Southeast Asia", createdAt: createdAgo(4) }),
-        seed("r2", { locationText: "Remote — anywhere in Southeast Asia", createdAt: createdAgo(8) }),
+        seed("r1", { locationText: "Remote — anywhere in Southeast Asia", workArrangement: "Remote", latitude: null, longitude: null, createdAt: createdAgo(4) }),
+        seed("r2", { locationText: "Remote — anywhere in Southeast Asia", workArrangement: "Remote", latitude: null, longitude: null, createdAt: createdAgo(8) }),
+        seed("w1", { title: "Weekend Cashier", createdAt: createdAgo(7) }),
+        seed("w2", { title: "Event Staff", description: "Saturday and Sunday warehouse shifts", createdAt: createdAgo(9) }),
         seed("o1", { createdAt: createdAgo(10) }),
         seed("o2", { createdAt: createdAgo(12) }),
       ],
@@ -241,10 +250,11 @@ describe("HomeFeedService — section composition", () => {
 
     const feed = await new HomeFeedService(database).getHomeFeed({ now: NOW });
 
-    // Anonymous and coordinate-less: nearby and recommended are empty even
-    // though the pool has jobs — never a silent "show everything" fallback.
+    // Anonymous and coordinate-less: nearby is empty, but Recommended still
+    // renders a data-driven editorial — the freshest open jobs, excluding the
+    // boosted Featured job so the two sections never duplicate.
     expect(feed.nearby).toEqual([]);
-    expect(feed.recommended).toEqual([]);
+    expect(feed.recommended.map((job) => job.id)).toEqual(["h1", "t1", "s1", "r1"]);
 
     // Featured: ONLY the active boost; the expired one is not featured.
     expect(feed.featured.map((job) => job.id)).toEqual(["f1"]);
@@ -257,7 +267,9 @@ describe("HomeFeedService — section composition", () => {
       "sales-and-marketing",
     ]);
     expect(feed.specialized.map((section) => section.available)).toEqual([2, 1, 1]);
-    expect(feed.specialized[0].jobs.map((job) => job.id)).toEqual(["t1", "t2"]);
+    // t1 was consumed by the Recommended editorial, so Technology leads with
+    // t2 then tops up with the already-shown t1 (scarce category behaviour).
+    expect(feed.specialized[0].jobs.map((job) => job.id)).toEqual(["t2", "t1"]);
     expect(feed.specialized[1].jobs.map((job) => job.id)).toEqual(["h1"]);
     expect(feed.specialized[2].jobs.map((job) => job.id)).toEqual(["s1"]);
 
@@ -268,15 +280,20 @@ describe("HomeFeedService — section composition", () => {
       expect(present.has(absent)).toBe(false);
     }
 
-    // Remote keeps the existing location_text convention and stays disjoint
-    // from More.
-    expect(feed.remote.map((job) => job.id)).toEqual(["r1", "r2"]);
+    // Remote is driven by the canonical jobs.work_arrangement column, not by
+    // the location text; the freshest remote job (r1) went to Recommended
+    // first, so Remote picks up r2 and tops up with r1.
+    expect(feed.remote.map((job) => job.id)).toEqual(["r2", "r1"]);
+
+    // Weekend uses the same keyword convention as search (title/description
+    // mention weekend, Saturday or Sunday), disjoint from the other sections.
+    expect(feed.weekend.map((job) => job.id)).toEqual(["w1", "w2"]);
 
 // More leads with the not-yet-shown leftovers (freshest first), then tops up
 // with already-shown jobs when the leftover pool is smaller than the slice.
 expect(feed.more.map((job) => job.id).slice(0, 2)).toEqual(["o1", "o2"]);
 expect(feed.more).toHaveLength(8);
-expect(feed.total).toBe(9);
+expect(feed.total).toBe(11);
 
 const shown = new Set([
   ...feed.nearby,
@@ -284,12 +301,32 @@ const shown = new Set([
   ...feed.featured,
   ...feed.specialized.flatMap((section) => section.jobs),
   ...feed.remote,
+  ...feed.weekend,
 ].map((job) => job.id));
 expect(feed.more[0]).toMatchObject({ id: "o1" });
 expect(feed.more[1]).toMatchObject({ id: "o2" });
 for (const job of feed.more.slice(2)) {
   expect(shown.has(job.id)).toBe(true);
 }
+  });
+
+  it("builds a weekend section using the search keyword convention", async () => {
+    const database = new InMemoryHomeFeedDatabase({
+      jobs: [
+        seed("w1", { title: "Weekend Barista", createdAt: createdAgo(2) }),
+        seed("w2", { title: "Retail Sales Associate", description: "Saturday and Sunday shifts available", createdAt: createdAgo(5) }),
+        seed("w3", { title: "Warehouse Team Member", description: "Weekend evening shift at the riverside depot", createdAt: createdAgo(8) }),
+        seed("plain", { title: "Office Administrator", description: "Standard weekday hours", createdAt: createdAgo(1) }),
+      ],
+      boosts: [],
+    });
+
+    const feed = await new HomeFeedService(database).getHomeFeed({ now: NOW });
+
+    // Only titles/descriptions matching weekend | saturday | sunday qualify,
+    // mirroring the Weekend branch of homlo_search_public_jobs.
+    expect(feed.weekend.map((job) => job.id).sort()).toEqual(["w1", "w2", "w3"]);
+    expect(feed.remote).toEqual([]);
   });
 
   it("serves Jobs Near You only when real coordinates are provided", async () => {
@@ -306,11 +343,13 @@ for (const job of feed.more.slice(2)) {
     expect(anonymous.nearby).toHaveLength(4);
     expect(anonymous.total).toBe(6);
 
-    // The pool is smaller than the More slice, so pickSection tops up with the
-    // already-shown jobs — but the not-yet-shown jobs always come first.
-    const nearbyIds = new Set(anonymous.nearby.map((job) => job.id));
-    expect(anonymous.more.slice(0, 2).some((job) => nearbyIds.has(job.id))).toBe(false);
-    expect(anonymous.more.map((job) => job.id)).toEqual(["e", "f", "a", "b", "c", "d"]);
+    // Recommended fills from the freshest jobs not already shown in Nearby.
+    expect(anonymous.recommended.map((job) => job.id)).toEqual(["e", "f"]);
+
+    // The pool (6) is smaller than the More slice, so pickSection tops up
+    // with the already-shown jobs in freshness order — everything here has
+    // been shown (nearby + recommended), so More echoes the whole pool.
+    expect(anonymous.more.map((job) => job.id)).toEqual(["a", "b", "c", "d", "e", "f"]);
   });
 
   it("clamps section sizing to a sane range", async () => {
@@ -457,5 +496,155 @@ describe("home-feed rotation (pickSpecializedFields)", () => {
     const { pickSpecializedFields } = await freshRotation();
     const picked = await pickSpecializedFields([field("a")], 3);
     expect(picked.map((f) => f.id)).toEqual(["a"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Malformed data handling (useHomeFeed hook)
+// ---------------------------------------------------------------------------
+
+describe("useHomeFeed — malformed jobRecords handling", () => {
+  it("handles null jobRecords without throwing and yields empty map", () => {
+    const jobRecords = null;
+    const map = new Map<string, any>();
+    const records = (jobRecords as any)?.jobs ?? [];
+    if (Array.isArray(records)) {
+      for (const record of records) {
+        try {
+          const job = normalizePublishedJob(record);
+          map.set(job.id, job);
+        } catch {
+          // ignored
+        }
+      }
+    }
+    expect(map.size).toBe(0);
+  });
+
+  it("handles undefined jobRecords without throwing and yields empty map", () => {
+    const jobRecords = undefined;
+    const map = new Map<string, any>();
+    const records = (jobRecords as any)?.jobs ?? [];
+    if (Array.isArray(records)) {
+      for (const record of records) {
+        try {
+          const job = normalizePublishedJob(record);
+          map.set(job.id, job);
+        } catch {
+          // ignored
+        }
+      }
+    }
+    expect(map.size).toBe(0);
+  });
+
+  it("handles error object jobRecords without throwing and yields empty map", () => {
+    const jobRecords = { error: "Server error", message: "500 Internal Server Error" };
+    const map = new Map<string, any>();
+    const records = (jobRecords as any)?.jobs ?? [];
+    if (Array.isArray(records)) {
+      for (const record of records) {
+        try {
+          const job = normalizePublishedJob(record);
+          map.set(job.id, job);
+        } catch {
+          // ignored
+        }
+      }
+    }
+    expect(map.size).toBe(0);
+  });
+
+  it("handles object without jobs property without throwing and yields empty map", () => {
+    const jobRecords = { data: [], meta: {} };
+    const map = new Map<string, any>();
+    const records = (jobRecords as any)?.jobs ?? [];
+    if (Array.isArray(records)) {
+      for (const record of records) {
+        try {
+          const job = normalizePublishedJob(record);
+          map.set(job.id, job);
+        } catch {
+          // ignored
+        }
+      }
+    }
+    expect(map.size).toBe(0);
+  });
+
+  it("handles valid jobs object correctly", () => {
+    const jobRecords = {
+      jobs: [
+        {
+          id: "job-1",
+          title: "Test Job",
+          description: "Description",
+          pay_amount: 25,
+          pay_currency: "USD",
+          pay_type: "hourly",
+          location_text: "Test City",
+          workers_needed: 1,
+          created_at: "2026-01-01T00:00:00.000Z",
+          category: "Technology",
+          employer_name: "Test Employer",
+          banner_image: null,
+          status: "open",
+          workers_hired: 0,
+        },
+      ],
+    };
+    const map = new Map<string, any>();
+    const records = (jobRecords as any)?.jobs ?? [];
+    if (Array.isArray(records)) {
+      for (const record of records) {
+        try {
+          const job = normalizePublishedJob(record);
+          map.set(job.id, job);
+        } catch {
+          // ignored
+        }
+      }
+    }
+    expect(map.size).toBe(1);
+    expect(map.get("job-1")).toBeDefined();
+  });
+
+  it("skips malformed record in valid array without crashing", () => {
+    const jobRecords = {
+      jobs: [
+        {
+          id: "job-1",
+          title: "Test Job",
+          description: "Description",
+          pay_amount: 25,
+          pay_currency: "USD",
+          pay_type: "hourly",
+          location_text: "Test City",
+          workers_needed: 1,
+          created_at: "2026-01-01T00:00:00.000Z",
+          category: "Technology",
+          employer_name: "Test Employer",
+          banner_image: null,
+          status: "open",
+          workers_hired: 0,
+        },
+        { invalid: "record" }, // malformed record
+        null, // null record
+      ],
+    };
+    const map = new Map<string, any>();
+    const records = (jobRecords as any)?.jobs ?? [];
+    if (Array.isArray(records)) {
+      for (const record of records) {
+        try {
+          const job = normalizePublishedJob(record);
+          map.set(job.id, job);
+        } catch {
+          // ignored - malformed record skipped
+        }
+      }
+    }
+    expect(map.size).toBe(1);
+    expect(map.get("job-1")).toBeDefined();
   });
 });

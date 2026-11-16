@@ -1,16 +1,187 @@
-import MapView, { Marker, PROVIDER_GOOGLE, type MapPressEvent, type Region } from "react-native-maps";
-import { StyleSheet, View } from "react-native";
+import MapView, { Marker, UrlTile, type MapPressEvent, type Region } from "react-native-maps";
+import { useState } from "react";
+import { StyleSheet, View, Text, Pressable, Modal } from "react-native";
 
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Text } from "@/components/ui/text";
+import { MAP_TILE_URL, MAP_MAX_TILE_ZOOM, MAP_ATTRIBUTION } from "@/lib/map-config";
+import { useUserLocation } from "@/lib/use-user-location";
+import { AppIcon } from "@/components/ui/AppIcon";
 
-const PHNOM_PENH = { latitude: 11.5564, longitude: 104.9282 };
+const STYLES = {
+  card: {
+    backgroundColor: "#E4F0E7",
+    borderRadius: 16,
+    height: 270,
+    marginTop: 16,
+    overflow: "hidden" as const,
+    position: "relative" as const,
+  },
+  map: {
+    position: "absolute" as const,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  pin: {
+    alignItems: "center" as const,
+    backgroundColor: "#22A447",
+    borderColor: "#FFFFFF",
+    borderRadius: 23,
+    borderWidth: 3,
+    height: 46,
+    justifyContent: "center" as const,
+    width: 46,
+  },
+  mapLabel: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    bottom: 12,
+    left: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    position: "absolute" as const,
+  },
+  mapTitle: {
+    color: "#17201A",
+    fontSize: 12,
+    fontWeight: "800" as const,
+  },
+  mapCaption: {
+    color: "#66736A",
+    fontSize: 10,
+    marginTop: 2,
+  },
+  permissionCard: {
+    flex: 1,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 24,
+    backgroundColor: "#E4F0E7",
+    borderRadius: 16,
+  },
+  permissionTitle: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: "#12271F",
+    textAlign: "center" as const,
+    marginBottom: 12,
+  },
+  permissionBody: {
+    fontSize: 15,
+    color: "#5F7A6E",
+    textAlign: "center" as const,
+    lineHeight: 22,
+  },
+  permissionButton: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: "#0F6E56",
+    borderRadius: 10,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+  },
+  permissionButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600" as const,
+  },
+};
 
 export function OnboardingLocationMap({ location, onSelect }: { location: string; onSelect: (label: string) => void }) {
-  const selectPoint = (_event: MapPressEvent) => onSelect(location.trim() || "Phnom Penh");
-  const selectRegion = (_region: Region) => undefined;
+  const { location: userLocation, permissionStatus, requestPermission } = useUserLocation({ requestOnMount: true });
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
-  return <View style={styles.card}><MapView provider={PROVIDER_GOOGLE} style={styles.map} initialRegion={{ ...PHNOM_PENH, latitudeDelta: 0.12, longitudeDelta: 0.12 }} onPress={selectPoint} onRegionChangeComplete={selectRegion} showsCompass showsScale><Marker coordinate={PHNOM_PENH} title={location || "Phnom Penh"} description="Tap the map to choose this area"><View style={styles.pin}><IconSymbol name="location" size={20} color="#FFFFFF" /></View></Marker></MapView><View pointerEvents="none" style={styles.mapLabel}><Text style={styles.mapTitle}>{location || "Phnom Penh"}</Text><Text style={styles.mapCaption}>Tap the map to select this area</Text></View></View>;
+  const showPermissionScreen = () => {
+    setShowPermissionDialog(true);
+  };
+
+  const handlePermissionGranted = async () => {
+    setShowPermissionDialog(false);
+    await requestPermission();
+  };
+
+  const selectPoint = (_event: MapPressEvent) => {
+    onSelect(location.trim() || "Phnom Penh");
+  };
+
+  const center = userLocation || { latitude: 11.5564, longitude: 104.9282 };
+  const showMap = permissionStatus === "granted" && userLocation !== null;
+
+  if (!showMap && permissionStatus !== "denied") {
+    return (
+      <View style={STYLES.permissionCard}>
+        <Text style={STYLES.permissionTitle}>Allow location access</Text>
+        <Text style={STYLES.permissionBody}>
+          {permissionStatus === "undetermined"
+            ? "To help you find nearby jobs, we need access to your current location."
+            : permissionStatus === "granted" && userLocation === null
+            ? "Unable to determine your location. Please check location services."
+            : "Location permission required to continue."}
+        </Text>
+        <Pressable
+          style={STYLES.permissionButton}
+          onPress={handlePermissionGranted}
+          accessibilityLabel="Allow location access"
+        >
+          <AppIcon name="locate" size={16} color="#FFFFFF" />
+          <Text style={STYLES.permissionButtonText}>Allow location access</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={STYLES.card}>
+      <MapView
+        mapType="none"
+        style={STYLES.map}
+        initialRegion={{ latitude: center.latitude, longitude: center.longitude, latitudeDelta: 0.12, longitudeDelta: 0.12 }}
+        onPress={selectPoint}
+        showsCompass
+        showsScale
+        showsMyLocationButton
+        showsUserLocation
+      >
+        <UrlTile
+          maximumZ={MAP_MAX_TILE_ZOOM}
+          minimumZ={2}
+          shouldReplaceMapContent
+          urlTemplate={MAP_TILE_URL}
+        />
+        {userLocation && (
+          <Marker coordinate={userLocation} title="Your location" description="You are here" pinColor="#007AFF" />
+        )}
+        <Marker coordinate={{ latitude: 11.5564, longitude: 104.9282 }} title={location || "Phnom Penh"} description="Tap the map to choose this area">
+          <View style={STYLES.pin}>
+            <AppIcon name="locate" size={20} color="#FFFFFF" />
+          </View>
+        </Marker>
+      </MapView>
+      <View pointerEvents="none" style={STYLES.mapLabel}>
+        <Text style={STYLES.mapTitle}>{location || "Phnom Penh"}</Text>
+        <Text style={STYLES.mapCaption}>Tap the map to select this area</Text>
+      </View>
+      <Modal transparent visible={showPermissionDialog} animationType="fade">
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 24, alignItems: "center", width: "80%" }}>
+            <AppIcon name="pin" size={48} color="#0F6E56" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 8, textAlign: "center" }}>Location Access Required</Text>
+            <Text style={{ fontSize: 15, color: "#5F7A6E", textAlign: "center", marginBottom: 20 }}>
+              We need your location to provide you with the best job recommendations. This helps us show you jobs near your actual location.
+            </Text>
+            <Pressable
+              style={{ backgroundColor: "#0F6E56", borderRadius: 10, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" }}
+              onPress={handlePermissionGranted}
+              accessibilityLabel="Allow location access"
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}>Allow Location Access</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }
-
-const styles = StyleSheet.create({ card: { backgroundColor: "#E4F0E7", borderRadius: 16, height: 270, marginTop: 16, overflow: "hidden", position: "relative" }, map: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }, pin: { alignItems: "center", backgroundColor: "#22A447", borderColor: "#FFFFFF", borderRadius: 23, borderWidth: 3, height: 46, justifyContent: "center", width: 46 }, mapLabel: { backgroundColor: "#FFFFFF", borderRadius: 10, bottom: 12, left: 12, paddingHorizontal: 12, paddingVertical: 8, position: "absolute" }, mapTitle: { color: "#17201A", fontSize: 12, fontWeight: "800" }, mapCaption: { color: "#66736A", fontSize: 10, marginTop: 2 } });

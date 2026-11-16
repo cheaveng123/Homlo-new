@@ -1,7 +1,10 @@
 import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 
+import { MAP_STYLE_URL } from "@/lib/map-config";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
+import { useUserLocation } from "@/lib/use-user-location";
 
 type Marker = { id: string; coordinate: MapCoordinate; label: string; selected?: boolean };
 
@@ -15,7 +18,7 @@ type SearchResultsMapProps = {
   onMapClick?: (coordinate: MapCoordinate) => void;
 };
 
-const styleUrl = "https://tiles.openfreemap.org/styles/liberty";
+const styleUrl = MAP_STYLE_URL;
 const selectedColor = "#16803C";
 const neutralColor = "#FFFFFF";
 const neutralBorder = "#16803C";
@@ -24,11 +27,13 @@ export function SearchResultsMap({ center, zoom, radiusKm, markers, selectedId, 
   const elementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerElementsRef = useRef<Record<string, maplibregl.Marker>>({});
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const initialCenter = useRef(center);
   const initialZoom = useRef(zoom);
   const initialRadius = useRef(radiusKm);
   const onSelectMarkerRef = useRef(onSelectMarker);
   const onMapClickRef = useRef(onMapClick);
+  const { location: userLocation } = useUserLocation({ requestOnMount: true });
 
   useEffect(() => {
     onSelectMarkerRef.current = onSelectMarker;
@@ -39,6 +44,7 @@ export function SearchResultsMap({ center, zoom, radiusKm, markers, selectedId, 
     if (!elementRef.current || mapRef.current) return;
     const map = new maplibregl.Map({ container: elementRef.current, style: styleUrl, center: [initialCenter.current.longitude, initialCenter.current.latitude], zoom: initialZoom.current, attributionControl: false });
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } }), "top-right");
     map.on("click", (event: maplibregl.MapMouseEvent) => onMapClickRef.current?.({ latitude: event.lngLat.lat, longitude: event.lngLat.lng }));
     map.on("load", () => {
       map.addSource("search-area", { type: "geojson", data: buildAreaGeoJson(initialCenter.current, initialRadius.current) });
@@ -47,8 +53,27 @@ export function SearchResultsMap({ center, zoom, radiusKm, markers, selectedId, 
       map.addLayer({ id: "search-center", type: "circle", source: "search-area", filter: ["==", ["get", "kind"], "center"], paint: { "circle-color": selectedColor, "circle-radius": 5, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } });
     });
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => { map.remove(); mapRef.current = null; userMarkerRef.current = null; };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!userLocation) {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      return;
+    }
+    const lngLat: [number, number] = [userLocation.longitude, userLocation.latitude];
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = new maplibregl.Marker({ color: "#007AFF" })
+        .setLngLat(lngLat)
+        .setPopup(new maplibregl.Popup({ offset: 24 }).setText("Your location"))
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat(lngLat);
+    }
+  }, [userLocation]);
 
   useEffect(() => {
     const map = mapRef.current;

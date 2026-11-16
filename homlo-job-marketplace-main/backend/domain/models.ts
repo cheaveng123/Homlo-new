@@ -1,3 +1,5 @@
+import type { WorkArrangement } from "./work-arrangement";
+
 export type UUID = string;
 
 export type UserStatus = "active" | "suspended" | "banned";
@@ -11,7 +13,7 @@ export type ApplicationStatus = "applied" | "reviewed" | "interview" | "hired" |
  * `monthly/yearly` periods do not exist in the schema.
  */
 export type SalaryPeriod = PayType;
-export type BoostStatus = "active" | "expired" | "cancelled";
+export type BoostStatus = "pending" | "active" | "expired" | "cancelled";
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type ReportStatus = "open" | "reviewed" | "dismissed" | "actioned";
 export type ReportTargetType = "job" | "user" | "review" | "message";
@@ -20,7 +22,7 @@ export type User = { id: UUID; status: UserStatus; createdAt: Date; updatedAt: D
 export type UserIdentity = { id: UUID; userId: UUID; provider: string; providerUserId: string; createdAt: Date; deletedAt: Date | null };
 export type Profile = { userId: UUID; role: ProfileRole; fullName: string; phone: string | null; profilePhotoKey: string | null; bio: string | null; locationText: string | null; latitude: number | null; longitude: number | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null };
 export type Category = { id: UUID; name: string; slug: string };
-export type Job = { id: UUID; employerId: UUID; categoryId: UUID | null; title: string; description: string; requirements: string | null; payAmount: number; payCurrency: string; payType: PayType; locationText: string | null; latitude: number | null; longitude: number | null; startDate: string | null; endDate: string | null; startTime: string | null; endTime: string | null; workersNeeded: number; workersHired: number; status: JobStatus; createdAt: Date; updatedAt: Date; deletedAt: Date | null };
+export type Job = { id: UUID; employerId: UUID; categoryId: UUID | null; title: string; description: string; requirements: string | null; workArrangement: WorkArrangement | null; payAmount: number; payCurrency: string; payType: PayType; locationText: string | null; latitude: number | null; longitude: number | null; startDate: string | null; endDate: string | null; startTime: string | null; endTime: string | null; workersNeeded: number; workersHired: number; status: JobStatus; createdAt: Date; updatedAt: Date; deletedAt: Date | null };
 export type JobMedia = { id: UUID; jobId: UUID; storageKey: string; mediaType: "image" | "video"; position: number; createdAt: Date };
 export type Application = { id: UUID; jobId: UUID; workerId: UUID; status: ApplicationStatus; message: string | null; createdAt: Date; updatedAt: Date };
 export type Conversation = { id: UUID; jobId: UUID | null; lastMessageAt: Date | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null };
@@ -48,6 +50,7 @@ export type EmployerJob = {
   imageUrl: string | null;
   status: JobStatus;
   locationLabel: string | null;
+  workArrangement?: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   payAmount: number;
@@ -57,7 +60,20 @@ export type EmployerJob = {
   rolesFilled: number;
   viewsCount: number;
   createdAt: string;
+  /** Last lifecycle write; used to order closed/filled listings. */
+  updatedAt?: string | null;
   deletedAt: string | null;
+  /** Whether the listing currently has an active boost. */
+  boosted?: boolean;
+  /** Active boost timing for employer-facing cards / management page. */
+  boost?: {
+    status: 'active' | 'scheduled' | 'none';
+    startsAt: string | null;
+    endsAt: string | null;
+    serverNow: string | null;
+    planKey: string | null;
+    queued: number;
+  } | null;
 };
 
 /**
@@ -75,6 +91,7 @@ export type EditableJobFields = {
   category: string | null;
   imageUrl: string | null;
   locationLabel: string;
+  workArrangement?: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   payAmount: number;
@@ -96,6 +113,13 @@ export type JobApplicant = {
   locationLabel: string | null;
   message: string | null;
   appliedAt: string;
+  /**
+   * When the listing employer first opened this application, or null while it
+   * is unread. This is the read receipt added by migration 042; it is
+   * independent of `status`, which tracks the hiring pipeline only.
+   */
+  viewedAt: string | null;
   status: ApplicationStatus;
+  /** Unread: derived from `viewedAt`, not from the pipeline status. */
   isNew: boolean;
 };

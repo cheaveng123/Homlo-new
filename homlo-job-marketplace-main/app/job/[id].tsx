@@ -1,56 +1,158 @@
-import { useEffect, useRef } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Modal, Pressable, StatusBar, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { getJob, useJobStore } from "@/components/job-store";
-import JobDetailsScreen from "@/components/job-details/job-details-screen";
 import { mapJobToDetails } from "@/components/job-details/map-job-to-details";
-import { colors } from "@/components/job-details/colors";
-import { type } from "@/components/job-details/typography";
 import { usePublishedJobs } from "@/hooks/use-published-jobs";
 import { useAuth } from "@/hooks/use-auth";
-import { logJobEvent, isCanonicalJobId } from "@/lib/event-logging";
+import { trpc, trpcDirect } from "@/lib/trpc";
+import { logJobEvent } from "@/lib/event-logging";
+import { isCanonicalJobId, jobDetailDecision } from "@/lib/job-detail-decision";
+import {
+  recordJobView,
+  startJobDwell,
+  recordJobSave,
+  shouldRecordEvents,
+} from "@/lib/event-recorder";
 import { haptic } from "@/lib/haptics";
+import { mockJobFor } from "@/lib/mock-job";
+import { jobCoordinate } from "@/lib/job-geography";
+import { computePositionsLeft } from "@/lib/positions";
+import { JobDetailMap } from "@/src/components/JobDetailMap";
+import { AppIcon } from "@/components/ui/AppIcon";
+import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
+import { JobDetailSkeleton } from "@/src/new/components/NewSkeletons";
+import { EmptyStateNew } from "@/src/new/components/PrimitivesNew";
+import { applyActionState } from "@/lib/application-eligibility";
+import {
+  JobDetailScreenNew,
+  type JobDetailNew,
+} from "@/src/new/screens/JobDetailScreenNew";
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "H";
+  return parts
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 export default function JobDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { jobs: availableJobs, loading: liveJobsLoading } = usePublishedJobs();
-  const job = availableJobs.find((candidate) => candidate.id === id) ?? getJob(id);
+  const {
+    jobs: availableJobs,
+    loading: liveJobsLoading,
+    error: liveJobsError,
+    refetch: jobsRefetch,
+  } = usePublishedJobs();
+  const liveJob =
+    availableJobs.find((candidate) => candidate.id === id) ?? getJob(id);
   const { isSaved, toggleSaved } = useJobStore();
   const { user } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const [mapFullScreen, setMapFullScreen] = useState(false);
 
   const canonical = isCanonicalJobId(id);
-  const viewStartRef = useRef<number | null>(null);
+  const applicationQuery = trpc.homlo.applications.byJob.useQuery(
+    { jobId: id },
+    { enabled: Boolean(user) && canonical },
+  );
+  const dwellStopRef = useRef<(() => void) | null>(null);
+  const [employerAbout, setEmployerAbout] = useState<{
+    name: string;
+    about: string | null;
+  } | null>(null);
+
   useEffect(() => {
     if (!canonical) return;
-    logJobEvent({ jobId: id, eventType: "view" });
-    viewStartRef.current = Date.now();
+    const shouldRecord = shouldRecordEvents(user?.role);
+    if (!shouldRecord) return;
+
+    recordJobView(id);
+    dwellStopRef.current = startJobDwell(id);
+
     return () => {
-      const duration = viewStartRef.current ? Date.now() - viewStartRef.current : 0;
-      if (duration > 0) logJobEvent({ jobId: id, eventType: "view", dwellTimeMs: duration });
+      if (dwellStopRef.current) {
+        dwellStopRef.current();
+        dwellStopRef.current = null;
+      }
     };
-  }, [canonical, id]);
+  }, [canonical, id, user?.role]);
 
-  if (!job && liveJobsLoading) {
+  const employerName = liveJob?.company?.trim() ?? null;
+
+  const employerAboutText =
+    employerAbout && employerAbout.name === employerName
+      ? employerAbout.about
+      : null;
+
+  useEffect(() => {
+    if (!employerName) return;
+    let active = true;
+    (async () => {
+      try {
+        const profile = await trpcDirect.homlo.employerProfile.query({
+          name: employerName,
+        });
+        if (active)
+          setEmployerAbout({
+            name: employerName,
+            about: profile?.about?.trim() || null,
+          });
+      } catch {
+        if (active) setEmployerAbout({ name: employerName, about: null });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [employerName]);
+
+  const showSkeleton = useFirstLoadSkeletonFlag({
+    loading: liveJobsLoading,
+    data: liveJob,
+  });
+
+  if (showSkeleton) {
+    return <JobDetailSkeleton />;
+  }
+
+  const decision = jobDetailDecision(liveJob, id, liveJobsError);
+
+  if (decision === "error") {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.mint} />
-        <Text style={styles.stateText}>Loading this opportunity…</Text>
+      <View style={{ flex: 1 }}>
+        <EmptyStateNew
+          icon="brief"
+          title="Couldn't load this role."
+          actionLabel="Try again"
+          onAction={() => {
+            setRefreshing(true);
+            jobsRefetch().finally(() => setRefreshing(false));
+          }}
+        />
       </View>
     );
   }
-  if (!job) {
+
+  if (decision === "unavailable") {
     return (
-      <View style={styles.center}>
-        <Text style={styles.stateText}>This role is no longer available.</Text>
-        <TouchableOpacity style={styles.backPill} onPress={() => router.back()}>
-          <Text style={styles.backPillText}>Go back</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        <EmptyStateNew
+          icon="brief"
+          title="This role is no longer available."
+          actionLabel="Go back"
+          onAction={() => router.back()}
+        />
       </View>
     );
   }
 
+  const job = liveJob ?? mockJobFor(id);
   const saved = isSaved(job.id);
   const handleToggleSaved = () => {
     haptic.selection();
@@ -59,16 +161,148 @@ export default function JobDetailScreen() {
       return;
     }
     const savedNow = isSaved(job.id);
-    logJobEvent({ jobId: job.id, eventType: savedNow ? "unsave" : "save" });
+    if (!savedNow) {
+      recordJobSave(job.id);
+    } else {
+      logJobEvent({ jobId: job.id, eventType: "unsave" });
+    }
     toggleSaved(job.id);
   };
 
-  return <JobDetailsScreen job={mapJobToDetails(job)} saved={saved} onToggleSaved={handleToggleSaved} />;
-}
+  const d = mapJobToDetails(job);
+  const filled = d.jobStatus === "filled";
+  const apply = applyActionState(
+    applicationQuery.data?.application ?? null,
+    filled,
+  );
+  const isRemote = job.arrangement === "Remote";
+  const coordinate = jobCoordinate(job);
+  const mapJob = coordinate
+    ? {
+        id: job.id,
+        title: job.title,
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude,
+      }
+    : null;
+  const detail: JobDetailNew = {
+    id: d.id,
+    employerId: d.employerId,
+    title: d.title,
+    employerName: d.companyName,
+    employerInitials: initialsOf(d.companyName),
+    imageUri: d.coverImageUrl ?? undefined,
+    locationLabel: d.location,
+    addressNote: d.locationFull,
+    payLabel: `${d.salary}${d.salaryUnit}`,
+    typeLabel: d.employmentType,
+    positionsLeft:
+      d.positionsAvailable ??
+      computePositionsLeft(d.positionsTotal, d.positionsFilled),
+    positionsTotal: d.positionsTotal ?? 0,
+    description: d.description,
+    requirements: d.requirements,
+    liked: saved,
+    employerAbout: employerAboutText,
+  };
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: colors.background },
-  stateText: { ...type.body, color: colors.ink, textAlign: "center", marginTop: 12 },
-  backPill: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, marginTop: 14, paddingHorizontal: 18, paddingVertical: 10 },
-  backPillText: { ...type.button, color: colors.mintDeep },
-});
+  return (
+    <View style={{ flex: 1 }}>
+      <JobDetailScreenNew
+        job={detail}
+        showMap={!isRemote}
+        mapSlot={
+          mapJob ? (
+            <View
+              style={{
+                height: 190,
+                borderRadius: 16,
+                overflow: "hidden",
+                marginHorizontal: 16,
+                position: "relative",
+              }}
+            >
+              <JobDetailMap job={mapJob} height={190} />
+              <Pressable
+                accessibilityLabel="Open full-screen map"
+                onPress={() => setMapFullScreen(true)}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  borderRadius: 20,
+                  padding: 6,
+                }}
+              >
+                <AppIcon name="maximize" size={20} color="#16803C" />
+              </Pressable>
+            </View>
+          ) : undefined
+        }
+        onBack={() => router.back()}
+        onToggleLike={handleToggleSaved}
+        onAboutEmployer={() => {
+          if (d.employerId)
+            void router.push(`/employer/${d.employerId}` as never);
+        }}
+        onApply={() =>
+          router.push({
+            pathname: "/job/[id]/apply",
+            params: { id: job.id, from: "detail" },
+          } as never)
+        }
+        onPressLocation={() =>
+          router.push({
+            pathname: "/job/[id]/location",
+            params: { id: job.id },
+          } as never)
+        }
+        applyDisabled={apply.disabled}
+        applyLabel={apply.label}
+        onRefresh={() => {
+          setRefreshing(true);
+          jobsRefetch().finally(() => setRefreshing(false));
+        }}
+        refreshing={refreshing}
+      />
+      {mapFullScreen && mapJob && (
+        <Modal
+          transparent
+          visible={mapFullScreen}
+          onRequestClose={() => setMapFullScreen(false)}
+          animationType="fade"
+        >
+          <View style={{ flex: 1, backgroundColor: "#000000" }}>
+            <StatusBar barStyle="light-content" />
+            <View
+              style={{
+                position: "absolute",
+                top: 40,
+                left: 12,
+                right: 12,
+                zIndex: 100,
+              }}
+            >
+              <Pressable
+                accessibilityLabel="Close full-screen map"
+                onPress={() => setMapFullScreen(false)}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  borderRadius: 24,
+                  padding: 10,
+                  alignSelf: "flex-start",
+                }}
+              >
+                <AppIcon name="close" size={22} color="#16803C" />
+              </Pressable>
+            </View>
+            <View style={{ flex: 1 }}>
+              <JobDetailMap job={mapJob} />
+            </View>
+          </View>
+        </Modal>
+      )}
+    </View>
+  );
+}

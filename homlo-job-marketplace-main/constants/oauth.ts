@@ -1,6 +1,18 @@
 import * as Linking from "expo-linking";
 import Constants from "expo-constants";
-import * as ReactNative from "react-native";
+// Named import only. A namespace import (`import * as ReactNative`) makes Expo's
+// `metroRequire.importAll` enumerate every lazy getter on react-native's index,
+// including the deprecated `get PushNotificationIOS()`, which does
+// `require(...).default` on a module that no longer resolves, crashing with
+// "Cannot read property 'default' of undefined" before the app mounts.
+import { NativeModules, Platform, TurboModuleRegistry } from "react-native";
+import type { TurboModule } from "react-native";
+import {
+  devServerAuthorityFromBundleUrl,
+  isMetroAuthority,
+  parseDevServerAuthority,
+  toApiAuthority,
+} from "@/lib/api-base-url";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
@@ -25,19 +37,47 @@ export const OWNER_OPEN_ID = env.ownerId;
 export const OWNER_NAME = env.ownerName;
 export const API_BASE_URL = env.apiBaseUrl;
 
+type SourceCodeTurboModule = Omit<TurboModule, "getConstants"> & { getConstants(): { scriptURL: string } };
+
+// RN 0.86's New Architecture (bridgeless) no longer exposes the legacy
+// `NativeModules.SourceCode` (it resolves to null), but the same `SourceCode`
+// TurboModule stays registered and is reachable through the public
+// `TurboModuleRegistry`. `devServerAuthorityFromBundleUrl` ignores non-http(s)
+// bundle URLs, so release builds fall through to the explicit base URL.
+function devServerAuthorityFromSourceCode(): string | null {
+  try {
+    const scriptURL = TurboModuleRegistry.get<SourceCodeTurboModule>("SourceCode")?.getConstants?.().scriptURL;
+    return devServerAuthorityFromBundleUrl(scriptURL ?? null);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Get the API base URL, deriving from current hostname if not set.
  * Metro runs on 8081, API server runs on 3000.
  * URL pattern: https://PORT-sandboxid.region.domain
  */
 export function getApiBaseUrl(): string {
-  // If API_BASE_URL is set, use it
+  const isNative = Platform.OS !== "web";
+
+  // If API_BASE_URL is set, use it. The one exception is a native dev build
+  // configured to point at the Metro bundler (e.g. EXPO_PUBLIC_API_BASE_URL was
+  // exported as :8081): the bundler would answer API calls with HTML, so fall
+  // through and derive the API host instead.
   if (API_BASE_URL) {
-    return API_BASE_URL.replace(/\/$/, "");
+    if (__DEV__ && isNative && isMetroAuthority(parseDevServerAuthority(API_BASE_URL))) {
+      console.warn(
+        `[getApiBaseUrl] EXPO_PUBLIC_API_BASE_URL (${API_BASE_URL}) points at the Metro dev server; ` +
+          "using the API port :3000 instead. Unset it in the Metro shell to silence this warning.",
+      );
+    } else {
+      return API_BASE_URL.replace(/\/$/, "");
+    }
   }
 
   // On web, derive from current hostname by replacing the Metro dev port with the API port
-  if (ReactNative.Platform.OS === "web" && typeof window !== "undefined" && window.location) {
+  if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
     const { protocol, hostname, port } = window.location;
     // Local dev on any Metro port (8081, 8082, …) -> API server on :3000
     if ((hostname === "localhost" || hostname === "127.0.0.1") && port) {
@@ -57,27 +97,27 @@ export function getApiBaseUrl(): string {
     return `${protocol}//${hostname}`;
   }
 
-  // On native (Expo Go / dev client / physical device), Metro exposes the
-  // dev-server host as `Constants.expoConfig?.hostUri` (e.g. "192.168.1.42:8081").
-  // Swap the Metro port for the API port so the app talks to the Express
-  // server running on the same dev machine over the LAN.
-  if (ReactNative.Platform.OS !== "web") {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const cleaned = hostUri.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-      const apiHost = cleaned.replace(/:8081$/, ":3000");
-      if (apiHost !== cleaned) {
-        return `http://${apiHost}`;
-      }
-      const bareHost = cleaned.replace(/:\d+$/, "");
-      if (bareHost) {
-        return `http://${bareHost}:3000`;
-      }
+  // On native, derive the API host from the dev server and swap its port for the
+  // API port. `hostUri` is the Expo runtime host (Expo Go / dev client); the JS
+  // bundle URL (from the `SourceCode` TurboModule, read above) covers plain
+  // `expo run:ios`/`run:android` builds that have no `hostUri` (e.g. without
+  // expo-dev-client).
+  if (isNative) {
+    const devServerAuthority =
+      devServerAuthorityFromSourceCode() ??
+      parseDevServerAuthority(Constants.expoConfig?.hostUri) ??
+      devServerAuthorityFromBundleUrl(NativeModules.SourceCode?.scriptURL);
+    if (devServerAuthority) {
+      return `http://${toApiAuthority(devServerAuthority)}`;
     }
   }
 
   console.warn("[getApiBaseUrl] No API base URL is configured. Set EXPO_PUBLIC_API_BASE_URL for production builds.");
-  // Fallback to empty (will use relative URL)
+  // Fallback to localhost API server for native development so fetch() has an
+  // absolute URL to call (relative URLs do not work on React Native).
+  // On iOS Simulator, "localhost" refers to the host Mac.
+  // On Android Emulator, "10.0.2.2" refers to the host machine.
+  if (isNative) return Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000";
   return "";
 }
 
@@ -101,7 +141,7 @@ const encodeState = (value: string) => {
  * - Native: uses deep link scheme
  */
 export const getRedirectUri = () => {
-  if (ReactNative.Platform.OS === "web") {
+  if (Platform.OS === "web") {
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
     return Linking.createURL("/oauth/callback", {
@@ -136,7 +176,7 @@ export const getLoginUrl = () => {
 export async function startOAuthLogin(): Promise<string | null> {
   const loginUrl = getLoginUrl();
 
-  if (ReactNative.Platform.OS === "web") {
+  if (Platform.OS === "web") {
     // On web, just redirect
     if (typeof window !== "undefined") {
       window.location.href = loginUrl;

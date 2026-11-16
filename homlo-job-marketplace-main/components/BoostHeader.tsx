@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { AppIcon } from "@/components/ui/AppIcon";
 
-import { colors, fonts } from "@/lib/theme";
+import { colors, fonts } from "@/theme";
 
 export function BoostHeader({
   step,
@@ -30,7 +30,7 @@ export function BoostHeader({
             key={value}
             style={[
               styles.bar,
-              value <= step && { backgroundColor: failed && value === step ? colors.red : colors.green },
+              value <= step && { backgroundColor: failed && value === step ? colors.danger : colors.teal },
             ]}
           />
         ))}

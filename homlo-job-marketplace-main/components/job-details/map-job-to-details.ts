@@ -1,5 +1,7 @@
 import type { Job } from "@/components/job-store";
 import { localImageUris } from "@/lib/local-image-uris";
+import { employerIdForCompany } from "@/lib/mock/employerMockData";
+import { computePositionsLeft, formatPositionsLabel } from "@/lib/positions";
 
 import type { JobDetails } from "./types";
 
@@ -38,19 +40,37 @@ function salaryParts(pay: string): { salary: string; salaryPeriod: string; salar
 export function mapJobToDetails(job: Job): JobDetails {
   const locationArea = (job.location.split(",")[0] ?? "").trim();
   const salary = salaryParts(job.pay);
+  const positionsAvailable =
+    typeof job.positionsAvailable === "number"
+      ? job.positionsAvailable
+      : typeof job.positionsTotal === "number"
+        ? computePositionsLeft(job.positionsTotal, job.positionsFilled)
+        : undefined;
+  const positionsFilled =
+    typeof job.positionsFilled === "number"
+      ? job.positionsFilled
+      : typeof job.positionsTotal === "number" && typeof positionsAvailable === "number"
+        ? job.positionsTotal - positionsAvailable
+        : undefined;
+  const spotsLabel =
+    typeof job.positionsTotal === "number" && job.positionsTotal > 0
+      ? formatPositionsLabel(positionsFilled, job.positionsTotal)
+      : "—";
   return {
     id: job.id,
+    employerId: job.employerId ?? employerIdForCompany(job.company),
     title: job.title,
     employmentType: employmentTypeFor(job.tag, job.category),
     scheduleType: scheduleTypeFor(job.tag),
     companyName: job.company,
     location: locationArea,
+    locationFull: job.location,
     salary: salary.salary,
     salaryPeriod: salary.salaryPeriod,
     salaryUnit: salary.salaryUnit,
     schedule: job.schedule || "Flexible",
-    spotsLabel: "2-5",
-    spotsRemaining: undefined,
+    spotsLabel,
+    spotsRemaining: positionsAvailable,
     description: job.description,
     requirements: [
       `Availability for the ${job.schedule.toLowerCase()} schedule.`,
@@ -59,8 +79,13 @@ export function mapJobToDetails(job: Job): JobDetails {
     ],
     employerVerified: true,
     employerSubtitle: `${job.category} · ${locationArea}`,
+    category: job.category,
     coverImageUrl: localImageUris[job.id] || job.image || null,
     companyLogoUrl: null,
     employerAvatarUrl: null,
+    jobStatus: job.jobStatus,
+    positionsAvailable,
+    positionsTotal: job.positionsTotal,
+    positionsFilled,
   };
 }

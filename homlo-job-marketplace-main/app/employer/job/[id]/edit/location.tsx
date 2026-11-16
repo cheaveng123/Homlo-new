@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { View, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { Region } from "react-native-maps";
-import { ArrowLeft, Check } from "lucide-react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { Text } from "@/components/ui/text";
@@ -40,7 +40,7 @@ export default function LocationPickerScreen() {
     <ScreenContainer className="flex-1" containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}>
       <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
         <TouchableOpacity onPress={() => goBack(router)} hitSlop={10}>
-          <ArrowLeft size={20} color="#17201A" />
+          <AppIcon name="back" size={20} color="#17201A" />
         </TouchableOpacity>
         <Text className="text-[15px] font-semibold text-foreground">Job location</Text>
         <View style={{ width: 20 }} />
@@ -56,7 +56,7 @@ export default function LocationPickerScreen() {
             picked ? "bg-primary" : "bg-border"
           }`}
         >
-          <Check size={16} color={picked ? "#FFFFFF" : "#66736A"} />
+          <AppIcon name="check" size={16} color={picked ? "#FFFFFF" : "#66736A"} />
           <Text className={`text-[14px] font-semibold ${picked ? "text-white" : "text-muted"}`}>
             Use this location
           </Text>

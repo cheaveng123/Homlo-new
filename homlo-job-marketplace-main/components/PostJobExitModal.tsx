@@ -6,27 +6,72 @@ type Props = {
   onSaveDraft: () => void;
   onDiscard: () => void;
   onCancel: () => void;
+  /**
+   * Mirrors the caller's in-flight state so the two actions cannot be
+   * double-fired: "Save as draft" and "Discard" both navigate away, and a
+   * second tap while the first is still saving would fire a competing request.
+   */
+  saving?: boolean;
+  discarding?: boolean;
+  /** True when this session already persisted a draft that Discard must delete. */
+  hasSavedDraft?: boolean;
 };
 
-export function PostJobExitModal({ visible, onSaveDraft, onDiscard, onCancel }: Props) {
+export function PostJobExitModal({
+  visible,
+  onSaveDraft,
+  onDiscard,
+  onCancel,
+  saving = false,
+  discarding = false,
+  hasSavedDraft = false,
+}: Props) {
+  const busy = saving || discarding;
+  const discardLabel = discarding
+    ? 'Discarding…'
+    : hasSavedDraft
+      ? 'Discard and delete draft'
+      : 'Discard';
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={busy ? () => {} : onCancel}
+    >
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <Text style={styles.title}>Leave this listing?</Text>
           <Text style={styles.subtitle}>
-            You can save your progress as a draft, or discard it.
+            {hasSavedDraft
+              ? 'You already saved a draft of this listing. Saving keeps your progress, discarding deletes it for good.'
+              : 'You can save your progress as a draft, or discard it.'}
           </Text>
 
-          <Pressable style={styles.primaryBtn} onPress={onSaveDraft}>
-            <Text style={styles.primaryBtnText}>Save as draft</Text>
+          <Pressable
+            style={[styles.primaryBtn, busy && styles.btnBusy]}
+            onPress={onSaveDraft}
+            disabled={busy}
+          >
+            <Text style={styles.primaryBtnText}>
+              {saving ? 'Saving…' : 'Save as draft'}
+            </Text>
           </Pressable>
 
-          <Pressable style={styles.dangerBtn} onPress={onDiscard}>
-            <Text style={styles.dangerBtnText}>Discard</Text>
+          <Pressable
+            style={[styles.dangerBtn, busy && styles.btnBusy]}
+            onPress={onDiscard}
+            disabled={busy}
+          >
+            <Text style={styles.dangerBtnText}>{discardLabel}</Text>
           </Pressable>
 
-          <Pressable style={styles.cancelBtn} onPress={onCancel}>
+          <Pressable
+            style={styles.cancelBtn}
+            onPress={onCancel}
+            disabled={busy}
+          >
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </Pressable>
         </View>
@@ -68,5 +113,6 @@ const styles = StyleSheet.create({
   },
   dangerBtnText: { fontSize: 14, fontWeight: '500', color: '#B3423B' },
   cancelBtn: { paddingVertical: 10, alignItems: 'center' },
+  btnBusy: { opacity: 0.5 },
   cancelBtnText: { fontSize: 13, color: '#5F7A6E' },
 });

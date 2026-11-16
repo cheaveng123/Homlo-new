@@ -17,7 +17,7 @@ import { AppIcon } from '@/components/ui/AppIcon';
 
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { JobListingSkeleton } from '@/components/job-listing-skeleton';
-import { colors, fontFamily } from '@/components/home/theme';
+import { colors, fontFamily } from '@/theme';
 import { EmployerJobCard } from '@/components/employer-job/EmployerJobCard';
 import type { EmployerApplication } from '@/hooks/use-employer-applications';
 import type { EmployerJob } from '@/backend/domain/models';
@@ -35,6 +35,8 @@ export type EmployerJobsListScreenProps = {
   onRetry: () => void;
   emptyTitle: string;
   emptyBody: string;
+  /** Called when a job's boost expires so the list refetches. */
+  onExpire?: () => void;
 };
 
 export function EmployerJobsListScreen({
@@ -49,15 +51,16 @@ export function EmployerJobsListScreen({
   onRetry,
   emptyTitle,
   emptyBody,
+  onExpire,
 }: EmployerJobsListScreenProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const renderItem = useCallback(
     ({ item }: { item: EmployerJob }) => (
-      <EmployerJobCard job={item} applications={applicationsByJob.get(item.id) ?? []} />
+      <EmployerJobCard job={item} applications={applicationsByJob.get(item.id) ?? []} boost={item.boost} onExpire={onExpire} />
     ),
-    [applicationsByJob],
+    [applicationsByJob, onExpire],
   );
 
   // Rows are not a fixed height: the title wraps to one or two lines and the

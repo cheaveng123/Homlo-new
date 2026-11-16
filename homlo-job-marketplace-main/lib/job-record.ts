@@ -1,5 +1,6 @@
 import type { Job } from "@/components/job-store";
 import { resolveJobImage } from "@/lib/job-banner";
+import { computePositionsLeft } from "@/lib/positions";
 
 /**
  * Canonical display record for a live published job. Covers the homlo public
@@ -19,6 +20,17 @@ export type JobRecord = {
   category: string;
   employer_name: string | null;
   banner_image?: string | null;
+  status?: string | null;
+  workers_hired?: number | null;
+  work_arrangement?: "On-site" | "Hybrid" | "Remote" | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** Whether the listing currently has an active boost. */
+  boosted?: boolean;
+  /** Job-seeker safe ad flag; never carries price, plan, or end time. */
+  boost?: { isSponsored: true } | null;
+  /** When the active boost expires, if any. */
+  boost_expires_at?: string | null;
 };
 
 export function formatMoney(amount: number | string, currency: string, type: JobRecord["pay_type"]) {
@@ -57,7 +69,12 @@ function employmentTypeForPayType(payType: JobRecord["pay_type"]): string {
  */
 export function normalizePublishedJob(record: JobRecord): Job {
   const location = record.location_text?.trim() || "Location to be confirmed";
-  const remote = location.toLowerCase().includes("remote");
+  const remote = record.work_arrangement
+    ? record.work_arrangement.toLowerCase() === "remote"
+    : location.toLowerCase().includes("remote");
+  const needed = Number(record.workers_needed) || 0;
+  const hired = Number(record.workers_hired ?? 0);
+  const positionsAvailable = computePositionsLeft(needed, hired);
   return {
     id: record.id,
     title: record.title,
@@ -69,9 +86,17 @@ export function normalizePublishedJob(record: JobRecord): Job {
     category: record.category || "Other",
     image: resolveJobImage(record.banner_image),
     description: record.description,
-    arrangement: remote ? "Remote" : "On-site",
+    arrangement: record.work_arrangement === "Hybrid" ? "Hybrid" : remote ? "Remote" : "On-site",
     experience: "Experience not specified",
     posted: formatPostedAt(record.created_at),
     status: "New",
-  };
+    jobStatus: record.status === "filled" ? "filled" : "open",
+    positionsAvailable,
+    positionsTotal: needed,
+    positionsFilled: hired,
+    latitude: record.latitude ?? undefined,
+    longitude: record.longitude ?? undefined,
+    boosted: record.boosted === true,
+    boost: record.boosted === true ? { isSponsored: true } : null,
+  } as Job;
 }

@@ -197,7 +197,6 @@ export default function RootLayout() {
           <Stack screenOptions={{ animation: "slide_from_right", animationDuration: 220, fullScreenGestureEnabled: false, gestureEnabled: true, gestureDirection: "horizontal", headerShown: false }}>
             <Stack.Screen name="(tabs)" options={{ animation: "fade", animationDuration: 160 }} />
             <Stack.Screen name="onboarding/index" options={{ animation: "fade", animationDuration: 220, gestureEnabled: false }} />
-            <Stack.Screen name="explore" options={{ animation: "slide_from_right", animationDuration: 240 }} />
             <Stack.Screen name="search-results" options={{ animation: "slide_from_right", animationDuration: 220 }} />
             <Stack.Screen name="detailed-search" options={{ animation: "slide_from_right", animationDuration: 240 }} />
             <Stack.Screen name="discover/[kind]" options={{ animation: "slide_from_right", animationDuration: 240 }} />

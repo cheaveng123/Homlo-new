@@ -51,13 +51,30 @@ function hashString(value: string) {
   return Math.abs(hash);
 }
 
-export function jobCoordinate(job: Pick<Job, "id" | "location">): MapCoordinate {
-  const seed = seeds[job.id];
-  if (seed) return { latitude: seed.lat, longitude: seed.lng };
-  const hash = hashString(job.id || job.location || "homlo");
-  const offsetLat = (((hash % 1000) / 1000) - 0.5) * 0.12;
-  const offsetLng = (((hash / 1000 % 1000) / 1000) - 0.5) * 0.14;
-  return { latitude: defaultSearchCenter.latitude + offsetLat, longitude: defaultSearchCenter.longitude + offsetLng };
+type JobCoordinateSource = {
+  id: string;
+  location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  isCurated?: boolean;
+};
+
+export function validCoordinatePair(latitude: unknown, longitude: unknown): MapCoordinate | null {
+  if (typeof latitude !== "number" || typeof longitude !== "number") return null;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  return { latitude, longitude };
+}
+
+export function jobCoordinate(job: JobCoordinateSource): MapCoordinate | null {
+  const realCoordinate = validCoordinatePair(job.latitude, job.longitude);
+  if (realCoordinate) return realCoordinate;
+  // Only curated demo jobs get fallback coordinates - never invent for real employer-created jobs
+  if (job.isCurated === true && job.id && seeds[job.id]) {
+    const seed = seeds[job.id];
+    if (seed) return { latitude: seed.lat, longitude: seed.lng };
+  }
+  return null;
 }
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
@@ -76,5 +93,7 @@ export function haversineDistance(a: MapCoordinate, b: MapCoordinate) {
 
 export function distanceFromCenter(job: Job, center: MapCoordinate) {
   const coord = jobCoordinate(job);
-  return { coordinate: coord, distanceKm: haversineDistance(coord, center) };
+  // Unknown location: distance is Infinity so radius filters exclude it
+  // and "Closest" sorting ranks it last.
+  return { coordinate: coord, distanceKm: coord ? haversineDistance(coord, center) : Number.POSITIVE_INFINITY };
 }

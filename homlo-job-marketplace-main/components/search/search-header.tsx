@@ -2,10 +2,18 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Text } from "@/components/ui/text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon, type IconName } from "@/components/ui/AppIcon";
 import { ScalePressable } from "@/components/ui/scale-pressable";
 import { haptic } from "@/lib/haptics";
 import { defaultQuickChips, type QuickChip } from "@/components/search/quick-chips";
+
+const CHIP_ICON: Record<QuickChip["icon"], IconName> = {
+  "square.grid.2x2": "grid",
+  clock: "clock",
+  "graduationcap.fill": "grad",
+  calendar: "calendar",
+  mappin: "pin",
+};
 
 type SearchHeaderProps = {
   keyword: string;
@@ -33,7 +41,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
       <Text style={styles.title}>Search jobs near you</Text>
       <View style={styles.searchCard}>
         <View style={styles.searchRow}>
-          <IconSymbol name="magnifyingglass" size={18} color="#16803C" />
+          <AppIcon name="search" size={18} color="#16803C" />
           <TextInput
             accessibilityLabel="Search jobs, skills, or companies"
             autoFocus={autoFocus}
@@ -48,7 +56,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
         </View>
         <View style={styles.divider} />
         <View style={styles.searchRow}>
-          <IconSymbol name="mappin" size={18} color="#16803C" />
+          <AppIcon name="pin" size={18} color="#16803C" />
           <TextInput
             accessibilityLabel="Location"
             onChangeText={onChangeLocation}
@@ -60,7 +68,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
             value={location}
           />
           <ScalePressable accessibilityLabel="Run search" hapticFeedback onPress={onSearch} style={styles.searchButton}>
-            <IconSymbol name="magnifyingglass" size={17} color="#FFFFFF" />
+            <AppIcon name="search" size={17} color="#FFFFFF" />
           </ScalePressable>
         </View>
       </View>
@@ -79,7 +87,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
               }}
               style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
             >
-              <IconSymbol name={chip.icon} size={13} color={active ? "#16803C" : "#17201A"} />
+              <AppIcon name={CHIP_ICON[chip.icon]} size={13} color={active ? "#16803C" : "#17201A"} />
               <Text style={active ? styles.chipTextActive : styles.chipText}>{chip.label}</Text>
             </Pressable>
           );
@@ -90,7 +98,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
           onPress={onOpenFilters}
           style={({ pressed }) => [styles.chip, filterCount > 0 && styles.chipActive, pressed && styles.pressed]}
         >
-          <IconSymbol name="slider.horizontal.3" size={13} color={filterCount > 0 ? "#16803C" : "#17201A"} />
+          <AppIcon name="sliders" size={13} color={filterCount > 0 ? "#16803C" : "#17201A"} />
           <Text style={filterCount > 0 ? styles.chipTextActive : styles.chipText}>Filters{filterCount > 0 ? ` · ${filterCount}` : ""}</Text>
         </Pressable>
       </ScrollView>

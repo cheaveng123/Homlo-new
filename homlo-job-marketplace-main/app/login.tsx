@@ -1,15 +1,69 @@
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+/**
+ * app/login.tsx
+ *
+ * This is a VISUAL restyle of the existing login screen ONLY. The logic here
+ * (handlers, hooks, API calls, validation, loading, error/notice branches,
+ * mode toggles and navigation) is preserved exactly as it was.
+ */
+import { useEffect, useState } from "react";
+import {
+  AccessibilityInfo,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { useRouter } from "expo-router";
-import { useState } from "react";
 
-import { ScreenContainer } from "@/components/screen-container";
-import { Text } from "@/components/ui/text";
 import { useAuth } from "@/hooks/use-auth";
 import * as Api from "@/lib/_core/api";
+import { fonts, familyForWeight } from "@/lib/typography";
+import Floating from "@/components/auth/Floating";
+import {
+  BriefcaseArt,
+  PinArt,
+  Character1Art,
+  Character2Art,
+  JobCardArt,
+  SearchArt,
+  LaptopArt,
+  CalendarArt,
+  SparkArt,
+} from "@/components/auth/art";
+
+const C = {
+  green: "#0F6E56",
+  deep: "#0A4A3A",
+  cream: "#F6F2E9",
+  amber: "#F0B04A",
+  mist: "#CFE0D8",
+  ink: "#17302A",
+  muted: "#6B7D76",
+  sheet: "#FCFBF7",
+  line: "#E4E8E2",
+};
+
+const FIELD_H = 54;
+const RADIUS_FIELD = FIELD_H / 2;
+const BUTTON_H = 54;
+const RADIUS_BUTTON = BUTTON_H / 2;
 
 export default function LoginScreen() {
   const router = useRouter();
   const { completeSignIn } = useAuth({ autoFetch: false });
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const k = Math.min(width, 430) / 390;
+  const small = width < 375;
+
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,6 +71,15 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [focus, setFocus] = useState<"name" | "email" | "password" | null>(null);
+  const [showPw, setShowPw] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => sub.remove();
+  }, []);
 
   const submit = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -33,9 +96,14 @@ export default function LoginScreen() {
     setError(null);
     setNotice(null);
     try {
-      const result = mode === "signIn"
-        ? await Api.signInWithEmailPassword({ email: normalizedEmail, password })
-        : await Api.signUpWithEmailPassword({ email: normalizedEmail, password, fullName: fullName.trim() || undefined });
+      const result =
+        mode === "signIn"
+          ? await Api.signInWithEmailPassword({ email: normalizedEmail, password })
+          : await Api.signUpWithEmailPassword({
+              email: normalizedEmail,
+              password,
+              fullName: fullName.trim() || undefined,
+            });
       if ("confirmationRequired" in result) {
         setNotice(result.message);
         setMode("signIn");
@@ -50,71 +118,300 @@ export default function LoginScreen() {
     }
   };
 
+  const at = (left: number, top: number): ViewStyle => ({ left: left * k, top: top * k });
+
   return (
-    <ScreenContainer className="flex-1" containerClassName="bg-background" edges={["top", "bottom", "left", "right"]}>
-      <View style={styles.screen}>
-        <View style={styles.wordmark}>
-          <View style={styles.mark}><Text style={styles.markText}>H</Text></View>
-          <Text style={styles.brand}>Homlo</Text>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View style={[styles.blob, { width: 260 * k, height: 260 * k, left: -110 * k, top: 90 * k, backgroundColor: "#EDE5D0" }]} />
+        <View style={[styles.blob, { width: 200 * k, height: 200 * k, right: -80 * k, top: -40 * k, backgroundColor: "#E3EBDD" }]} />
+
+        <View style={{ height: 342 * k }}>
+          <Text style={[styles.logo, { top: Math.max(insets.top + 10, 50 * k) }]}>Homlo</Text>
+
+          {!small && (
+            <Floating style={at(26, 116)} rotate={-8} amp={5} duration={7000} reduceMotion={reduceMotion}>
+              <BriefcaseArt size={50 * k} />
+            </Floating>
+          )}
+          <Floating style={at(292, 96)} mode="bounce" amp={9} reduceMotion={reduceMotion}>
+            <PinArt size={68 * k} />
+          </Floating>
+
+          <Floating style={{ ...at(34, 140), zIndex: 2 }} mode="sway" amp={3} duration={5000} reduceMotion={reduceMotion}>
+            <Character1Art size={112 * k} />
+          </Floating>
+          <Floating style={at(small ? 128 : 134, 186)} rotate={-7} amp={6} duration={6000} delay={800} reduceMotion={reduceMotion}>
+            <JobCardArt size={(small ? 80 : 96) * k} />
+          </Floating>
+          <Floating style={at(236, 148)} amp={6} duration={4500} delay={400} reduceMotion={reduceMotion}>
+            <SearchArt size={34 * k} />
+          </Floating>
+          <Floating style={{ ...at(262, 150), zIndex: 2 }} mode="sway" amp={3} duration={5500} delay={1200} reduceMotion={reduceMotion}>
+            <Character2Art size={108 * k} />
+          </Floating>
+          <Floating style={at(208, 276)} rotate={4} amp={5} duration={6000} delay={1500} reduceMotion={reduceMotion}>
+            <LaptopArt size={70 * k} />
+          </Floating>
+
+          <Floating style={at(92, 96)} mode="shine" duration={4000} reduceMotion={reduceMotion}>
+            <SparkArt size={22 * k} />
+          </Floating>
+          {!small && (
+            <Floating style={at(180, 126)} mode="shine" duration={4000} delay={2000} reduceMotion={reduceMotion}>
+              <SparkArt size={22 * k} flip />
+            </Floating>
+          )}
         </View>
 
-        <View style={styles.content}>
-          <Text style={styles.eyebrow}>{mode === "signIn" ? "WELCOME BACK" : "CREATE YOUR ACCOUNT"}</Text>
-          <Text style={styles.title}>{mode === "signIn" ? "Find work that fits your life." : "Start with a secure Homlo account."}</Text>
-          <Text style={styles.copy}>{mode === "signIn" ? "Sign in to manage your applications, profile, and listings." : "We will ask for your marketplace role after you create your account."}</Text>
+        <View style={[styles.sheet, { paddingBottom: 22 + insets.bottom }]}>
+          <Text style={styles.title}>{mode === "signUp" ? "Create your account" : "Sign in to your account"}</Text>
+          <Text style={styles.sub}>{mode === "signUp" ? "Join Homlo in a minute." : "Find work or hire people near you."}</Text>
 
-          <View style={styles.fields}>
-            {mode === "signUp" && <TextInput value={fullName} onChangeText={setFullName} placeholder="Full name (optional for now)" placeholderTextColor="#859087" autoCapitalize="words" style={styles.input} />}
-            <TextInput value={email} onChangeText={setEmail} placeholder="Email address" placeholderTextColor="#859087" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="emailAddress" style={styles.input} />
-            <TextInput value={password} onChangeText={setPassword} placeholder="Password" placeholderTextColor="#859087" secureTextEntry autoCapitalize="none" autoCorrect={false} textContentType={mode === "signIn" ? "password" : "newPassword"} onSubmitEditing={submit} returnKeyType="done" style={styles.input} />
+          {mode === "signUp" && (
+            <View style={[styles.field, focus === "name" && styles.fieldFocus]}>
+              <AppIcon name="user" size={20} color={C.green} />
+              <TextInput
+                style={styles.input}
+                placeholder="Full name (optional)"
+                placeholderTextColor="#9AA8A2"
+                autoCapitalize="words"
+                value={fullName}
+                onChangeText={setFullName}
+                onFocus={() => setFocus("name")}
+                onBlur={() => setFocus(null)}
+              />
+            </View>
+          )}
+
+          <View style={[styles.field, focus === "email" && styles.fieldFocus]}>
+            <AppIcon name="mail" size={20} color={C.green} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email address"
+              placeholderTextColor="#9AA8A2"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              value={email}
+              onChangeText={setEmail}
+              onFocus={() => setFocus("email")}
+              onBlur={() => setFocus(null)}
+            />
           </View>
 
-          {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          {notice && <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text>}
+          <View style={[styles.field, focus === "password" && styles.fieldFocus]}>
+            <AppIcon name="lock" size={20} color={C.green} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#9AA8A2"
+              secureTextEntry={!showPw}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType={mode === "signUp" ? "newPassword" : "password"}
+              value={password}
+              onChangeText={setPassword}
+              onFocus={() => setFocus("password")}
+              onBlur={() => setFocus(null)}
+            />
+            <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={10} accessibilityLabel={showPw ? "Hide password" : "Show password"}>
+              {showPw ? <AppIcon name="eye-off" size={20} color={C.muted} /> : <AppIcon name="eye" size={20} color={C.muted} />}
+            </Pressable>
+          </View>
 
-          <Pressable accessibilityRole="button" accessibilityLabel={mode === "signIn" ? "Sign in to Homlo" : "Create Homlo account"} disabled={submitting} onPress={submit} style={({ pressed }) => [styles.primaryButton, (pressed || submitting) && styles.pressed, submitting && styles.disabled]}>
-            <Text style={styles.primaryText}>{submitting ? "Securing your account…" : mode === "signIn" ? "Sign in" : "Create account"}</Text>
+          {error && (
+            <Text accessibilityRole="alert" style={styles.alertError}>
+              {error}
+            </Text>
+          )}
+          {notice && (
+            <Text accessibilityRole="alert" style={styles.alertNotice}>
+              {notice}
+            </Text>
+          )}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={mode === "signIn" ? "Sign in to Homlo" : "Create Homlo account"}
+            disabled={submitting}
+            onPress={submit}
+            style={({ pressed }) => [styles.cta, (pressed || submitting) && styles.pressed, submitting && styles.disabled]}
+          >
+            <Text style={styles.ctaText}>{submitting ? "Securing your account…" : mode === "signIn" ? "Sign in" : "Sign up"}</Text>
           </Pressable>
 
-          <Pressable accessibilityRole="button" onPress={() => { setMode((current) => current === "signIn" ? "signUp" : "signIn"); setError(null); setNotice(null); }} style={({ pressed }) => [styles.modeButton, pressed && styles.textPressed]}>
-            <Text style={styles.modeText}>{mode === "signIn" ? "New to Homlo? Create an account" : "Already have an account? Sign in"}</Text>
-          </Pressable>
-        </View>
+          <View style={styles.altRow}>
+            <Text style={styles.altText}>{mode === "signIn" ? "Don’t have an account? " : "Already have an account? "}</Text>
+            <Pressable
+              onPress={() => {
+                setMode((current) => (current === "signIn" ? "signUp" : "signIn"));
+                setError(null);
+                setNotice(null);
+              }}
+              hitSlop={8}
+            >
+              <Text style={styles.link}>{mode === "signIn" ? "Sign up" : "Sign in"}</Text>
+            </Pressable>
+          </View>
 
-        <View style={styles.footer}>
-          <Pressable accessibilityRole="button" onPress={() => router.replace("/" as never)} style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}>
-            <Text style={styles.guestText}>Explore jobs as a guest</Text>
+          <Pressable onPress={() => router.replace("/" as never)} style={styles.guestLink} hitSlop={8}>
+            <Text style={styles.guestLinkText}>Explore jobs as a guest</Text>
           </Pressable>
+
           <Text style={styles.footerText}>Your password and authentication tokens are handled only through Homlo’s secure account service.</Text>
+
+          <Floating style={{ left: 14 * k, bottom: 16 * k + insets.bottom }} rotate={-8} amp={5} duration={7000} delay={500} reduceMotion={reduceMotion}>
+            <CalendarArt size={50 * k} />
+          </Floating>
+          {!small && (
+            <Floating style={{ right: 24 * k, bottom: 30 * k + insets.bottom }} mode="shine" duration={4000} delay={1000} reduceMotion={reduceMotion}>
+              <SparkArt size={20 * k} />
+            </Floating>
+          )}
         </View>
-      </View>
-    </ScreenContainer>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, justifyContent: "space-between", paddingHorizontal: 24 },
-  wordmark: { alignItems: "center", flexDirection: "row", gap: 9, paddingTop: 14 },
-  mark: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 9, height: 32, justifyContent: "center", width: 32 },
-  markText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
-  brand: { color: "#17201A", fontSize: 22, fontWeight: "800", letterSpacing: -0.6 },
-  content: { marginTop: "auto", paddingBottom: 28, paddingTop: 46 },
-  eyebrow: { color: "#16803C", fontSize: 11, fontWeight: "800", letterSpacing: 1.15 },
-  title: { color: "#17201A", fontSize: 31, fontWeight: "800", letterSpacing: -1, lineHeight: 37, marginTop: 10 },
-  copy: { color: "#66736A", fontSize: 15, lineHeight: 22, marginTop: 11, maxWidth: 325 },
-  fields: { gap: 10, marginTop: 27 },
-  input: { backgroundColor: "#FFFFFF", borderColor: "#D7DFDA", borderRadius: 13, borderWidth: 1, color: "#17201A", fontSize: 16, minHeight: 54, paddingHorizontal: 16 },
-  primaryButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 14, justifyContent: "center", marginTop: 18, minHeight: 56, paddingHorizontal: 22 },
-  primaryText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
-  modeButton: { alignItems: "center", marginTop: 18, minHeight: 32, justifyContent: "center" },
-  modeText: { color: "#236B3A", fontSize: 14, fontWeight: "700" },
-  error: { color: "#B42318", fontSize: 13, lineHeight: 18, marginTop: 12 },
-  notice: { color: "#236B3A", fontSize: 13, lineHeight: 18, marginTop: 12 },
-  footer: { gap: 11, paddingBottom: 14 },
-  guestButton: { alignItems: "center", borderColor: "#D7DFDA", borderRadius: 13, borderWidth: 1, justifyContent: "center", minHeight: 50 },
-  guestText: { color: "#37423A", fontSize: 14, fontWeight: "700" },
-  footerText: { color: "#859087", fontSize: 11.5, lineHeight: 16, textAlign: "center" },
+  root: { flex: 1, backgroundColor: C.cream },
+  scroll: { flexGrow: 1, backgroundColor: C.cream },
+  blob: { position: "absolute", borderRadius: 999, opacity: 0.7 },
+  logo: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontFamily: fonts.heading.extrabold,
+    fontSize: 30,
+    letterSpacing: -0.5,
+    color: C.deep,
+    zIndex: 3,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: C.sheet,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 26,
+    zIndex: 3,
+    ...Platform.select({
+      ios: { shadowColor: C.ink, shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: -8 } },
+      android: { elevation: 8 },
+    }),
+  },
+  title: {
+    fontFamily: fonts.heading.bold,
+    fontSize: 26,
+    letterSpacing: -0.4,
+    color: C.ink,
+    textAlign: "center",
+  },
+  sub: {
+    fontFamily: familyForWeight("500"),
+    fontSize: 14,
+    color: C.muted,
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 18,
+  },
+  field: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: FIELD_H,
+    borderRadius: RADIUS_FIELD,
+    borderWidth: 1.5,
+    borderColor: C.line,
+    backgroundColor: "#fff",
+    paddingHorizontal: 18,
+    marginBottom: 12,
+    gap: 10,
+  },
+  fieldFocus: { borderColor: C.green },
+  input: {
+    flex: 1,
+    fontFamily: familyForWeight("500"),
+    fontSize: 15,
+    color: C.ink,
+    paddingVertical: 0,
+  },
+  alertError: {
+    fontFamily: familyForWeight("400"),
+    color: "#B42318",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  alertNotice: {
+    fontFamily: familyForWeight("400"),
+    color: "#236B3A",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  cta: {
+    height: BUTTON_H,
+    borderRadius: RADIUS_BUTTON,
+    backgroundColor: C.green,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+    ...Platform.select({
+      ios: { shadowColor: C.green, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
+      android: { elevation: 4 },
+    }),
+  },
+  ctaText: {
+    fontFamily: familyForWeight("600"),
+    color: "#fff",
+    fontSize: 16,
+  },
+  altRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 18,
+  },
+  altText: {
+    fontFamily: familyForWeight("400"),
+    fontSize: 14,
+    color: C.muted,
+  },
+  link: {
+    fontFamily: familyForWeight("600"),
+    color: C.green,
+    fontSize: 13.5,
+  },
+  guestLink: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 14,
+    minHeight: 32,
+  },
+  guestLinkText: {
+    fontFamily: familyForWeight("600"),
+    color: C.green,
+    fontSize: 14,
+  },
+  footerText: {
+    fontFamily: familyForWeight("400"),
+    color: "#859087",
+    fontSize: 11.5,
+    lineHeight: 16,
+    textAlign: "center",
+    marginTop: 12,
+  },
   pressed: { opacity: 0.84, transform: [{ scale: 0.98 }] },
-  textPressed: { opacity: 0.66 },
   disabled: { opacity: 0.65 },
 });

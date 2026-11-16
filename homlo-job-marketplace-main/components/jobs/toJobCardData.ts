@@ -1,6 +1,7 @@
 import type { Job } from '@/components/job-store';
 import type { JobCardData, WorkArrangement } from './jobCardTypes';
 import { brand } from '@/components/design-tokens';
+import { employerIdForCompany } from '@/lib/mock/employerMockData';
 
 /**
  * Monogram tile colours, matching the hash the rest of the app already uses for
@@ -59,6 +60,7 @@ function locationLabelOf(job: Job): string | null {
 export function toJobCardData(job: Job): JobCardData {
   return {
     id: job.id,
+    employerId: job.employerId ?? employerIdForCompany(job.company),
     title: job.title,
     employerName: job.company,
     employerInitials: undefined,
@@ -70,6 +72,8 @@ export function toJobCardData(job: Job): JobCardData {
     locationLabel: locationLabelOf(job),
     positionsLeft: job.positionsAvailable,
     positionsTotal: job.positionsTotal,
+    boosted: job.boosted === true || job.boost?.isSponsored === true,
+    boost: job.boost ?? (job.boosted === true ? { isSponsored: true } : null),
   };
 }
 

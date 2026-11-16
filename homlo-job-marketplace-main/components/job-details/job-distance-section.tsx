@@ -1,7 +1,6 @@
 import * as Linking from "expo-linking";
-import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -12,8 +11,10 @@ import {
 } from "react-native";
 
 import { haversineDistance } from "@/lib/job-geography";
-import { AppIcon, type IconName } from "@/components/ui/AppIcon";
+import { locationService } from "@/lib/location-service";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
+import { formatRouteDuration, roadRoutingService, type RoadRoute } from "@/lib/routing-service";
+import { AppIcon, type IconName } from "@/components/ui/AppIcon";
 import { colors } from "./colors";
 import { JobDistanceMap } from "./job-distance-map";
 import { fonts, type } from "./typography";
@@ -34,25 +35,25 @@ export async function resolveForegroundLocation(
   requestDeniedPermission = false,
 ): Promise<LocationState> {
   try {
-    let permission = requestDeniedPermission
-      ? await Location.requestForegroundPermissionsAsync()
-      : await Location.getForegroundPermissionsAsync();
+    let permission = await locationService.getPermissionDetails();
 
-    if (!requestDeniedPermission && permission.status === "undetermined") {
-      permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status === "undetermined" || requestDeniedPermission) {
+      permission = await locationService.requestPermissionDetails();
     }
 
     if (permission.status !== "granted") {
       return { status: "denied", canAskAgain: permission.canAskAgain };
     }
 
-    const position = await getSingleLocation();
-    const { latitude, longitude } = position.coords;
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    const position = await locationService.getBestAvailablePosition(LAST_KNOWN_MAX_AGE);
+    if (!position) {
+      return { status: "error" };
+    }
+    if (!Number.isFinite(position.latitude) || !Number.isFinite(position.longitude)) {
       return { status: "error" };
     }
 
-    return { status: "ready", coordinate: { latitude, longitude } };
+    return { status: "ready", coordinate: { latitude: position.latitude, longitude: position.longitude } };
   } catch {
     return { status: "error" };
   }
@@ -65,6 +66,7 @@ export function formatDistance(distanceKm: number) {
 }
 
 export function JobDistanceSection({ jobCoordinate }: JobDistanceSectionProps) {
+  const { latitude: jobLatitude, longitude: jobLongitude } = jobCoordinate;
   const [locationState, setLocationState] = useState<LocationState>({
     status: "loading",
   });
@@ -124,6 +126,56 @@ export function JobDistanceSection({ jobCoordinate }: JobDistanceSectionProps) {
       ? haversineDistance(locationState.coordinate, jobCoordinate)
       : null;
 
+  const originLatitude = locationState.status === "ready" ? locationState.coordinate.latitude : null;
+  const originLongitude = locationState.status === "ready" ? locationState.coordinate.longitude : null;
+  const routeKey =
+    originLatitude !== null && originLongitude !== null
+      ? `${originLatitude},${originLongitude}|${jobLatitude},${jobLongitude}`
+      : null;
+
+  const [routeState, setRouteState] = useState<
+    | { key: string; status: "unavailable" }
+    | { key: string; status: "ready"; route: RoadRoute }
+    | null
+  >(null);
+
+  useEffect(() => {
+    if (originLatitude === null || originLongitude === null || routeKey === null) return;
+
+    let active = true;
+    const controller = new AbortController();
+    const origin = { latitude: originLatitude, longitude: originLongitude };
+    const destination = { latitude: jobLatitude, longitude: jobLongitude };
+
+    void roadRoutingService
+      .getRoute(origin, destination, { signal: controller.signal })
+      .then((result) => {
+        if (!active) return;
+        setRouteState(
+          result.ok
+            ? { key: routeKey, status: "ready", route: result.route }
+            : { key: routeKey, status: "unavailable" },
+        );
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [originLatitude, originLongitude, jobLatitude, jobLongitude, routeKey]);
+
+  const roadRoute =
+    routeState?.key === routeKey && routeState.status === "ready" ? routeState.route : null;
+  const distanceLabel =
+    roadRoute !== null
+      ? formatDistance(roadRoute.distanceKm)
+      : distanceKm !== null
+        ? formatDistance(distanceKm)
+        : null;
+  const distanceKind = roadRoute !== null ? "Road distance" : "Straight-line distance";
+  const durationLabel =
+    roadRoute !== null ? formatRouteDuration(roadRoute.durationMinutes) : null;
+
   const useSettings =
     locationState.status === "denied" && !locationState.canAskAgain;
   const actionLabel = useSettings ? "Open settings" : "Try again";
@@ -156,6 +208,7 @@ export function JobDistanceSection({ jobCoordinate }: JobDistanceSectionProps) {
           <JobDistanceMap
             userCoordinate={locationState.coordinate}
             jobCoordinate={jobCoordinate}
+            routeGeometry={roadRoute?.geometry}
           />
           <View style={styles.summaryRow}>
             <View style={styles.legendGroup}>
@@ -175,9 +228,13 @@ export function JobDistanceSection({ jobCoordinate }: JobDistanceSectionProps) {
                 <Text style={styles.legendText}>Job</Text>
               </View>
             </View>
-            <View style={styles.distancePill}>
-              <Text style={styles.distanceText}>
-                {formatDistance(distanceKm)}
+            <View style={styles.distanceColumn}>
+              <View style={styles.distancePill}>
+                <Text style={styles.distanceText}>{distanceLabel}</Text>
+              </View>
+              <Text style={styles.distanceMeta}>
+                {distanceKind}
+                {durationLabel ? ` · ${durationLabel}` : ""}
               </Text>
             </View>
           </View>
@@ -229,23 +286,6 @@ export function JobDistanceSection({ jobCoordinate }: JobDistanceSectionProps) {
   );
 }
 
-async function getSingleLocation() {
-  try {
-    const lastKnown = await Location.getLastKnownPositionAsync({
-      maxAge: LAST_KNOWN_MAX_AGE,
-    });
-    if (lastKnown) return lastKnown;
-  } catch {
-    return Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-  }
-
-  return Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  });
-}
-
 const styles = StyleSheet.create({
   section: { marginBottom: 22 },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
@@ -281,6 +321,7 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 9, height: 9, borderRadius: 5 },
   legendText: { ...type.caption, color: colors.muted },
+  distanceColumn: { alignItems: "flex-end", gap: 3 },
   distancePill: {
     borderRadius: 999,
     paddingHorizontal: 11,
@@ -291,6 +332,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     color: colors.mintDeep,
+  },
+  distanceMeta: {
+    ...type.caption,
+    color: colors.muted,
+    fontSize: 11,
   },
   stateCard: {
     height: 220,

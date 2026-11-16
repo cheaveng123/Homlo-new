@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -5,30 +6,41 @@ import Animated, {
   useSharedValue,
   withTiming,
   withSpring,
+  withSequence,
   interpolateColor,
 } from 'react-native-reanimated';
-import { Home, Search, Plus, Bell, User, LucideIcon } from 'lucide-react-native';
+import { AppIcon, type IconName } from "@/components/ui/AppIcon";
 import { colors, fontFamily } from './theme';
 
-type Tab = { key: string; label: string; Icon: LucideIcon };
+type Tab = { key: string; label: string; icon: IconName };
 
 const TABS: Tab[] = [
-  { key: 'home', label: 'Home', Icon: Home },
-  { key: 'search', label: 'Search', Icon: Search },
-  { key: 'post', label: 'Post', Icon: Plus },
-  { key: 'alerts', label: 'Alerts', Icon: Bell },
-  { key: 'profile', label: 'Profile', Icon: User },
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'search', label: 'Search', icon: 'search' },
+  { key: 'post', label: 'Post', icon: 'plus' },
+  { key: 'alerts', label: 'Alerts', icon: 'bell' },
+  { key: 'profile', label: 'Profile', icon: 'user' },
 ];
 
 function TabItem({ tab, active, badgeCount, onPress }: { tab: Tab; active: boolean; badgeCount?: number; onPress: () => void }) {
   const progress = useSharedValue(active ? 1 : 0);
-  progress.value = withTiming(active ? 1 : 0, { duration: 200 });
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0, { duration: 200 });
+  }, [active, progress]);
 
   const pillStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(progress.value, [0, 1], ['transparent', colors.mintTint]),
     transform: [
       { translateY: withSpring(active ? -2 : 0, { damping: 12, stiffness: 180 }) },
-      { scale: withSpring(active ? 1.05 : 1, { damping: 12, stiffness: 180 }) },
+      {
+        scale: active
+          ? withSequence(
+              withSpring(1.15, { damping: 10, stiffness: 300 }),
+              withSpring(1, { damping: 14, stiffness: 250 }),
+            )
+          : withSpring(1, { damping: 12, stiffness: 180 }),
+      },
     ],
   }));
 
@@ -37,12 +49,12 @@ function TabItem({ tab, active, badgeCount, onPress }: { tab: Tab; active: boole
   }));
 
   const iconColor = active ? colors.mint : colors.textPrimary;
-  const { Icon, label } = tab;
+  const { label } = tab;
 
   return (
     <Pressable onPress={onPress} className="flex-1 items-center gap-0.5">
       <Animated.View style={[pillStyle, { borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 }]}>
-        <Icon size={19} color={iconColor} />
+        <AppIcon name={tab.icon} size={19} color={iconColor} />
         {tab.key === 'alerts' && badgeCount ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{badgeCount > 9 ? '9+' : badgeCount}</Text>

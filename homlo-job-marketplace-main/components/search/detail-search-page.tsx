@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Location from "expo-location";
+import { locationService } from "@/lib/location-service";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { Text } from "@/components/ui/text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { haptic } from "@/lib/haptics";
 import { goBack as goBackOrHome } from "@/lib/navigation";
 import { PolygonDrawMap } from "@/components/search/polygon-draw-map";
@@ -39,14 +39,14 @@ const PRICE_PERIODS: Record<PayPeriodFilter, { min: number; max: number }> = {
 const jobTypeRows: {
   key: string;
   label: string;
-  icon: "briefcase.fill" | "clock" | "calendar.days" | "graduationcap.fill" | "sun.max";
+  icon: "brief" | "clock" | "calendar" | "grad" | "sun";
   value: EmploymentFilter;
 }[] = [
-  { key: "all", label: "All", icon: "briefcase.fill", value: "Any" },
+  { key: "all", label: "All", icon: "brief", value: "Any" },
   { key: "part-time", label: "Part-time", icon: "clock", value: "Part-time" },
-  { key: "full-time", label: "Full-time", icon: "calendar.days", value: "Full-time" },
-  { key: "internship", label: "Internship", icon: "graduationcap.fill", value: "Internship" },
-  { key: "seasonal", label: "Seasonal", icon: "sun.max", value: "Temporary" },
+  { key: "full-time", label: "Full-time", icon: "calendar", value: "Full-time" },
+  { key: "internship", label: "Internship", icon: "grad", value: "Internship" },
+  { key: "seasonal", label: "Seasonal", icon: "sun", value: "Temporary" },
 ];
 
 type PublishedJobLike = {
@@ -135,11 +135,13 @@ export function DetailSearchPage() {
     }
     let center: MapCoordinate = defaultSearchCenter;
     try {
-      const permission = await Location.getForegroundPermissionsAsync();
-      const granted = permission.status === "granted" ? true : (await Location.requestForegroundPermissionsAsync()).status === "granted";
-      if (granted) {
-        const position = (await Location.getLastKnownPositionAsync()) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-        if (position) center = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+      let permission = await locationService.getPermissionDetails();
+      if (permission.status !== "granted") {
+        permission = await locationService.requestPermissionDetails();
+      }
+      if (permission.status === "granted") {
+        const position = await locationService.getBestAvailablePosition();
+        if (position) center = { latitude: position.latitude, longitude: position.longitude };
       }
     } catch {
       center = defaultSearchCenter;
@@ -212,10 +214,10 @@ export function DetailSearchPage() {
             onPress={() => goBackOrHome(router)}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <IconSymbol name="chevron.left" size={19} color={TEXT_PRIMARY} />
+            <AppIcon name="back" size={19} color={TEXT_PRIMARY} />
           </Pressable>
           <View style={styles.searchField}>
-            <IconSymbol name="magnifyingglass" size={16} color="#8A9390" />
+            <AppIcon name="search" size={16} color="#8A9390" />
             <TextInput
               accessibilityLabel="Search jobs"
               value={query}
@@ -228,7 +230,7 @@ export function DetailSearchPage() {
             />
             {query.length > 0 && (
               <Pressable accessibilityLabel="Clear search" hitSlop={8} onPress={() => setQuery("")} style={styles.clearButton}>
-                <IconSymbol name="xmark" size={15} color="#8A9390" />
+                <AppIcon name="close" size={15} color="#8A9390" />
               </Pressable>
             )}
           </View>
@@ -280,7 +282,7 @@ export function DetailSearchPage() {
                     onPress={() => selectJobType(row.value)}
                     style={({ pressed }) => [styles.jobTypeRow, selected && styles.jobTypeRowSelected, pressed && styles.pressed]}
                   >
-                    <IconSymbol name={row.icon} size={20} color={selected ? GREEN_INK : "#9AA19F"} />
+                    <AppIcon name={row.icon} size={20} color={selected ? GREEN_INK : "#9AA19F"} />
                     <Text style={selected ? styles.jobTypeLabelSelected : styles.jobTypeLabel}>{row.label}</Text>
                     <Text style={selected ? styles.jobTypeCountSelected : styles.jobTypeCount}>
                       {count !== null ? count.toLocaleString() : "—"}
@@ -307,7 +309,7 @@ export function DetailSearchPage() {
               </View>
               <View style={styles.drawRow}>
                 <View style={styles.drawStatusRow}>
-                  <IconSymbol name={isValidPolygon(draft.polygon) ? "checkmark.circle.fill" : "mappin"} size={14} color={GREEN_INK} />
+                  <AppIcon name={isValidPolygon(draft.polygon) ? "circle-check" : "pin"} size={14} color={GREEN_INK} />
                   <Text style={styles.drawStatus}>
                     {isValidPolygon(draft.polygon) ? `Drawn area (${(draft.polygon ?? []).length} points)` : "Tap the map to draw an area"}
                   </Text>
@@ -320,7 +322,7 @@ export function DetailSearchPage() {
             </View>
             <View style={styles.nearMeRow}>
               <View style={styles.locationIconWell}>
-                <IconSymbol name="mappin" size={20} color={GREEN_INK} />
+                <AppIcon name="pin" size={20} color={GREEN_INK} />
               </View>
               <View style={styles.nearMeCopy}>
                 <Text style={styles.nearMeTitle}>Near me</Text>

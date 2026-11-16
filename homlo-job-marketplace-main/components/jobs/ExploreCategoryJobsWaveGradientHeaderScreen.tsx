@@ -10,7 +10,7 @@
  * Custom icon: assets/images/detailcategorypage.png - see ICON_SOURCE below.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions, ViewStyle } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, ViewStyle } from 'react-native';
 import Animated, {
   Easing, FadeInDown, interpolate, Extrapolation, useAnimatedReaction, useAnimatedScrollHandler,
   useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming,
@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { AppIcon } from '@/components/ui/AppIcon';
+import { LegacyRowListSkeleton } from '@/src/new/components/NewSkeletons';
 
 import { colors } from '@/theme';
 import { fonts } from '@/lib/typography';
@@ -38,10 +39,10 @@ const ICON_SOURCE: number | null = require('../../assets/images/detailcategorypa
  * The source PNG is 1536x1024 (3:2) on a transparent background, with a near-circular
  * opaque blob spanning y 14%-92% of the frame and averaging `#7A997D`. Since `resizeMode`
  * is `contain`, the *width* is the binding dimension and the blob's real height lands at
- * roughly two thirds of this. At 110 it reads as a hero piece of art beside the category
- * title on a 390pt phone without squeezing the copy into a 2-3 line wrap.
+ * roughly two thirds of this. Enlarged 30% from the original 110 so it reads as a proper
+ * hero piece beside the category title on a 390pt phone without squeezing the copy.
  */
-const ICON_SIZE = 110;
+const ICON_SIZE = 143;
 
 /* ───────────── wave geometry ───────────── */
 /** Height of the paper-coloured wave that closes the hero (see WaveEdge). */
@@ -85,6 +86,7 @@ type Props = {
   countLabel?: string;
   employers: ExploreEmployer[];
   jobs: ExploreJob[];
+  jobsLoading?: boolean;
   onBack: () => void;
   /** Optional: the route currently has no search destination, so this stays inert. */
   onSearchPress?: () => void;
@@ -232,7 +234,7 @@ function FloatingIcon({ reduceMotion, style }: { reduceMotion: boolean; style?: 
 
 /* ───────────── screen ───────────── */
 export default function ExploreCategoryJobsWaveGradientHeaderScreen({
-  title = 'Explore jobs', categoryTitle, countLabel, employers, jobs,
+  title = 'Explore jobs', categoryTitle, countLabel, employers, jobs, jobsLoading,
   onBack, onSearchPress, onEmployerPress, onJobPress, onSortPress, renderJobCard,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -313,7 +315,7 @@ export default function ExploreCategoryJobsWaveGradientHeaderScreen({
             <HeaderBackdrop width={width} height={headerH} reduceMotion={reduceMotion} />
           </AView>
 
-          <AView style={[{ paddingTop: insets.top + 6, paddingHorizontal: 20 }, contentStyle]}>
+          <AView style={[{ paddingTop: insets.top + 6, paddingHorizontal: 20, paddingBottom: 10 }, contentStyle]}>
             <View style={styles.nav}>
               <Pressable onPress={onBack} style={styles.roundBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
                 <AppIcon name="back" size={20} color={colors.cardBg} />
@@ -338,9 +340,17 @@ export default function ExploreCategoryJobsWaveGradientHeaderScreen({
             </Pressable>
 
             <View style={styles.empBlock}>
-              <Text style={styles.empLabel}>Top employers hiring</Text>
+              {/* Sort rides with the block's label instead of marooning itself on its
+                  own row at the far right, so the hero reads as one stacked group. */}
+              <View style={styles.empHead}>
+                <Text style={styles.empLabel}>Top employers hiring</Text>
+                <Pressable onPress={onSortPress} style={styles.sort} hitSlop={8} accessibilityRole="button" accessibilityLabel="Sort jobs">
+                  <Text style={styles.sortTx}>Sort</Text>
+                  <AppIcon name="chevron" size={14} color={MINT} style={{ transform: [{ rotate: "90deg" }] }} />
+                </Pressable>
+              </View>
               <View style={styles.empRowWrap}>
-                <ScrollView
+                <Animated.ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.empRow}
@@ -359,18 +369,10 @@ export default function ExploreCategoryJobsWaveGradientHeaderScreen({
                       <Text style={styles.empName} numberOfLines={1}>{e.name}</Text>
                     </Pressable>
                   ))}
-                </ScrollView>
+                </Animated.ScrollView>
               </View>
             </View>
           </AView>
-
-          <View style={styles.secSortOnly}>
-            <View style={{ flex: 1 }} />
-            <Pressable onPress={onSortPress} style={styles.sort} hitSlop={8} accessibilityRole="button" accessibilityLabel="Sort jobs">
-              <Text style={styles.sortTx}>Sort</Text>
-              <AppIcon name="chevron" size={14} color={MINT} style={{ transform: [{ rotate: "90deg" }] }} />
-            </Pressable>
-          </View>
 
           {/* Hero's bottom edge: a paper-coloured wave that resolves the gradient into the
               page below. Placed after the employers in flow, not absolutely positioned. */}
@@ -384,15 +386,19 @@ export default function ExploreCategoryJobsWaveGradientHeaderScreen({
           </AView>
         </View>
 
-        {/* paddingTop clears the artwork's overhang below the seam (the icon dips
-            1pt into the page now it sits 30pt higher) and gives the first card
+        {/* paddingTop clears the artwork's overhang below the seam (at the enlarged
+            size the icon dips ~17.5pt past the seam) and gives the first card
             breathing room. */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 14, gap: 16 }}>
-          {jobs.map((job, i) => (
-            <AView key={job.id} entering={FadeInDown.delay(Math.min(i, 6) * 70).duration(420).easing(SMOOTH)}>
-              {renderJobCard(job, i, () => onJobPress(job.id))}
-            </AView>
-          ))}
+        <View style={{ paddingHorizontal: 20, paddingTop: 26, gap: 16 }}>
+          {jobsLoading ? (
+            <LegacyRowListSkeleton gap={16} style={{ paddingHorizontal: 0 }} />
+          ) : (
+            jobs.map((job, i) => (
+              <AView key={job.id} entering={FadeInDown.delay(Math.min(i, 6) * 70).duration(420).easing(SMOOTH)}>
+                {renderJobCard(job, i, () => onJobPress(job.id))}
+              </AView>
+            ))
+          )}
         </View>
       </Animated.ScrollView>
     </View>
@@ -415,39 +421,33 @@ const styles = StyleSheet.create({
   navTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.heading.extrabold, fontSize: 20, color: colors.cardBg },
   // Hero vertical rhythm. The mid row is copy only — the artwork lives on the
   // wave seam (iconOnLine), so nothing in this stack competes with it.
-  mid: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  mid: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   midCopy: { flex: 1, paddingRight: 12 },
   count: { fontFamily: fonts.body.semibold, fontSize: 13, color: ON_HERO },
   cat: { fontFamily: fonts.heading.extrabold, fontSize: 26, lineHeight: 30, color: colors.cardBg, letterSpacing: -0.5, marginTop: 2 },
   search: {
     height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.17)',
-    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, marginTop: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, marginTop: 14,
   },
   searchTx: { fontFamily: fonts.body.regular, fontSize: 15, color: ON_HERO },
   // zIndex keeps the seam artwork painted above the wave and the backdrop.
-  empBlock: { zIndex: 1 },
-  empLabel: { fontFamily: fonts.body.semibold, fontSize: 13, color: colors.cardBg, opacity: 0.9, marginTop: 4 },
-  empRowWrap: { marginTop: 4 },
+  empBlock: { zIndex: 1, marginTop: 18 },
+  empHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  empLabel: { fontFamily: fonts.body.semibold, fontSize: 13, color: colors.cardBg, opacity: 0.9 },
+  empRowWrap: { marginTop: 8 },
   empRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingRight: 8 },
   emp: { width: 62, alignItems: 'center' },
   empAv: { width: 52, height: 52, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   empInit: { fontFamily: fonts.heading.extrabold, fontSize: 18, color: colors.cardBg },
   empName: { fontFamily: fonts.body.medium, fontSize: 11, color: colors.cardBg },
-  // The icon sits at the right edge of the hero, 30pt higher than its old
-  // seam-centred position (bottom: -1), so it now rides almost entirely on the
-  // green gradient rather than straddling the green/paper seam.
+  // The icon sits at the right edge of the hero, its centre held 30pt above the wave
+  // seam so it rides almost entirely on the green gradient. At the enlarged 143dp its
+  // lower edge dips ~17.5pt past the seam, which the job list's paddingTop clears.
   iconOnLine: {
     position: 'absolute',
     right: 20,
     bottom: WAVE_MID - ICON_SIZE / 2 + 30,
     zIndex: 2,
-  },
-  secSortOnly: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 10,
   },
   // Sits in normal flow at the foot of the hero, so it always clears the employer row.
   wave: { height: WAVE_H, overflow: 'hidden' },

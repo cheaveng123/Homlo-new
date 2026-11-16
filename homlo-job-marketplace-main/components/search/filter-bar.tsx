@@ -1,7 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/ui/text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { arrangementFilters, employmentFilters, experienceFilters, postedFilters, type SearchFilters } from "@/lib/search-filters";
 
 type FilterPill = {
@@ -39,7 +39,7 @@ export function FilterBar({ filters, categoryOptions, activeCount, onChange, onO
           return <FilterChip key={pill.key} active={active} label={pill.label} value={String(value)} onPress={() => onChange(pill.key, value === pill.options[0] ? value : pill.options[0])} />;
         })}
         <Pressable accessibilityRole="button" accessibilityLabel="Open all filters" onPress={onOpenMore} style={({ pressed }) => [styles.chip, pressed && styles.pressed, activeCount > 0 ? styles.chipActive : null]}>
-          <IconSymbol name="slider.horizontal.3" size={13} color={activeCount > 0 ? "#16803C" : "#17201A"} />
+          <AppIcon name="sliders" size={13} color={activeCount > 0 ? "#16803C" : "#17201A"} />
           <Text style={activeCount > 0 ? styles.chipTextActive : styles.chipText}>More filters{activeCount ? ` · ${activeCount}` : ""}</Text>
         </Pressable>
       </ScrollView>
@@ -51,7 +51,7 @@ function FilterChip({ active, label, value, onPress }: { active: boolean; label:
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}>
       <Text style={active ? styles.chipTextActive : styles.chipText}>{label}{value !== "Any" && value !== "All" ? ` · ${value}` : ""}</Text>
-      <IconSymbol name="chevron.down" size={12} color={active ? "#16803C" : "#17201A"} />
+      <AppIcon name="chevron" size={12} color={active ? "#16803C" : "#17201A"} style={{ transform: [{ rotate: "90deg" }] }} />
     </Pressable>
   );
 }
@@ -62,7 +62,7 @@ function CategoryPill({ filters, onChange, options }: { filters: SearchFilters; 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Category: ${value}`} onPress={() => onChange("category", active ? "All" : value)} style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}>
       <Text style={active ? styles.chipTextActive : styles.chipText}>{active ? `Category · ${value}` : "Category"}</Text>
-      <IconSymbol name="chevron.down" size={12} color={active ? "#16803C" : "#17201A"} />
+      <AppIcon name="chevron" size={12} color={active ? "#16803C" : "#17201A"} style={{ transform: [{ rotate: "90deg" }] }} />
     </Pressable>
   );
 }

@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from "react-native";
-import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/lib/navigation";
 import * as DocumentPicker from "expo-document-picker";
 
 import ImagePlaceholder from "./image-placeholder";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { colors } from "./colors";
 import { type, fonts } from "./typography";
 import type { JobDetails } from "./types";
 import { useAuth } from "@/hooks/use-auth";
+import { trpc, clearQueryClient } from "@/lib/trpc";
 import { haptic } from "@/lib/haptics";
-import { trpc } from "@/lib/trpc";
 import { logJobEvent } from "@/lib/event-logging";
 
 type Props = {
@@ -18,7 +18,7 @@ type Props = {
 };
 
 export default function ApplyScreen({ job }: Props) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { user, logout } = useAuth();
   const submit = trpc.homlo.applications.submit.useMutation();
 
@@ -28,6 +28,7 @@ export default function ApplyScreen({ job }: Props) {
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submitting = submit.isPending;
 
   const pickCv = async () => {
     haptic.light();
@@ -50,6 +51,7 @@ export default function ApplyScreen({ job }: Props) {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     if (!fullName.trim()) {
       setNameError(true);
       return;
@@ -77,12 +79,26 @@ export default function ApplyScreen({ job }: Props) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.successWrap}>
           <View style={styles.successIcon}>
-            <Feather name="check" size={30} color={colors.mint} />
+            <AppIcon name="check" size={30} color={colors.mint} />
           </View>
           <Text style={styles.successTitle}>Application sent</Text>
           <Text style={styles.successBody}>
             {job.companyName} will review your application and reach out if there&apos;s a match.
           </Text>
+          <TouchableOpacity
+            style={styles.successButton}
+            onPress={() => router.replace("/" as never)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.successButtonText}>Back to home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.successSecondary}
+            onPress={() => router.push("/applications" as never)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.successSecondaryText}>View my applications</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -90,6 +106,7 @@ export default function ApplyScreen({ job }: Props) {
 
   const switchAccount = async () => {
     await logout();
+    clearQueryClient();
     router.replace("/login" as never);
   };
 
@@ -98,7 +115,7 @@ export default function ApplyScreen({ job }: Props) {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="arrow-left" size={18} color={colors.ink} />
+            <AppIcon name="back" size={18} color={colors.ink} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
             Apply to {job.title ?? "this job"}
@@ -173,8 +190,13 @@ export default function ApplyScreen({ job }: Props) {
         <View style={{ height: 20 }} />
 
         {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.8}>
-          <Text style={styles.submitButtonText}>Send application</Text>
+        <TouchableOpacity
+          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.submitButtonText}>{submitting ? "Sending application…" : "Send application"}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -266,6 +288,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: "center",
   },
+  submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { ...type.button, color: "#FFFFFF" },
   successWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
   successIcon: {
@@ -288,5 +311,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.muted,
     textAlign: "center",
+  },
+  successButton: {
+    alignSelf: "stretch",
+    backgroundColor: colors.mint,
+    borderRadius: 11,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 28,
+  },
+  successButtonText: { ...type.button, color: "#FFFFFF" },
+  successSecondary: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    paddingVertical: 12,
+    marginTop: 6,
+  },
+  successSecondaryText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.mintDeep,
   },
 });

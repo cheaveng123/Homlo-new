@@ -2,22 +2,22 @@
 import { Platform, ViewStyle } from 'react-native';
 
 export const colors = {
-  forest: '#0E3B2E',
-  mint: '#0F9D62',
-  mintLight: '#2FC985',
-  tint: '#E6F7EE',
-  bg: '#F6F8F7',
+  forest: '#14272B',
+  mint: '#0E7C86',
+  mintLight: '#3EA6AE',
+  tint: '#D8F0EE',
+  bg: '#F4F8F8',
   white: '#FFFFFF',
-  muted: '#6B7C74',
+  muted: '#58696B',
   red: '#C0392B',
-  redTint: '#FBE7E4',
+  redTint: '#FBEAE6',
   redBorder: '#F2D4D0',
-  line: '#E3ECE7',
-  dash: '#D5E3DB',
-  amberBg: '#FFF1DC',
-  amberText: '#B7791F',
-  scrim: 'rgba(14,59,46,0.55)',
-  toggleOff: '#CBD7D1',
+  line: '#E4ECEC',
+  dash: '#D9EAEA',
+  amberBg: '#FFF1D2',
+  amberText: '#7A4300',
+  scrim: 'rgba(7,59,66,0.55)',
+  toggleOff: '#D9EAEA',
 };
 
 // Loaded via @expo-google-fonts (Plus Jakarta Sans = headings, Inter = body/labels)

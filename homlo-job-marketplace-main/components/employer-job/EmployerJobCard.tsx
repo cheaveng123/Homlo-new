@@ -11,11 +11,14 @@
  * New applicants screen.
  */
 import { Image, StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo } from "react";
 import { useRouter } from "expo-router";
 
 import { ScalePressable } from "@/components/ui/scale-pressable";
 import { JobStatusPill, type JobStatus } from "@/components/job-details/job-status-pill";
-import { colors, fontFamily } from "@/components/home/theme";
+import { BoostBadge, ownerBoostedCardStyle, boostColors } from "@/components/boost/BoostBadge";
+import { useBoostCountdown } from "@/components/boost/useBoostCountdown";
+import { colors, fontFamily } from '@/theme';
 import { formatPostedAgo } from "@/lib/format";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import type { EmployerApplication } from "@/hooks/use-employer-applications";
@@ -51,9 +54,13 @@ export type EmployerJobCardProps = {
   applications: EmployerApplication[];
   /** Positions still open, only meaningful while the listing is live. */
   positionsAvailable?: number;
+  /** Employer-side boost state (from GET /api/boosts/job/:id or the job row). */
+  boost?: EmployerJob['boost'];
+  /** Called when the boost expires so the parent can refetch. */
+  onExpire?: () => void;
 };
 
-export function EmployerJobCard({ job, applications, positionsAvailable }: EmployerJobCardProps) {
+export function EmployerJobCard({ job, applications, positionsAvailable, boost, onExpire }: EmployerJobCardProps) {
   const router = useRouter();
 
   const unread = applications.filter((application) => application.isNew).length;
@@ -63,11 +70,15 @@ export function EmployerJobCard({ job, applications, positionsAvailable }: Emplo
   const location = job.locationLabel?.trim() || job.category?.trim() || "";
   const posted = job.createdAt ? formatPostedAgo(job.createdAt) : "";
 
+  const activeBoost = boost?.status === 'active';
+  const { label, expired } = useBoostCountdown(activeBoost ? boost?.endsAt ?? null : null, boost?.serverNow ?? null, onExpire);
+  const showEmployerBadge = boost && boost.status !== 'none' && !expired;
+
   return (
     <ScalePressable
       hapticFeedback
       containerStyle={styles.wrap}
-      style={styles.card}
+      style={[styles.card, showEmployerBadge ? ownerBoostedCardStyle : null]}
       accessibilityRole="button"
       accessibilityLabel={`${job.title}, ${applications.length} ${
         applications.length === 1 ? "applicant" : 'applicants'
@@ -79,10 +90,20 @@ export function EmployerJobCard({ job, applications, positionsAvailable }: Emplo
         } as never)
       }
     >
+      {showEmployerBadge && (
+        <View style={styles.employerBoostedCorner}>
+          <BoostBadge audience="employer" endsAt={boost!.endsAt!} serverNow={boost!.serverNow ?? undefined} onExpire={onExpire} />
+        </View>
+      )}
       <View style={styles.headRow}>
         <Text style={styles.title} numberOfLines={2}>
           {job.title || "Untitled job"}
         </Text>
+        {showEmployerBadge && (
+          <View style={styles.cardBoostedPill}>
+            <Text style={styles.cardBoostedText}>Boosted</Text>
+          </View>
+        )}
         {unread > 0 ? (
           <View style={styles.newBadge}>
             <Text style={styles.newBadgeText}>{unread} new</Text>
@@ -142,6 +163,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
     borderRadius: 22,
     padding: 16,
+    position: 'relative',
     // Matches the stat card's elevation language so the two read as one system.
     shadowColor: colors.greenDark,
     shadowOpacity: 0.14,
@@ -150,6 +172,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  employerBoostedCorner: {
+    position: 'absolute',
+    top: 12,
+    right: 14,
+    zIndex: 3,
+  },
   title: {
     flex: 1,
     fontFamily: fontFamily.extraBold,
@@ -185,6 +213,20 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.interSemiBold,
     fontSize: 11,
     color: colors.amberDark,
+  },
+  cardBoostedPill: {
+    backgroundColor: boostColors.employerBg,
+    borderColor: boostColors.employerBorder,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginLeft: 8,
+  },
+  cardBoostedText: {
+    fontFamily: fontFamily.interSemiBold,
+    fontSize: 11,
+    color: boostColors.employerText,
   },
   footRow: {
     marginTop: 12,

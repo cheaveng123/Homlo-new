@@ -7,6 +7,9 @@ import { normalizePublishedJob, type JobRecord } from "@/lib/job-record";
 type PublishedRecord = Omit<JobRecord, "workers_needed" | "banner_image"> & {
   workers_needed?: number;
   banner_image?: string | null;
+  work_arrangement?: "On-site" | "Hybrid" | "Remote" | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 function toJobRecord(record: PublishedRecord): JobRecord {
@@ -23,6 +26,11 @@ function toJobRecord(record: PublishedRecord): JobRecord {
     category: record.category,
     employer_name: record.employer_name,
     banner_image: record.banner_image,
+    status: record.status,
+    workers_hired: record.workers_hired,
+    work_arrangement: record.work_arrangement,
+    latitude: record.latitude,
+    longitude: record.longitude,
   };
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
-import { MoreVertical, ImageOff } from 'lucide-react-native';
+import { AppIcon } from "@/components/ui/AppIcon";
 
 export type ListingStatus = 'live' | 'draft' | 'review';
 
@@ -50,7 +50,7 @@ export function EmployerJobListingCard({ listing, onPress, onMenuPress }: Props)
         <Image source={{ uri: listing.imageUrl }} style={styles.thumb} resizeMode="cover" />
       ) : (
         <View style={[styles.thumb, styles.thumbPlaceholder]}>
-          <ImageOff size={20} color="#8FA69B" />
+          <AppIcon name="image-off" size={20} color="#8FA69B" />
         </View>
       )}
 
@@ -72,7 +72,7 @@ export function EmployerJobListingCard({ listing, onPress, onMenuPress }: Props)
       </View>
 
       <Pressable hitSlop={10} onPress={() => onMenuPress(listing.id)} style={styles.menuBtn}>
-        <MoreVertical size={18} color="#8FA69B" />
+        <AppIcon name="dots" size={18} color="#8FA69B" />
       </Pressable>
     </Pressable>
   );

@@ -17,6 +17,7 @@ export function useMessagingUnread(pollMs = 15_000) {
   const refresh = useCallback(async () => {
     if (!user) {
       setCount(0);
+      setReady(false);
       return;
     }
     try {
@@ -30,12 +31,10 @@ export function useMessagingUnread(pollMs = 15_000) {
   }, [user]);
 
   useEffect(() => {
-    if (!user) {
-      setCount(0);
-      setReady(false);
-      return;
-    }
-    refresh();
+    // Kick the first refresh (which also performs the logged-out reset) from a
+    // microtask so the effect body never invokes setState-bearing code directly.
+    const kick = Promise.resolve().then(refresh);
+    if (!user) return;
     const id = setInterval(refresh, pollMs);
     timerRef.current = id;
     (async () => {
@@ -48,6 +47,8 @@ export function useMessagingUnread(pollMs = 15_000) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       unsubRef.current?.();
+      // Prevent an unhandled rejection if refresh throws unexpectedly.
+      kick.catch(() => {});
     };
   }, [user, refresh, pollMs]);
 

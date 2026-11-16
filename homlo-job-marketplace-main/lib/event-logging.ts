@@ -1,4 +1,5 @@
 import { apiCall } from "./_core/api";
+import { isCanonicalJobId, jobDetailDecision } from "./job-detail-decision";
 
 export type ClientEventType =
   | "impression"
@@ -22,16 +23,7 @@ export type LogEventFields = {
   dwellTimeMs?: number;
 };
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-/**
- * Canonical (live, DB-backed) jobs are those with a real UUID id. Curated
- * placeholder jobs (e.g. "restaurant-server") are not in `jobs` and must not be
- * sent to the server, which would reject them as unknown.
- */
-export function isCanonicalJobId(jobId: string): boolean {
-  return UUID_PATTERN.test(jobId);
-}
+export { isCanonicalJobId, jobDetailDecision };
 
 /**
  * Fire-and-forget backend call. Never affects the caller's UX: any failure /

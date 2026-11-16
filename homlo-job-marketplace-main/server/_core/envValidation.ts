@@ -54,6 +54,7 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): {
   supabaseUrl: string;
   supabaseServiceRoleKey: string;
   supabaseDbUrl: string;
+  homloFeedSecret: string;
 } {
   const issues: Issue[] = [];
 
@@ -72,6 +73,11 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): {
     issues.push({ variable: "SUPABASE_DB_URL", problem: dbResult.problem });
   }
 
+  const feedSecretResult = describeHomloFeedSecret(env.HOMLO_FEED_SECRET);
+  if (!feedSecretResult.ok) {
+    issues.push({ variable: "HOMLO_FEED_SECRET", problem: feedSecretResult.problem });
+  }
+
   if (issues.length > 0) {
     throw new Error(formatIssues(issues));
   }
@@ -80,5 +86,16 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): {
     supabaseUrl: (urlResult as { ok: true; value: string }).value,
     supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY as string,
     supabaseDbUrl: env.SUPABASE_DB_URL as string,
+    homloFeedSecret: (feedSecretResult as { ok: true; value: string }).value,
   };
+}
+
+function describeHomloFeedSecret(raw: string | undefined): { ok: true; value: string } | { ok: false; problem: string } {
+  if (!raw || raw.trim().length === 0) {
+    return { ok: false, problem: "value is missing or empty" };
+  }
+  if (raw.trim().length < 32) {
+    return { ok: false, problem: "value is too short (expected at least 32 characters)" };
+  }
+  return { ok: true, value: raw.trim() };
 }

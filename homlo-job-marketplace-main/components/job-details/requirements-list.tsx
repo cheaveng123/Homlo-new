@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
+import { AppIcon } from "@/components/ui/AppIcon";
 import { colors } from "./colors";
 import { type } from "./typography";
 
@@ -9,7 +9,7 @@ export default function RequirementsList({ items }: { items: string[] }) {
     <View>
       {items.map((item) => (
         <View key={item} style={styles.row}>
-          <Feather name="check" size={17} color={colors.mint} style={styles.icon} />
+          <AppIcon name="check" size={17} color={colors.mint} style={styles.icon} />
           <Text style={styles.text}>{item}</Text>
         </View>
       ))}

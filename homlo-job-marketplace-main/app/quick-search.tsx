@@ -11,17 +11,45 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
-import { MapPin, Map as MapIcon, ChevronDown, X } from 'lucide-react-native';
+import { AppIcon } from "@/components/ui/AppIcon";
 import { DrawAreaMap, type LatLng } from '@/components/DrawAreaMap';
 import { opportunityCategories } from '@/lib/category-data';
+import { JOB_FIELDS, resolveJobField } from '@/lib/job-fields';
+import { JobFieldArtwork } from '@/components/shared/JobFieldArtwork';
 import { saveQuickSearchAnswers } from '@/lib/quick-search-store';
 
 const JOB_TYPES = ['Part time', 'Full time', 'Weekends', 'Remote'];
 const SALARY_TYPES = ['Hourly', 'Monthly', 'Yearly'] as const;
 
-// The app's real field taxonomy — the same list the job posting form uses,
-// so wizard selections map onto real job records.
-const FIELDS = opportunityCategories.map((category) => category.title);
+type FieldOption = {
+  id: string;
+  /** The official field name, e.g. "IT & Technology" — what the user reads. */
+  title: string;
+  svg: string | null;
+  /**
+   * The `categories.name` this field submits. Job search filters with an exact
+   * `c.name = trim(p_category)` match (016_job_search.sql), so the official title
+   * cannot be sent — the legacy title it resolves to has to be.
+   *
+   * Six official fields have no legacy category. They submit '' rather than a
+   * non-matching name, which `/search-results` treats as falsy and skips the
+   * category filter for, so picking one returns unfiltered jobs instead of none.
+   */
+  value: string;
+};
+
+// The official 19 fields, joined to the legacy titles that the exact-match search
+// actually understands. Derived rather than hand-written so it stays correct if
+// either taxonomy changes.
+const FIELD_OPTIONS: FieldOption[] = JOB_FIELDS.map((field) => ({
+  id: field.id,
+  title: field.title,
+  svg: field.svg,
+  value:
+    opportunityCategories.find(
+      (category) => resolveJobField(category.title)?.id === field.id
+    )?.title ?? '',
+}));
 
 const SALARY_BOUNDS: Record<(typeof SALARY_TYPES)[number], [number, number]> = {
   Hourly: [1, 30],
@@ -40,8 +68,9 @@ export default function QuickSearchWizard() {
     useState<(typeof SALARY_TYPES)[number]>('Monthly');
   const [salaryTypeOpen, setSalaryTypeOpen] = useState(false);
   const [maxSalary, setMaxSalary] = useState(600);
-  const [fieldQuery, setFieldQuery] = useState('');
-  const [selectedField, setSelectedField] = useState<string | null>(null);
+  const [fieldOpen, setFieldOpen] = useState(false);
+  const [fieldFilter, setFieldFilter] = useState('');
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [locationMode, setLocationMode] = useState<'near' | 'draw' | null>(null);
   const [polygon, setPolygon] = useState<LatLng[]>([]);
 
@@ -57,11 +86,32 @@ export default function QuickSearchWizard() {
     setStep(Math.round(e.nativeEvent.contentOffset.x / width));
   };
 
-  const fieldMatches = fieldQuery.trim()
-    ? FIELDS.filter((f) =>
-        f.toLowerCase().includes(fieldQuery.trim().toLowerCase())
-      ).slice(0, 4)
-    : [];
+  const selectedField = FIELD_OPTIONS.find(
+    (option) => option.id === selectedFieldId
+  );
+
+  const fieldMatches = fieldFilter.trim()
+    ? FIELD_OPTIONS.filter((option) =>
+        option.title.toLowerCase().includes(fieldFilter.trim().toLowerCase())
+      )
+    : FIELD_OPTIONS;
+
+  const toggleFieldMenu = () => {
+    setFieldOpen((open) => !open);
+    setFieldFilter('');
+    setSalaryTypeOpen(false);
+  };
+
+  const toggleSalaryMenu = () => {
+    setSalaryTypeOpen((open) => !open);
+    setFieldOpen(false);
+  };
+
+  const pickField = (id: string) => {
+    setSelectedFieldId(id);
+    setFieldOpen(false);
+    setFieldFilter('');
+  };
 
   const submit = () => {
     const params = {
@@ -69,7 +119,7 @@ export default function QuickSearchWizard() {
       salaryType,
       minSalary: String(minBound),
       maxSalary: String(maxSalary),
-      field: selectedField ?? '',
+      field: selectedField?.value ?? '',
       locationMode: locationMode ?? 'near',
       polygon: polygon.length ? JSON.stringify(polygon) : '',
     };
@@ -94,7 +144,7 @@ export default function QuickSearchWizard() {
           ))}
         </View>
         <Pressable onPress={() => router.back()} hitSlop={10}>
-          <X size={20} color="#5F7A6E" />
+          <AppIcon name="close" size={20} color="#5F7A6E" />
         </Pressable>
       </View>
 
@@ -145,10 +195,10 @@ export default function QuickSearchWizard() {
           <View style={styles.salaryTypeRow}>
             <Pressable
               style={styles.dropdown}
-              onPress={() => setSalaryTypeOpen((o) => !o)}
+              onPress={toggleSalaryMenu}
             >
               <Text style={styles.dropdownText}>{salaryType}</Text>
-              <ChevronDown size={14} color="#12271F" />
+              <AppIcon name="chevron" size={14} color="#12271F" style={{ transform: [{ rotate: "90deg" }] }} />
             </Pressable>
             <Text style={styles.salaryTypeHint}>pay</Text>
           </View>
@@ -194,42 +244,81 @@ export default function QuickSearchWizard() {
           <Text style={styles.fieldLabel}>What field are you in?</Text>
           <Text style={styles.optional}>Optional</Text>
 
-          {selectedField ? (
-            <Pressable
-              style={styles.selectedChip}
-              onPress={() => {
-                setSelectedField(null);
-                setFieldQuery('');
-              }}
+          <Pressable style={styles.dropdown} onPress={toggleFieldMenu}>
+            {selectedField ? (
+              <View style={styles.fieldTriggerIcon}>
+                {selectedField.svg ? (
+                  <JobFieldArtwork xml={selectedField.svg} width={22} height={22} />
+                ) : (
+                  <AppIcon name="brief" size={15} color="#8FA69B" />
+                )}
+              </View>
+            ) : null}
+            <Text
+              numberOfLines={1}
+              style={[styles.dropdownText, !selectedField && styles.fieldTriggerPlaceholder]}
             >
-              <Text style={styles.selectedChipText}>{selectedField}</Text>
-              <X size={13} color="#04342C" />
-            </Pressable>
-          ) : (
-            <>
+              {selectedField ? selectedField.title : 'Any field'}
+            </Text>
+              <AppIcon
+                name="chevron"
+                size={14}
+                color="#12271F"
+                style={[{ transform: [{ rotate: "90deg" }] }, fieldOpen && styles.chevronOpen]}
+              />
+          </Pressable>
+
+          {fieldOpen && (
+            <View style={styles.fieldMenu}>
               <TextInput
-                style={styles.input}
-                value={fieldQuery}
-                onChangeText={setFieldQuery}
-                placeholder="Start typing, e.g. hospitality"
+                style={styles.fieldFilter}
+                value={fieldFilter}
+                onChangeText={setFieldFilter}
+                placeholder="Filter fields"
                 placeholderTextColor="#8FA69B"
                 autoCorrect={false}
               />
-              <View style={styles.chipRow}>
-                {fieldMatches.map((f) => (
-                  <Pressable
-                    key={f}
-                    style={styles.chip}
-                    onPress={() => {
-                      setSelectedField(f);
-                      setFieldQuery('');
-                    }}
-                  >
-                    <Text style={styles.chipText}>{f}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
+              <ScrollView
+                style={styles.fieldMenuScroll}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                {fieldMatches.map((option) => {
+                  const active = option.id === selectedFieldId;
+                  return (
+                    <Pressable
+                      key={option.id}
+                      style={[
+                        styles.fieldMenuItem,
+                        active && styles.fieldMenuItemActive,
+                      ]}
+                      onPress={() => pickField(option.id)}
+                    >
+                      <View style={styles.fieldMenuIcon}>
+                        {option.svg ? (
+                          <JobFieldArtwork xml={option.svg} width={30} height={30} />
+                        ) : (
+                          <AppIcon name="brief" size={16} color="#8FA69B" />
+                        )}
+                      </View>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.fieldMenuText,
+                          active && styles.fieldMenuTextActive,
+                        ]}
+                      >
+                        {option.title}
+                      </Text>
+                      {active && <AppIcon name="check" size={15} color="#04342C" />}
+                    </Pressable>
+                  );
+                })}
+                {fieldMatches.length === 0 && (
+                  <Text style={styles.fieldMenuEmpty}>No fields match</Text>
+                )}
+              </ScrollView>
+            </View>
           )}
 
           <Pressable style={styles.cta} onPress={() => goTo(2)}>
@@ -246,7 +335,8 @@ export default function QuickSearchWizard() {
             style={[styles.row, locationMode === 'near' && styles.cellActive]}
             onPress={() => setLocationMode('near')}
           >
-            <MapPin
+            <AppIcon
+              name="pin"
               size={18}
               color={locationMode === 'near' ? '#04342C' : '#12271F'}
             />
@@ -268,7 +358,8 @@ export default function QuickSearchWizard() {
             ]}
             onPress={() => setLocationMode('draw')}
           >
-            <MapIcon
+            <AppIcon
+              name="map"
               size={18}
               color={locationMode === 'draw' ? '#04342C' : '#12271F'}
             />
@@ -379,35 +470,55 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   optional: { fontSize: 12, color: '#8FA69B', marginTop: 2, marginBottom: 8 },
-  input: {
+  fieldTriggerIcon: {
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  fieldTriggerImage: { height: '100%', width: '100%' },
+  fieldTriggerPlaceholder: { color: '#8FA69B' },
+  chevronOpen: { transform: [{ rotate: '-90deg' }] },
+
+  fieldMenu: {
+    marginTop: 8,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#DCE5E0',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  fieldFilter: {
+    height: 42,
     paddingHorizontal: 14,
-    height: 44,
-    fontSize: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DCE5E0',
+    fontSize: 13,
     color: '#12271F',
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  chip: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  chipText: { fontSize: 12, color: '#12271F' },
-  selectedChip: {
-    alignSelf: 'flex-start',
+  fieldMenuScroll: { maxHeight: 260 },
+  fieldMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#EAF6EF',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
   },
-  selectedChipText: { fontSize: 13, color: '#04342C', fontWeight: '500' },
+  fieldMenuItemActive: { backgroundColor: '#EAF6EF' },
+  fieldMenuIcon: {
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 30,
+  },
+  fieldMenuImage: { height: '100%', width: '100%' },
+  fieldMenuText: { flex: 1, fontSize: 13, color: '#12271F' },
+  fieldMenuTextActive: { color: '#04342C', fontWeight: '500' },
+  fieldMenuEmpty: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: '#8FA69B',
+  },
 
   row: {
     flexDirection: 'row',

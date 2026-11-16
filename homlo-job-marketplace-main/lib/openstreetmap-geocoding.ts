@@ -1,3 +1,5 @@
+import { mapProviderConfig } from "@/lib/map-config";
+
 export type MapCoordinate = { latitude: number; longitude: number };
 
 export type OpenStreetMapPlace = {
@@ -64,19 +66,37 @@ function toPlace(result: NominatimResult): OpenStreetMapPlace {
   };
 }
 
-export async function searchOpenStreetMapPlace(query: string) {
+async function nominatimFetch(path: string, signal?: AbortSignal) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), mapProviderConfig.geocodingTimeoutMs);
+  const onExternalAbort = () => controller.abort();
+  signal?.addEventListener("abort", onExternalAbort, { once: true });
+  try {
+    return await fetch(`${mapProviderConfig.nominatimBaseUrl}${path}`, {
+      headers: { Accept: "application/json", "Accept-Language": "en" },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onExternalAbort);
+  }
+}
+
+export async function searchOpenStreetMapPlace(query: string, signal?: AbortSignal) {
   const encodedQuery = encodeURIComponent(`${query}, Cambodia`);
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&q=${encodedQuery}`, {
-    headers: { Accept: "application/json" },
-  });
+  const response = await nominatimFetch(
+    `/search?format=jsonv2&addressdetails=1&limit=5&q=${encodedQuery}`,
+    signal,
+  );
   if (!response.ok) throw new Error("Location search is unavailable.");
   return (await response.json() as NominatimResult[]).map(toPlace);
 }
 
-export async function reverseOpenStreetMapPlace(coordinate: MapCoordinate) {
-  const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${coordinate.latitude}&lon=${coordinate.longitude}`, {
-    headers: { Accept: "application/json" },
-  });
+export async function reverseOpenStreetMapPlace(coordinate: MapCoordinate, signal?: AbortSignal) {
+  const response = await nominatimFetch(
+    `/reverse?format=jsonv2&addressdetails=1&lat=${coordinate.latitude}&lon=${coordinate.longitude}`,
+    signal,
+  );
   if (!response.ok) throw new Error("Unable to resolve the selected area.");
   return toPlace(await response.json() as NominatimResult);
 }

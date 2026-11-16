@@ -28,8 +28,8 @@ export class PostgresPaymentWebhookEventRepository extends Repository<PaymentWeb
 export class PostgresBoostRepository extends Repository<Boost> implements BoostRepository {
   readonly modelName = "boosts";
   constructor(database: DatabaseAdapter) { super(database); }
-  async create(jobId: UUID, employerId: UUID, packageName: string, startAt: Date, expiresAt: Date): Promise<Boost> { const { rows } = await this.database.query<BoostRow>(`insert into boosts (job_id, employer_id, package, start_at, expires_at) values ($1, $2, $3, $4, $5) returning *`, [jobId, employerId, packageName, startAt, expiresAt]); return toBoost(requiredRow(rows, "create boost")); }
-  async activate(id: UUID): Promise<Boost | null> { const { rows } = await this.database.query<BoostRow>(`update boosts set status = 'active' where id = $1 returning *`, [id]); return rows[0] ? toBoost(rows[0]) : null; }
+  async create(jobId: UUID, employerId: UUID, packageName: string, startAt: Date, expiresAt: Date): Promise<Boost> { const { rows } = await this.database.query<BoostRow>(`insert into boosts (job_id, employer_id, package, start_at, expires_at, status) values ($1, $2, $3, $4, $5, 'pending') returning *`, [jobId, employerId, packageName, startAt, expiresAt]); return toBoost(requiredRow(rows, "create boost")); }
+  async activate(id: UUID): Promise<Boost | null> { const { rows } = await this.database.query<BoostRow>(`update boosts set status = 'active', start_at = now(), expires_at = now() + case package when 'starter' then interval '3 days' when 'local' then interval '5 days' when 'urgent' then interval '3 days' when 'maximum' then interval '14 days' else interval '7 days' end where id = $1 and status = 'pending' returning *`, [id]); return rows[0] ? toBoost(rows[0]) : null; }
   async expire(id: UUID): Promise<Boost | null> { const { rows } = await this.database.query<BoostRow>(`update boosts set status = 'expired' where id = $1 and status = 'active' returning *`, [id]); return rows[0] ? toBoost(rows[0]) : null; }
 }
 

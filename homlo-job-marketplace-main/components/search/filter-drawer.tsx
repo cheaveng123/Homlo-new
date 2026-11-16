@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Text } from "@/components/ui/text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { ScalePressable } from "@/components/ui/scale-pressable";
 import { haptic } from "@/lib/haptics";
 import { isValidPolygon } from "@/lib/polygon";
@@ -43,7 +43,6 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
   const [rendered, setRendered] = useState(visible);
   const renderedRef = useRef(visible);
   const [sheetY] = useState(() => new Animated.Value(560));
-  const [overlayOpacity] = useState(() => new Animated.Value(0));
   const [drawVisible, setDrawVisible] = useState(false);
   const [drawPolygon, setDrawPolygon] = useState<MapCoordinate[]>([]);
 
@@ -68,26 +67,19 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
     if (visible) {
       renderedRef.current = true;
       sheetY.setValue(560);
-      overlayOpacity.setValue(0);
       requestAnimationFrame(() => {
         setRendered(true);
-        Animated.parallel([
-          Animated.timing(sheetY, { duration: 280, easing: Easing.out(Easing.cubic), toValue: 0, useNativeDriver: true }),
-          Animated.timing(overlayOpacity, { duration: 220, easing: Easing.out(Easing.quad), toValue: 1, useNativeDriver: true }),
-        ]).start();
+        Animated.spring(sheetY, { damping: 15, stiffness: 180, toValue: 0, useNativeDriver: true }).start();
       });
     } else if (renderedRef.current) {
-      Animated.parallel([
-        Animated.timing(sheetY, { duration: 220, easing: Easing.in(Easing.cubic), toValue: 560, useNativeDriver: true }),
-        Animated.timing(overlayOpacity, { duration: 180, easing: Easing.in(Easing.quad), toValue: 0, useNativeDriver: true }),
-      ]).start(({ finished }) => {
+      Animated.spring(sheetY, { damping: 15, stiffness: 180, toValue: 560, useNativeDriver: true }).start(({ finished }) => {
         if (finished) {
           renderedRef.current = false;
           setRendered(false);
         }
       });
     }
-  }, [overlayOpacity, sheetY, visible]);
+  }, [sheetY, visible]);
 
   if (!rendered) return null;
 
@@ -97,7 +89,7 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
   return (
     <>
     <Modal animationType="none" onRequestClose={onClose} transparent visible={rendered}>
-      <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
+      <Animated.View style={[styles.overlay, { opacity: sheetY.interpolate({ inputRange: [0, 560], outputRange: [1, 0] }) }]}>
         <Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.dismiss} />
       </Animated.View>
       <Animated.View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 14) + 8, transform: [{ translateY: sheetY }] }]}>
@@ -105,14 +97,14 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
         <View style={styles.header}>
           <Text style={styles.title}>Filters</Text>
           <Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.closeButton}>
-            <IconSymbol name="xmark" size={18} color="#17201A" />
+            <AppIcon name="close" size={18} color="#17201A" />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Section title="Location">
             <TextInput accessibilityLabel="Filter by location" onChangeText={(value) => onChange("location", value)} placeholder="City or area" placeholderTextColor="#94A098" style={styles.input} value={draft.location} />
             <Pressable accessibilityRole="button" accessibilityState={{ selected: isValidPolygon(draft.polygon) }} accessibilityLabel="Draw area on map" onPress={openDraw} style={({ pressed }) => [styles.drawButton, isValidPolygon(draft.polygon) && styles.drawButtonActive, pressed && styles.pressed]}>
-              <IconSymbol name="mappin.and.ellipse" size={15} color={isValidPolygon(draft.polygon) ? "#16803C" : "#17201A"} />
+              <AppIcon name="pin" size={15} color={isValidPolygon(draft.polygon) ? "#16803C" : "#17201A"} />
               <Text style={isValidPolygon(draft.polygon) ? styles.drawButtonTextActive : styles.drawButtonText}>{isValidPolygon(draft.polygon) ? `Drawn area (${draft.polygon!.length} points)` : "Draw area on map"}</Text>
             </Pressable>
           </Section>
@@ -143,7 +135,7 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
         <View style={[styles.drawHeader, { paddingTop: Math.max(insets.top, 8) }]}>
           <Text style={styles.drawTitle}>Draw area</Text>
           <Pressable accessibilityLabel="Close drawing" onPress={() => setDrawVisible(false)} style={styles.closeButton}>
-            <IconSymbol name="xmark" size={18} color="#17201A" />
+            <AppIcon name="close" size={18} color="#17201A" />
           </Pressable>
         </View>
         <Text style={styles.drawHint}>Tap the map to drop points, then choose Done to filter jobs inside this area.</Text>

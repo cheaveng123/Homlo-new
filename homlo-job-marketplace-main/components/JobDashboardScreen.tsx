@@ -48,19 +48,20 @@ import {
 } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIcon } from '@/components/ui/AppIcon';
 
 import { BottomTabBar } from '@/components/home/BottomTabBar';
 import { JobCard as JobCardView } from '@/components/jobs/JobCard';
-import { colors, fontFamily } from '@/components/home/theme';
+import { colors, fontFamily } from '@/theme';
 import { ShimmerIcon } from '@/components/shared/ShimmerIcon';
 import { ScalePressable } from '@/components/ui/scale-pressable';
 import { useAuth } from '@/hooks/use-auth';
 import { useEmployerApplications, type EmployerApplication } from '@/hooks/use-employer-applications';
 import { useMessagingUnread } from '@/hooks/use-messaging-unread';
 import { haptic } from '@/lib/haptics';
+import { computePositionsLeft } from '@/lib/positions';
 import { trpc } from '@/lib/trpc';
 
 // Tab routes mirror app/(tabs)/_layout.tsx.
@@ -163,6 +164,7 @@ const TABS: TabKey[] = ['Live', 'Draft', 'Review'];
 
 export default function JobDashboardScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { tab } = useLocalSearchParams<{ tab?: string | string[] }>();
   const { user } = useAuth();
@@ -332,13 +334,19 @@ export default function JobDashboardScreen() {
 
   const selectTab = useCallback(
     (key: string) => {
+      const target = ROUTES[key] as never;
+      const alreadyThere =
+        key === 'post'
+          ? pathname === '/employer' || pathname.startsWith('/employer')
+          : pathname === target;
+      if (alreadyThere) return;
       const now = Date.now();
       if (now < lockUntilRef.current) return;
       lockUntilRef.current = now + 400;
       haptic.light();
-      router.push(ROUTES[key] as never);
+      router.push(target);
     },
-    [router],
+    [pathname, router],
   );
 
   const notify = useCallback(() => haptic.light(), []);
@@ -808,7 +816,7 @@ function JobCard({
   onMenu: (job: Job) => void;
   onOpen: (job: Job) => void;
 }) {
-  const left = Math.max(job.total - job.filled, 0);
+  const left = computePositionsLeft(job.total, job.filled);
   const statusLabel = job.status === 'live' ? 'Live' : job.status === 'draft' ? 'Draft' : 'Review';
 
   return (

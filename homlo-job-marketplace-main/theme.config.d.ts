@@ -1,4 +1,4 @@
-export const themeColors: {
+﻿export const themeColors: {
   primary: { light: string; dark: string };
   background: { light: string; dark: string };
   surface: { light: string; dark: string };
@@ -8,6 +8,7 @@ export const themeColors: {
   success: { light: string; dark: string };
   warning: { light: string; dark: string };
   error: { light: string; dark: string };
+  softBlue: { light: string; dark: string };
 };
 
 declare const themeConfig: {

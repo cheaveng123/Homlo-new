@@ -120,6 +120,7 @@ function display(id: string, overrides: Partial<FeedJobDisplay> = {}): FeedJobDi
     payCurrency: "USD",
     payType: "hourly",
     locationText: "Remote — worldwide",
+    workArrangement: null,
     latitude: 0,
     longitude: 0,
     workersNeeded: 1,

@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
-import { Target, ChevronRight } from 'lucide-react-native';
+import { AppIcon } from "@/components/ui/AppIcon";
 import { colors, radius, fontFamily } from './theme';
 
 type Props = {
@@ -19,7 +19,7 @@ export function GuideCard({ onPress, label = 'First time here? Get matched in 3 
           style={{ backgroundColor: colors.mint, borderRadius: radius.circle }}
           className="w-[30px] h-[30px] items-center justify-center"
         >
-          <Target size={15} color={colors.white} />
+          <AppIcon name="target" size={15} color={colors.white} />
         </View>
         <Text
           style={{ fontFamily: fontFamily.semibold, color: '#0B3D2E' }}
@@ -28,7 +28,7 @@ export function GuideCard({ onPress, label = 'First time here? Get matched in 3 
           {label}
         </Text>
       </View>
-      <ChevronRight size={16} color={colors.mint} />
+      <AppIcon name="chevron" size={16} color={colors.mint} />
     </Pressable>
   );
 }

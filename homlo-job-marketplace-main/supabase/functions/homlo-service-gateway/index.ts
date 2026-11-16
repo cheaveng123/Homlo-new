@@ -111,6 +111,19 @@ function fail(message: string, status = 400) {
   return json({ error: message }, status);
 }
 
+/** Rejects device-local and arbitrary non-image URI schemes for banner images. */
+function isSafeBannerImage(value: string): boolean {
+  if (!value || value.length === 0) return true;
+  const lower = value.toLowerCase();
+  if (lower.startsWith("file://") || lower.startsWith("ph://") || lower.startsWith("content://") || lower.startsWith("blob:") || lower.startsWith("data:")) {
+    return false;
+  }
+  // Allow https/http URLs and storage object paths (no dangerous characters).
+  if (/^https?:\/\//.test(value)) return true;
+  if (/^[a-zA-Z0-9._\-/]+$/.test(value) && !value.includes("..")) return true;
+  return false;
+}
+
 async function getVerifiedUser(request: Request): Promise<AuthUser | null> {
   const authorization = request.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer ")) return null;
@@ -352,6 +365,10 @@ Deno.serve(async (request) => {
     }
 
     if (action === "employer.save-job") {
+      const bannerImage = typeof payload.bannerImage === "string" ? payload.bannerImage.trim() : null;
+      if (bannerImage && !isSafeBannerImage(bannerImage)) {
+        return fail("Banner image must be a public https URL or a storage object path", 400);
+      }
       const job = await rpc("homlo_save_job", {
         p_employer_id: account.id,
         p_job_id: payload.jobId ?? null,

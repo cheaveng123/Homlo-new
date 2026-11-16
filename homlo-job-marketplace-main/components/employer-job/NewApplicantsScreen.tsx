@@ -36,7 +36,7 @@ import ApplicantTicketCard, {
   ticketStatus,
   type Applicant,
 } from '@/components/employer-job/ApplicantTicketCard';
-import { colors, fontFamily } from '@/components/home/theme';
+import { colors, fontFamily } from '@/theme';
 import { formatRelativeAgo } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { trpc } from '@/lib/trpc';
@@ -74,7 +74,7 @@ const RANGE_DAYS: Record<ApplicationsRange, number> = { '1w': 7, '1m': 30, '6m':
 const RANGE_COLUMNS: Record<ApplicationsRange, number> = { '1w': 7, '1m': 15, '6m': 12, '1y': 12 };
 
 /** One colour per slice, ordered for maximum separation between neighbours. */
-const SLICE_COLORS = [colors.mint, colors.greenDark, colors.mintBloom, colors.amber, colors.amberDark];
+const SLICE_COLORS = [colors.primary, colors.deep, colors.tint, colors.amber, colors.amberDark];
 
 const HISTOGRAM_HEIGHT = 116;
 const DONUT_SIZE = 150;
@@ -255,9 +255,9 @@ function TicketRow({
                 haptic.success();
                 onChanged();
               })
-              .catch(() => {
+              .catch((err) => {
                 haptic.selection();
-                Alert.alert("Couldn't update the application", 'Try again in a moment.');
+                Alert.alert("Couldn't update the application", err instanceof Error ? err.message : "Try again in a moment.");
               });
           },
         },
@@ -484,6 +484,7 @@ function HistogramBar({
  * on every frame from the UI thread.
  */
 function JobPie({ entries }: { entries: ApplicationsPerJob[] }) {
+  const router = useRouter();
   const total = entries.reduce((sum, entry) => sum + entry.total, 0);
 
   const ratios = entries.map((entry) => (total > 0 ? entry.total / total : 0));
@@ -520,7 +521,12 @@ function JobPie({ entries }: { entries: ApplicationsPerJob[] }) {
 
       <View style={styles.legend}>
         {slices.map((slice) => (
-          <View key={slice.entry.jobId} style={styles.legendRow}>
+          <ScalePressable
+            key={slice.entry.jobId}
+            onPress={() => router.push(`/employer/job/${slice.entry.jobId}` as never)}
+            hapticFeedback
+            style={styles.legendRow}
+          >
             <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
             <Text style={styles.legendTitle} numberOfLines={1}>
               {slice.entry.jobTitle}
@@ -531,7 +537,7 @@ function JobPie({ entries }: { entries: ApplicationsPerJob[] }) {
                 {total > 0 ? ` · ${Math.round(slice.ratio * 100)}%` : ''}
               </Text>
             </Text>
-          </View>
+          </ScalePressable>
         ))}
       </View>
     </View>
@@ -635,7 +641,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     letterSpacing: -0.6,
   },
-  statValueEmphasis: { color: colors.mint },
+  statValueEmphasis: { color: colors.primary },
   statLabel: {
     marginTop: 4,
     fontFamily: fontFamily.interRegular,
@@ -679,7 +685,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.line,
   },
-  rangeTabActive: { backgroundColor: colors.green, borderColor: colors.green },
+  rangeTabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   rangeTabText: {
     fontFamily: fontFamily.interSemiBold,
     fontSize: 13,
@@ -698,7 +704,7 @@ const styles = StyleSheet.create({
   bar: {
     flex: 1,
     borderRadius: 4,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.primary,
   },
   axis: {
     flexDirection: 'row',
@@ -789,7 +795,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.green,
+    backgroundColor: colors.primary,
   },
   retryText: {
     fontFamily: fontFamily.interSemiBold,

@@ -1,9 +1,10 @@
 /**
- * Employer job management overflow menu (Edit / Share / Open-close / Delete).
+ * Employer job management overflow menu (Edit / Share / Open-close).
  * All writes go through the real tRPC gateway: status toggles route through
  * homlo_save_job with the full editable payload (home_save_job overwrites the
- * whole row on update — a partial payload would wipe title/description/pay),
- * and delete routes through the new homlo_soft_delete_job (sets deleted_at).
+ * whole row on update — a partial payload would wipe title/description/pay).
+ * Closing a job sets status to 'closed', preserving the job record and all
+ * associated applications, messages, and analytics.
  */
 import { useState } from "react";
 import {
@@ -15,7 +16,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Edit3, MoreVertical, Pause, Play, Share2, Trash2 } from "lucide-react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 import { Text } from "@/components/ui/text";
 import { trpc } from "@/lib/trpc";
@@ -30,15 +31,13 @@ import type { EmployerJob } from "@/backend/domain/models";
 type JobOptionsMenuProps = {
   job: EmployerJob;
   onJobUpdated: (job: EmployerJob) => void;
-  onJobDeleted: () => void;
 };
 
-export default function JobOptionsMenu({ job, onJobUpdated, onJobDeleted }: JobOptionsMenuProps) {
+export default function JobOptionsMenu({ job, onJobUpdated }: JobOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const utils = trpc.useUtils();
   const saveJob = trpc.homlo.employer.saveJob.useMutation();
-  const softDelete = trpc.homlo.employer.softDeleteJob.useMutation();
   const isOpen = job.status === "open";
 
   function goEdit() {
@@ -80,35 +79,12 @@ export default function JobOptionsMenu({ job, onJobUpdated, onJobDeleted }: JobO
               )) as { job?: EmployerJobRow };
               if (saved?.job) onJobUpdated(normalizeEmployerJob(saved.job));
               void utils.homlo.employer.jobs.invalidate();
+              void utils.homlo.publicJobs.invalidate();
+              void utils.homlo.searchJobs.invalidate();
+              void utils.homlo.homeFeed.invalidate();
             } catch {
               Alert.alert("Couldn't update the job", "Try again in a moment.");
             }
-          },
-        },
-      ],
-    );
-  }
-
-  function confirmDelete() {
-    setOpen(false);
-    Alert.alert(
-      "Delete this job?",
-      "This hides the listing. Applicants who already applied will still see your job title on their own history.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            void softDelete
-              .mutateAsync({ jobId: job.id })
-              .then(() => {
-                onJobDeleted();
-                void utils.homlo.employer.jobs.invalidate();
-              })
-              .catch(() => {
-                Alert.alert("Couldn't delete the job", "Try again in a moment.");
-              });
           },
         },
       ],
@@ -122,7 +98,7 @@ export default function JobOptionsMenu({ job, onJobUpdated, onJobDeleted }: JobO
         onPress={() => setOpen(true)}
         hitSlop={10}
       >
-        <MoreVertical size={20} color="#17201A" />
+        <AppIcon name="dots" size={20} color="#17201A" />
       </TouchableOpacity>
 
       <Modal
@@ -137,7 +113,7 @@ export default function JobOptionsMenu({ job, onJobUpdated, onJobDeleted }: JobO
               onPress={goEdit}
               className="flex-row items-center gap-2.5 px-3.5 py-3 border-b border-border"
             >
-              <Edit3 size={17} color="#17201A" />
+              <AppIcon name="edit" size={17} color="#17201A" />
               <Text className="text-sm font-medium text-foreground">Edit job</Text>
             </TouchableOpacity>
 
@@ -145,7 +121,7 @@ export default function JobOptionsMenu({ job, onJobUpdated, onJobDeleted }: JobO
               onPress={() => void shareListing()}
               className="flex-row items-center gap-2.5 px-3.5 py-3 border-b border-border"
             >
-              <Share2 size={17} color="#17201A" />
+              <AppIcon name="share" size={17} color="#17201A" />
               <Text className="text-sm font-medium text-foreground">Share listing</Text>
             </TouchableOpacity>
 
@@ -153,18 +129,10 @@ export default function JobOptionsMenu({ job, onJobUpdated, onJobDeleted }: JobO
               onPress={toggleOpenClosed}
               className="flex-row items-center gap-2.5 px-3.5 py-3 border-b border-border"
             >
-              {isOpen ? <Pause size={17} color="#17201A" /> : <Play size={17} color="#17201A" />}
+              {isOpen ? <AppIcon name="pause" size={17} color="#17201A" /> : <AppIcon name="play" size={17} color="#17201A" />}
               <Text className="text-sm font-medium text-foreground">
                 {isOpen ? "Close job" : "Reopen job"}
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={confirmDelete}
-              className="flex-row items-center gap-2.5 px-3.5 py-3"
-            >
-              <Trash2 size={17} color="#A32D2D" />
-              <Text className="text-sm font-medium text-error">Delete job</Text>
             </TouchableOpacity>
           </View>
         </Pressable>

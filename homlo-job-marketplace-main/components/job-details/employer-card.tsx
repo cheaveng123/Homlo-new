@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
+import { AppIcon } from "@/components/ui/AppIcon";
 import ImagePlaceholder from "./image-placeholder";
 import { colors } from "./colors";
 import { fonts, type } from "./typography";
@@ -25,12 +25,12 @@ export default function EmployerCard({ name, verified, subtitle, avatarUrl, onPr
         <View style={styles.nameRow}>
           <Text style={styles.name}>{name}</Text>
           {verified ? (
-            <Feather name="check-circle" size={16} color={colors.mint} style={{ marginLeft: 4 }} />
+            <AppIcon name="circle-check" size={16} color={colors.mint} style={{ marginLeft: 4 }} />
           ) : null}
         </View>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
-      <Feather name="chevron-right" size={18} color={colors.muted} />
+      <AppIcon name="chevron" size={18} color={colors.muted} />
     </TouchableOpacity>
   );
 }

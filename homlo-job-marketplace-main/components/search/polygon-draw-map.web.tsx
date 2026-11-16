@@ -2,10 +2,12 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 
+import { MAP_STYLE_URL } from "@/lib/map-config";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
+import { useUserLocation } from "@/lib/use-user-location";
 import type { PolygonDrawMapProps } from "./polygon-draw-map";
 
-const styleUrl = "https://tiles.openfreemap.org/styles/liberty";
+const styleUrl = MAP_STYLE_URL;
 const selectedColor = "#16803C";
 
 export function PolygonDrawMap({ center, polygon, onAddPoint }: PolygonDrawMapProps) {
@@ -13,7 +15,9 @@ export function PolygonDrawMap({ center, polygon, onAddPoint }: PolygonDrawMapPr
   const mapRef = useRef<maplibregl.Map | null>(null);
   const initialCenter = useRef(center ?? { latitude: 11.5564, longitude: 104.9282 });
   const onAddPointRef = useRef(onAddPoint);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
   const readyRef = useRef(false);
+  const { location: userLocation } = useUserLocation({ requestOnMount: true });
 
   useEffect(() => {
     onAddPointRef.current = onAddPoint;
@@ -29,6 +33,7 @@ export function PolygonDrawMap({ center, polygon, onAddPoint }: PolygonDrawMapPr
       attributionControl: false,
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+    map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } }), "top-right");
     map.on("click", (event: maplibregl.MapMouseEvent) => {
       onAddPointRef.current?.({ latitude: event.lngLat.lat, longitude: event.lngLat.lng });
     });
@@ -40,8 +45,27 @@ export function PolygonDrawMap({ center, polygon, onAddPoint }: PolygonDrawMapPr
       readyRef.current = true;
     });
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
+    return () => { map.remove(); mapRef.current = null; userMarkerRef.current = null; readyRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!userLocation) {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      return;
+    }
+    const lngLat: [number, number] = [userLocation.longitude, userLocation.latitude];
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = new maplibregl.Marker({ color: "#007AFF" })
+        .setLngLat(lngLat)
+        .setPopup(new maplibregl.Popup({ offset: 24 }).setText("Your location"))
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat(lngLat);
+    }
+  }, [userLocation]);
 
   useEffect(() => {
     const map = mapRef.current;

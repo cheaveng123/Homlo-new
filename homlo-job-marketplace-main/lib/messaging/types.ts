@@ -36,6 +36,9 @@ export interface Message {
   updatedAt: string | null;
   readAt: string | null;
   deletedAt: string | null;
+  applicationId: string | null;
+  jobId: string | null;
+  jobTitle: string | null;
 }
 
 export interface Conversation {

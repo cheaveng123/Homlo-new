@@ -120,7 +120,8 @@ export function filterGuidedJobs(items: unknown, preferences: GuidedPreferences)
         if (job.location.includes(preferences.city)) score += 1;
       }
       if (hasPolygon) {
-        if (pointInPolygon(jobCoordinate(job), polygon)) score += 1;
+        const coordinate = jobCoordinate(job);
+        if (coordinate && pointInPolygon(coordinate, polygon)) score += 1;
       }
       return { job, score };
     })

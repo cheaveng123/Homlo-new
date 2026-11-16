@@ -1,9 +1,10 @@
 import type { Category, Job, JobMedia, JobStatus, PayType, UUID } from "../domain/models";
+import type { WorkArrangement } from "../domain/work-arrangement";
 import type { DatabaseAdapter } from "../infrastructure/database/DatabaseAdapter";
 import { Repository } from "./Repository";
 
 export type JobSearch = { status?: JobStatus; categoryId?: UUID; near?: { lat: number; lng: number; radiusKm: number }; startDateAfter?: string };
-export type CreateJob = Omit<Job, "id" | "workersHired" | "status" | "createdAt" | "updatedAt" | "deletedAt" | "requirements"> & Partial<Pick<Job, "status" | "requirements">>;
+export type CreateJob = Omit<Job, "id" | "workersHired" | "status" | "createdAt" | "updatedAt" | "deletedAt" | "requirements" | "workArrangement"> & Partial<Pick<Job, "status" | "requirements" | "workArrangement">>;
 export type UpdateJob = Partial<Omit<CreateJob, "employerId">>;
 
 export interface CategoryRepository { list(): Promise<Category[]>; findBySlug(slug: string): Promise<Category | null>; }
@@ -38,13 +39,14 @@ export class PostgresJobRepository extends Repository<Job> implements JobReposit
     return rows.map(toJob);
   }
   async create(input: CreateJob): Promise<Job> {
-    const { rows } = await this.database.query<JobRow>(`insert into jobs (employer_id, category_id, title, description, requirements, pay_amount, pay_currency, pay_type, location_text, latitude, longitude, start_date, end_date, start_time, end_time, workers_needed, status) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning *`, [input.employerId, input.categoryId, input.title, input.description, input.requirements ?? null, input.payAmount, input.payCurrency, input.payType, input.locationText, input.latitude, input.longitude, input.startDate, input.endDate, input.startTime, input.endTime, input.workersNeeded, input.status ?? "open"]);
+    const { rows } = await this.database.query<JobRow>(`insert into jobs (employer_id, category_id, title, description, requirements, pay_amount, pay_currency, pay_type, location_text, latitude, longitude, start_date, end_date, start_time, end_time, workers_needed, status, work_arrangement) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) returning *`, [input.employerId, input.categoryId, input.title, input.description, input.requirements ?? null, input.payAmount, input.payCurrency, input.payType, input.locationText, input.latitude, input.longitude, input.startDate, input.endDate, input.startTime, input.endTime, input.workersNeeded, input.status ?? "open", input.workArrangement ?? null]);
     return toJob(requiredRow(rows, "create job"));
   }
   async update(id: UUID, input: UpdateJob): Promise<Job | null> {
     const existing = await this.findById(id); if (!existing) return null;
     const next = { ...existing, ...input };
-    const { rows } = await this.database.query<JobRow>(`update jobs set category_id = $2, title = $3, description = $4, requirements = $5, pay_amount = $6, pay_currency = $7, pay_type = $8, location_text = $9, latitude = $10, longitude = $11, start_date = $12, end_date = $13, start_time = $14, end_time = $15, workers_needed = $16, status = $17 where id = $1 and deleted_at is null returning *`, [id, next.categoryId, next.title, next.description, next.requirements ?? null, next.payAmount, next.payCurrency, next.payType, next.locationText, next.latitude, next.longitude, next.startDate, next.endDate, next.startTime, next.endTime, next.workersNeeded, next.status]);
+    const remote = next.workArrangement === "Remote";
+    const { rows } = await this.database.query<JobRow>(`update jobs set category_id = $2, title = $3, description = $4, requirements = $5, pay_amount = $6, pay_currency = $7, pay_type = $8, location_text = $9, latitude = $10, longitude = $11, start_date = $12, end_date = $13, start_time = $14, end_time = $15, workers_needed = $16, status = $17, work_arrangement = $18 where id = $1 and deleted_at is null returning *`, [id, next.categoryId, next.title, next.description, next.requirements ?? null, next.payAmount, next.payCurrency, next.payType, next.locationText, remote ? null : next.latitude, remote ? null : next.longitude, next.startDate, next.endDate, next.startTime, next.endTime, next.workersNeeded, next.status, next.workArrangement ?? null]);
     return rows[0] ? toJob(rows[0]) : null;
   }
   async softDelete(id: UUID): Promise<void> { await this.database.query(`update jobs set deleted_at = now() where id = $1 and deleted_at is null`, [id]); }
@@ -60,9 +62,9 @@ export class PostgresJobMediaRepository extends Repository<JobMedia> implements 
 }
 
 type CategoryRow = { id: string; name: string; slug: string };
-type JobRow = { id: string; employer_id: string; category_id: string | null; title: string; description: string; requirements: string | null; pay_amount: number | string; pay_currency: string; pay_type: PayType; location_text: string | null; latitude: number | null; longitude: number | null; start_date: string | null; end_date: string | null; start_time: string | null; end_time: string | null; workers_needed: number; workers_hired: number; status: JobStatus; created_at: Date; updated_at: Date; deleted_at: Date | null };
+type JobRow = { id: string; employer_id: string; category_id: string | null; title: string; description: string; requirements: string | null; work_arrangement: WorkArrangement | null; pay_amount: number | string; pay_currency: string; pay_type: PayType; location_text: string | null; latitude: number | null; longitude: number | null; start_date: string | null; end_date: string | null; start_time: string | null; end_time: string | null; workers_needed: number; workers_hired: number; status: JobStatus; created_at: Date; updated_at: Date; deleted_at: Date | null };
 type JobMediaRow = { id: string; job_id: string; storage_key: string; media_type: "image" | "video"; position: number; created_at: Date };
 const requiredRow = <T>(rows: T[], action: string): T => { if (!rows[0]) throw new Error(`Database failed to ${action}`); return rows[0]; };
 const toCategory = (row: CategoryRow): Category => ({ id: row.id, name: row.name, slug: row.slug });
-const toJob = (row: JobRow): Job => ({ id: row.id, employerId: row.employer_id, categoryId: row.category_id, title: row.title, description: row.description, requirements: row.requirements, payAmount: Number(row.pay_amount), payCurrency: row.pay_currency, payType: row.pay_type, locationText: row.location_text, latitude: row.latitude, longitude: row.longitude, startDate: row.start_date, endDate: row.end_date, startTime: row.start_time, endTime: row.end_time, workersNeeded: row.workers_needed, workersHired: row.workers_hired, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at, deletedAt: row.deleted_at });
+const toJob = (row: JobRow): Job => ({ id: row.id, employerId: row.employer_id, categoryId: row.category_id, title: row.title, description: row.description, requirements: row.requirements, workArrangement: row.work_arrangement ?? null, payAmount: Number(row.pay_amount), payCurrency: row.pay_currency, payType: row.pay_type, locationText: row.location_text, latitude: row.latitude, longitude: row.longitude, startDate: row.start_date, endDate: row.end_date, startTime: row.start_time, endTime: row.end_time, workersNeeded: row.workers_needed, workersHired: row.workers_hired, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at, deletedAt: row.deleted_at });
 const toMedia = (row: JobMediaRow): JobMedia => ({ id: row.id, jobId: row.job_id, storageKey: row.storage_key, mediaType: row.media_type, position: row.position, createdAt: row.created_at });

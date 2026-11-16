@@ -1,10 +1,13 @@
 import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 
+import { MAP_STYLE_URL } from "@/lib/map-config";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
+import { useUserLocation } from "@/lib/use-user-location";
 
 type RealLocationMapProps = { coordinate: MapCoordinate; radiusKm: number; onSelect: (coordinate: MapCoordinate) => void };
-const openStreetMapStyle = "https://tiles.openfreemap.org/styles/liberty";
+const openStreetMapStyle = MAP_STYLE_URL;
 
 export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocationMapProps) {
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -12,6 +15,8 @@ export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocation
   const initialCoordinate = useRef(coordinate);
   const initialRadius = useRef(radiusKm);
   const onSelectRef = useRef(onSelect);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const { location: userLocation } = useUserLocation({ requestOnMount: true });
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -21,6 +26,7 @@ export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocation
     if (!elementRef.current || mapRef.current) return;
     const map = new maplibregl.Map({ container: elementRef.current, style: openStreetMapStyle, center: [initialCoordinate.current.longitude, initialCoordinate.current.latitude], zoom: 10.5, attributionControl: false });
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } }), "top-right");
     map.on("click", (event: maplibregl.MapMouseEvent) => onSelectRef.current({ latitude: event.lngLat.lat, longitude: event.lngLat.lng }));
     map.on("load", () => {
       map.addSource("job-search-area", { type: "geojson", data: buildSelectionGeoJson(initialCoordinate.current, initialRadius.current) });
@@ -29,8 +35,27 @@ export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocation
       map.addLayer({ id: "job-search-center", type: "circle", source: "job-search-area", filter: ["==", ["get", "kind"], "center"], paint: { "circle-color": "#08675F", "circle-radius": 7, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } });
     });
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => { map.remove(); mapRef.current = null; userMarkerRef.current = null; };
   }, [onSelect]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!userLocation) {
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      return;
+    }
+    const lngLat: [number, number] = [userLocation.longitude, userLocation.latitude];
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = new maplibregl.Marker({ color: "#007AFF" })
+        .setLngLat(lngLat)
+        .setPopup(new maplibregl.Popup({ offset: 24 }).setText("Your location"))
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat(lngLat);
+    }
+  }, [userLocation]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;

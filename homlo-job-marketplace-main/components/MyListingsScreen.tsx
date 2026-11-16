@@ -5,9 +5,9 @@
 // (homlo.employer.jobs + homlo.employer.applications per live job); there are
 // no direct Supabase calls from the screen.
 //
-// Matches the home-page design language: home greens for the header gradient,
-// rounded white content sheet over a green spill, mint cards/tags, the shared
-// BottomTabBar hot bar and amber for the "Closing soon" pill.
+// Matches the home-page design language: Lagoon & Sunrise palette for the header gradient,
+// rounded white content sheet over a teal spill, tint cards/tags, the shared
+// BottomTabBar hot bar and sun for the "Closing soon" pill.
 
 import React, { useMemo, useRef, useState } from 'react';
 import {
@@ -23,10 +23,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { AppIcon, type IconName } from '@/components/ui/AppIcon';
 import { BottomTabBar } from '@/components/home/BottomTabBar';
-import { colors, fontFamily } from '@/components/home/theme';
+import { colors, fontFamily } from '@/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingUnread } from '@/hooks/use-messaging-unread';
 import { haptic } from '@/lib/haptics';
@@ -132,6 +132,7 @@ const SHEET_RADIUS = 32;
 
 export default function MyListingsScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { user } = useAuth();
   const { count } = useMessagingUnread();
@@ -185,11 +186,17 @@ export default function MyListingsScreen() {
   const notify = () => haptic.light();
 
   const selectTab = (key: string) => {
+    const target = ROUTES[key] as never;
+    const alreadyThere =
+      key === 'post'
+        ? pathname === '/employer' || pathname.startsWith('/employer')
+        : pathname === target;
+    if (alreadyThere) return;
     const now = Date.now();
     if (now < lockUntilRef.current) return;
     lockUntilRef.current = now + 400;
     haptic.light();
-    router.push(ROUTES[key] as never);
+    router.push(target);
   };
 
   const openJob = (job: Job) => {
@@ -287,8 +294,8 @@ export default function MyListingsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.mint}
-              colors={[colors.mint]}
+              tintColor={colors.teal}
+              colors={[colors.teal]}
             />
           }
         >
@@ -320,7 +327,7 @@ export default function MyListingsScreen() {
           </View>
 
           {jobsQuery.isLoading && !jobs.length ? (
-            <ActivityIndicator color={colors.mint} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={colors.teal} style={{ marginTop: 40 }} />
           ) : null}
 
           {filtered.map((job) => (
@@ -472,18 +479,18 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 12,
-    backgroundColor: colors.mintTint,
+    backgroundColor: colors.tint,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  statNum: { fontFamily: fontFamily.extraBold, fontSize: 20, color: colors.ink, lineHeight: 24 },
-  statLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: colors.sub, marginTop: 5 },
+  statNum: { fontFamily: fontFamily.extraBold, fontSize: 20, color: colors.text, lineHeight: 24 },
+  statLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: colors.muted, marginTop: 5 },
 
   // White sheet: top corners rounded so the green root shows through them.
   sheet: {
     flex: 1,
-    backgroundColor: colors.pageBg,
+    backgroundColor: colors.bg,
     borderTopLeftRadius: SHEET_RADIUS,
     borderTopRightRadius: SHEET_RADIUS,
     overflow: 'hidden',
@@ -492,16 +499,16 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 18, paddingTop: 18 },
 
   tabsRow: { flexDirection: 'row', gap: 8, marginBottom: 22 },
-  tab: {
+tab: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 9,
     borderRadius: 20,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.track,
   },
-  tabActive: { backgroundColor: colors.mint },
-  tabText: { fontFamily: fontFamily.interMedium, fontSize: 13, color: colors.sub },
-  tabTextActive: { fontFamily: fontFamily.semibold, color: colors.white },
+  tabActive: { backgroundColor: colors.teal },
+  tabText: { fontFamily: fontFamily.interMedium, fontSize: 13, color: colors.muted },
+  tabTextActive: { fontFamily: fontFamily.semiBold, color: colors.white },
 
   listHead: {
     flexDirection: 'row',
@@ -509,20 +516,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  listHeadTitle: { fontFamily: fontFamily.bold, fontSize: 15.5, color: colors.ink },
+  listHeadTitle: { fontFamily: fontFamily.bold, fontSize: 15.5, color: colors.text },
   filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.track,
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 20,
   },
-  filterBtnText: { fontFamily: fontFamily.interMedium, fontSize: 12.5, color: colors.ink },
+  filterBtnText: { fontFamily: fontFamily.interMedium, fontSize: 12.5, color: colors.text },
 
   jobCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 19,
@@ -530,44 +537,44 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   jobRow1: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  jobTitle: { fontFamily: fontFamily.bold, fontSize: 15.5, color: colors.ink, marginBottom: 3 },
-  jobMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: colors.sub, marginBottom: 9 },
+  jobTitle: { fontFamily: fontFamily.bold, fontSize: 15.5, color: colors.text, marginBottom: 3 },
+  jobMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: colors.muted, marginBottom: 9 },
   tagsRow: { flexDirection: 'row', gap: 6, marginBottom: 9, flexWrap: 'wrap' },
-  tagRate: { backgroundColor: colors.mintTint, paddingVertical: 4, paddingHorizontal: 9, borderRadius: 20 },
-  tagRateText: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: colors.green },
-  tagStatus: { backgroundColor: colors.amberTint, paddingVertical: 4, paddingHorizontal: 9, borderRadius: 20 },
-  tagStatusText: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: colors.amberDark },
+  tagRate: { backgroundColor: colors.tint, paddingVertical: 4, paddingHorizontal: 9, borderRadius: 20 },
+  tagRateText: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: colors.teal },
+  tagStatus: { backgroundColor: colors.clayTint, paddingVertical: 4, paddingHorizontal: 9, borderRadius: 20 },
+  tagStatusText: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: colors.sun },
 
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  progressBar: { flex: 1, height: 5, borderRadius: 4, backgroundColor: colors.line, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 4, backgroundColor: colors.mint },
-  progressLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: colors.sub },
+  progressBar: { flex: 1, height: 5, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 4, backgroundColor: colors.teal },
+  progressLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: colors.muted },
 
   jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 9 },
   liveDotRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.teal },
   viewsRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  jobFooterText: { fontFamily: fontFamily.interRegular, fontSize: 11, color: colors.textSecondary },
+  jobFooterText: { fontFamily: fontFamily.interRegular, fontSize: 11, color: colors.muted },
 
   empty: {
     fontFamily: fontFamily.interMedium,
-    color: colors.sub,
+    color: colors.muted,
     textAlign: 'center',
     marginTop: 32,
   },
 
-  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(11,84,67,0.45)' },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(7,59,66,0.45)' },
   sheetDismiss: { flex: 1 },
   actionSheet: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 10,
     paddingHorizontal: 16,
     paddingBottom: 28,
   },
-  sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
-  sheetTitle: { fontFamily: fontFamily.bold, fontSize: 15, color: colors.ink, marginBottom: 8, paddingHorizontal: 4 },
+  sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 14 },
+  sheetTitle: { fontFamily: fontFamily.bold, fontSize: 15, color: colors.text, marginBottom: 8, paddingHorizontal: 4 },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -575,10 +582,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 4,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: colors.border,
   },
-  sheetRowIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.chipBg, alignItems: 'center', justifyContent: 'center' },
+  sheetRowIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.track, alignItems: 'center', justifyContent: 'center' },
   sheetRowCopy: { flex: 1 },
-  sheetRowTitle: { fontFamily: fontFamily.bold, fontSize: 14, color: colors.ink },
-  sheetRowSub: { fontFamily: fontFamily.interRegular, fontSize: 12, color: colors.sub, marginTop: 2 },
+  sheetRowTitle: { fontFamily: fontFamily.bold, fontSize: 14, color: colors.text },
+  sheetRowSub: { fontFamily: fontFamily.interRegular, fontSize: 12, color: colors.muted, marginTop: 2 },
 });

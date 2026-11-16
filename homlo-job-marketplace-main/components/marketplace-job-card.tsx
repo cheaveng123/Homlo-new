@@ -3,7 +3,7 @@ import { Image, Platform, Pressable, StyleSheet, View, type GestureResponderEven
 import { useRouter } from "expo-router";
 
 import { type Job, useJobStore } from "@/components/job-store";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";
 import { haptic } from "@/lib/haptics";
 import { normalizeJob } from "@/lib/job-utils";
@@ -85,14 +85,14 @@ function MarketplaceJobCardImpl({ job, selected = false, onPress, showBookmark =
           <Text numberOfLines={2} style={styles.title}>{safeJob.title}</Text>
           <View style={styles.companyRow}>
             <Text numberOfLines={1} style={styles.company}>{safeJob.company}</Text>
-            <IconSymbol name="checkmark.circle.fill" size={12} color="#16803C" />
+            <AppIcon name="circle-check" size={12} color="#16803C" />
           </View>
           <Text numberOfLines={1} style={styles.pay}>{safeJob.pay}</Text>
           <View style={styles.metaRow}>
-            <IconSymbol name="mappin.and.ellipse" size={12} color="#83918A" style={styles.metaIcon} />
+            <AppIcon name="pin" size={12} color="#83918A" style={styles.metaIcon} />
             <Text numberOfLines={1} style={styles.metaText}>{shortLocation}</Text>
             <View style={styles.metaDot} />
-            <IconSymbol name="clock3" size={12} color="#83918A" style={styles.metaIcon} />
+            <AppIcon name="clock" size={12} color="#83918A" style={styles.metaIcon} />
             <Text numberOfLines={1} style={styles.metaText}>{safeJob.posted?.replace("Posted ", "") || "Recently"}</Text>
           </View>
           {tags.length ? (
@@ -111,7 +111,7 @@ function MarketplaceJobCardImpl({ job, selected = false, onPress, showBookmark =
             hitSlop={10}
             style={({ pressed }) => [styles.bookmark, pressed && styles.bookmarkPressed]}
           >
-            <IconSymbol name={saved ? "heart.fill" : "heart"} size={18} color={saved ? "#16803C" : "#83918A"} />
+            <AppIcon name="heart" size={18} color={saved ? "#16803C" : "#83918A"} />
           </Pressable>
         ) : null}
       </Pressable>

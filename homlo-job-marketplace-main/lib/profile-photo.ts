@@ -12,6 +12,8 @@
  * cards) MUST render through `getProfilePhotoUrl()`. Never feed a raw key from
  * the database directly into an <Image> source.
  */
+import { Image } from "react-native";
+
 import {
   PROFILE_PHOTOS_BUCKET,
   type ProfilePhotoUploadResult,
@@ -105,6 +107,14 @@ export type PickerImageOptions = {
   maxWidth?: number;
   /** JPEG quality for the normalized output (0.0-1.0). */
   compress?: number;
+  /**
+   * Optional width:height crop applied before the resize, centred on the image.
+   * Omit it to keep the source aspect ratio (the default, and what every
+   * existing caller wants). Supplied by surfaces whose preview is a fixed-ratio
+   * crop — the job banner, which is displayed at the home job card's exact
+   * carousel ratio — so the stored bytes and the rendered card agree.
+   */
+  aspect?: { width: number; height: number };
 };
 
 /**
@@ -126,6 +136,7 @@ export async function pickerImageToJpegDataUrl(
   return nativeImageToJpegDataUrl(uri, asset.base64, {
     maxWidth: options?.maxWidth ?? 1080,
     compress: options?.compress ?? 0.82,
+    aspect: options?.aspect,
   });
 }
 
@@ -136,13 +147,22 @@ function isWebRuntime(): boolean {
 async function nativeImageToJpegDataUrl(
   uri: string,
   assetBase64: string | null | undefined,
-  options: { maxWidth: number; compress: number },
+  options: { maxWidth: number; compress: number; aspect?: { width: number; height: number } },
 ): Promise<string> {
   if (/^ph:/i.test(uri) && typeof assetBase64 === "string" && assetBase64.length > 0) {
     return `data:${JPEG_MIME};base64,${assetBase64}`;
   }
   const { manipulateAsync, SaveFormat } = await import("expo-image-manipulator");
-  const actions = options.maxWidth > 0 ? [{ resize: { width: options.maxWidth } }] : [];
+  const actions: Parameters<typeof manipulateAsync>[1] = [];
+  if (options.aspect) {
+    // `crop` takes an absolute origin, so the centred rectangle has to be
+    // measured against the source dimensions before it can be applied.
+    const { width, height } = await Image.getSize(uri);
+    actions.push({ crop: centredCrop(width, height, options.aspect) });
+  }
+  if (options.maxWidth > 0) {
+    actions.push({ resize: { width: options.maxWidth } });
+  }
   const result = await manipulateAsync(uri, actions, {
     compress: options.compress,
     format: SaveFormat.JPEG,
@@ -153,6 +173,34 @@ async function nativeImageToJpegDataUrl(
 }
 
 const READ_ERROR_MESSAGE = "We could not read that image. Please try another one.";
+
+/**
+ * Largest centred rectangle of the requested `width:height` ratio that fits
+ * inside a `sourceWidth` x `sourceHeight` image. Never upscales, so a source
+ * already narrower than the target keeps its own dimensions.
+ */
+function centredCrop(
+  sourceWidth: number,
+  sourceHeight: number,
+  target: { width: number; height: number },
+): { originX: number; originY: number; width: number; height: number } {
+  const targetRatio = target.width / target.height;
+  const sourceRatio = sourceWidth / sourceHeight;
+  const width =
+    sourceRatio > targetRatio
+      ? Math.round(sourceHeight * targetRatio)
+      : sourceWidth;
+  const height =
+    sourceRatio > targetRatio
+      ? sourceHeight
+      : Math.round(sourceWidth / targetRatio);
+  return {
+    originX: Math.round((sourceWidth - width) / 2),
+    originY: Math.round((sourceHeight - height) / 2),
+    width,
+    height,
+  };
+}
 
 /**
  * Upload the selected image BYTES to the public `profile-photos` bucket and

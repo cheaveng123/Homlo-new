@@ -11,17 +11,24 @@
 import { useState } from "react";
 import { Alert, Image, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
-import { MapPin, X } from "lucide-react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 import { Text } from "@/components/ui/text";
 import { trpc } from "@/lib/trpc";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
+import { formatRelativeAgo } from "@/lib/format";
 import type { ApplicationStatus, JobApplicant } from "@/backend/domain/models";
 
 type ApplicantCardProps = {
   applicant: JobApplicant;
   jobId: string;
   onStatusChange?: (applicationId: string, status: ApplicationStatus) => void;
+  /**
+   * Shown as a second line under "Applied …". Only pass it when the card is
+   * rendered outside a single job's context (the New applicants list spans
+   * every listing); per-job screens leave it off.
+   */
+  jobTitle?: string;
 };
 
 type ManageableApplicationStatus = Exclude<ApplicationStatus, "applied">;
@@ -46,12 +53,10 @@ function initials(fullName: string) {
 }
 
 function formatAppliedAt(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString();
+  return formatRelativeAgo(value);
 }
 
-export default function ApplicantCard({ applicant, jobId, onStatusChange }: ApplicantCardProps) {
+export default function ApplicantCard({ applicant, jobId, onStatusChange, jobTitle }: ApplicantCardProps) {
   const router = useRouter();
   const [pendingStatus, setPendingStatus] = useState<ApplicationStatus | null>(null);
   const changeStatus = trpc.homlo.applications.changeStatus.useMutation();
@@ -90,8 +95,9 @@ export default function ApplicantCard({ applicant, jobId, onStatusChange }: Appl
             .then(() => {
               onStatusChange?.(applicant.id, status);
             })
-            .catch(() => {
-              Alert.alert("Couldn't update the application", "Try again in a moment.");
+            .catch((error) => {
+              const detail = error instanceof Error && error.message ? error.message : "Try again in a moment.";
+              Alert.alert("Couldn't update the application", detail);
             })
             .finally(() => setPendingStatus(null));
         },
@@ -99,12 +105,42 @@ export default function ApplicantCard({ applicant, jobId, onStatusChange }: Appl
     ]);
   }
 
-  function confirmAccept() {
-    moveTo(
-      "hired",
-      "Hire this applicant?",
-      `${applicant.fullName} will be notified that they were hired for this job.`,
-    );
+  // The applicant funnel is applied → reviewed → interview → hired. "Accept"
+  // (hire) is only valid on an interviewed applicant, matching the detail
+  // screen's status sheet, so the primary button advances the applicant
+  // through the funnel instead of attempting an invalid hire.
+  const funnelAction: { status: ManageableApplicationStatus; label: string } | null =
+    applicant.status === "applied"
+      ? { status: "reviewed", label: "Review" }
+      : applicant.status === "reviewed"
+        ? { status: "interview", label: "Interview" }
+        : applicant.status === "interview"
+          ? { status: "hired", label: "Accept" }
+          : null;
+
+  const isTerminal = applicant.status === "hired" || applicant.status === "declined" || applicant.status === "withdrawn";
+
+  function confirmPrimary() {
+    if (!funnelAction) return;
+    if (funnelAction.status === "hired") {
+      moveTo(
+        "hired",
+        "Hire this applicant?",
+        `${applicant.fullName} will be notified that they were hired for this job.`,
+      );
+    } else if (funnelAction.status === "interview") {
+      moveTo(
+        "interview",
+        "Move to interview?",
+        `${applicant.fullName} will be notified to arrange an interview.`,
+      );
+    } else {
+      moveTo(
+        "reviewed",
+        "Start reviewing?",
+        `${applicant.fullName} will be notified that their application is being reviewed.`,
+      );
+    }
   }
 
   function confirmDecline() {
@@ -138,6 +174,11 @@ export default function ApplicantCard({ applicant, jobId, onStatusChange }: Appl
           </View>
           <View className="flex-1">
             <View className="flex-row items-center justify-between gap-2">
+              {/* Unread marker. Driven by `isNew`, which comes from the
+                  `viewed_at` read receipt, not from the pipeline status. */}
+              {applicant.isNew ? (
+                <View className="w-2 h-2 rounded-full bg-green-600" />
+              ) : null}
               <Text className="flex-1 text-sm font-semibold text-foreground" numberOfLines={1}>
                 {applicant.fullName}
               </Text>
@@ -160,12 +201,17 @@ export default function ApplicantCard({ applicant, jobId, onStatusChange }: Appl
               </View>
             </View>
             <Text className="text-xs text-muted mt-0.5">Applied {formatAppliedAt(applicant.appliedAt)}</Text>
+            {jobTitle ? (
+              <Text className="text-xs text-muted mt-0.5" numberOfLines={1}>
+                {jobTitle}
+              </Text>
+            ) : null}
           </View>
         </View>
 
         <View className="flex-row gap-4 my-2.5 py-2.5 border-y border-border">
           <View className="flex-row items-center gap-1 flex-1">
-            <MapPin size={14} color="#94A098" />
+            <AppIcon name="pin" size={14} color="#94A098" />
             <Text className="text-xs text-muted" numberOfLines={1}>
               {applicant.locationLabel ?? "Location not provided"}
             </Text>
@@ -177,26 +223,32 @@ export default function ApplicantCard({ applicant, jobId, onStatusChange }: Appl
         </Text>
 
         <View className="flex-row gap-2">
-          <TouchableOpacity
-            onPress={confirmAccept}
-            disabled={pendingStatus !== null}
-            className="flex-1 bg-primary rounded-xl py-2.5 items-center"
-          >
-            <Text className="text-white text-sm font-semibold">{pendingStatus === "hired" ? "Hiring…" : "Accept"}</Text>
-          </TouchableOpacity>
+          {funnelAction ? (
+            <TouchableOpacity
+              onPress={confirmPrimary}
+              disabled={pendingStatus !== null}
+              className="flex-1 bg-primary rounded-xl py-2.5 items-center"
+            >
+              <Text className="text-white text-sm font-semibold">
+                {pendingStatus === funnelAction.status ? "Updating…" : funnelAction.label}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             onPress={openMessageThread}
             className="flex-1 bg-surface border border-border rounded-xl py-2.5 items-center"
           >
             <Text className="text-foreground text-sm font-semibold">Message</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={confirmDecline}
-            disabled={pendingStatus !== null}
-            className="bg-surface border border-border rounded-xl px-3 py-2.5 items-center justify-center"
-          >
-            <X size={16} color="#A32D2D" />
-          </TouchableOpacity>
+          {!isTerminal ? (
+            <TouchableOpacity
+              onPress={confirmDecline}
+              disabled={pendingStatus !== null}
+              className="bg-surface border border-border rounded-xl px-3 py-2.5 items-center justify-center"
+            >
+              <AppIcon name="close" size={16} color="#A32D2D" />
+            </TouchableOpacity>
+          ) : null}
         </View>
       </TouchableOpacity>
     </View>

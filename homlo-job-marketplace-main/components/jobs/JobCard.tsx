@@ -1,10 +1,12 @@
 import React, { memo, useRef } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useRouter } from "expo-router";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { AppIcon } from "@/components/ui/AppIcon";
 import { jobCardTokens as t } from './jobCardTokens';
 import type { JobCardData, JobCardVariant } from './jobCardTypes';
 import { PositionsLeft } from './PositionsLeft';
+import { BoostBadge } from '@/components/boost/BoostBadge';
 
 interface Props {
   job: JobCardData;
@@ -43,6 +45,7 @@ function JobCardBase({
   style,
 }: Props) {
   const imageRef = useRef<View>(null);
+  const router = useRouter();
   const scale = useSharedValue(1);
   const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -53,21 +56,28 @@ function JobCardBase({
   const showPositions = !hidePositions && job.positionsLeft != null;
   const showLocation = job.workArrangement !== 'remote' && !!job.locationLabel;
   const hasRating = job.rating != null;
+  const boosted = job.boosted === true;
 
-  const logo = (
-    <View
-      style={[
-        styles.logo,
-        {
-          width: logoSize,
-          height: logoSize,
-          borderRadius: logoSize / 2,
-          backgroundColor: job.employerColor ?? t.color.forest,
-          top: isRow ? 6 : isGrid ? 8 : 10,
-          left: isRow ? 6 : isGrid ? 8 : 10,
-        },
-      ]}
+  const logo = job.employerId ? (
+    <Pressable
+      onPress={(e) => {
+        e?.stopPropagation?.();
+        void router.push(`/employer/${job.employerId}` as never);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Employer profile: ${job.employerName}`}
+      style={[styles.logo, { width: logoSize, height: logoSize, borderRadius: logoSize / 2, backgroundColor: job.employerColor ?? t.color.forest, top: (isRow ? 6 : isGrid ? 8 : 10) + (!isRow && boosted ? 28 : 0), left: isRow ? 6 : isGrid ? 8 : 10 }]}
     >
+      {job.employerLogoUrl ? (
+        <Image source={{ uri: job.employerLogoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : (
+        <Text style={[styles.logoText, { fontSize: isRow ? 9 : 11 }]} numberOfLines={1}>
+          {job.employerInitials ?? initialsOf(job.employerName)}
+        </Text>
+      )}
+    </Pressable>
+  ) : (
+    <View style={[styles.logo, { width: logoSize, height: logoSize, borderRadius: logoSize / 2, backgroundColor: job.employerColor ?? t.color.forest, top: (isRow ? 6 : isGrid ? 8 : 10) + (!isRow && boosted ? 28 : 0), left: isRow ? 6 : isGrid ? 8 : 10 }]}>
       {job.employerLogoUrl ? (
         <Image source={{ uri: job.employerLogoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
       ) : (
@@ -125,10 +135,17 @@ function JobCardBase({
   );
 
   const body = (
-    <View style={isRow ? styles.bodyRow : styles.body}>
-      <Text style={[styles.title, isGrid && styles.titleGrid]} numberOfLines={1}>
-        {job.title} · {job.employerName}
-      </Text>
+    <View style={[isRow ? styles.bodyRow : styles.body, boosted && styles.bodyBoosted]}>
+      <View style={styles.bodyHead}>
+        <Text style={[styles.title, isGrid && styles.titleGrid]} numberOfLines={1}>
+          {job.title} · {job.employerName}
+        </Text>
+        {boosted && (
+          <View style={styles.adInfo}>
+            <BoostBadge audience="employee" />
+          </View>
+        )}
+      </View>
 
       {(showPositions || hasRating) && (
         <View style={styles.meta}>
@@ -238,6 +255,18 @@ const styles = StyleSheet.create({
 
   body: { marginTop: 9, gap: 4 },
   bodyRow: { flex: 1, gap: 4 },
+  bodyBoosted: { marginTop: 9, gap: 4 },
+  bodyHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  adInfo: { alignSelf: 'flex-start', marginTop: 2 },
+  adPill: {
+    backgroundColor: t.color.lowBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: t.radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adText: { fontFamily: t.font.semibold, fontSize: 10, color: t.color.lowFg },
   title: { fontFamily: t.font.bold, fontSize: 15, lineHeight: 19, color: t.color.ink },
   titleGrid: { fontSize: 14, lineHeight: 18 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8 },

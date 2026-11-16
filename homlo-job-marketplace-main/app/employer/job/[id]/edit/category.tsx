@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { Text } from "@/components/ui/text";
@@ -63,7 +63,7 @@ export default function CategoryPickerScreen() {
                   {category.summary}
                 </Text>
               </View>
-              {active ? <Check size={18} color="#FFFFFF" /> : null}
+               {active ? <AppIcon name="check" size={18} color="#FFFFFF" /> : null}
             </TouchableOpacity>
           );
         })}

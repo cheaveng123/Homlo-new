@@ -1,5 +1,6 @@
 import { View, Text, TextInput, Pressable } from 'react-native';
-import { Search, SlidersHorizontal } from 'lucide-react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { AppIcon } from "@/components/ui/AppIcon";
 import { colors, radius, fontFamily } from './theme';
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
   onSubmit?: (text: string) => void;
   placeholder?: string;
   subtitle?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function JobSearchBar({
@@ -18,13 +20,14 @@ export function JobSearchBar({
   onSubmit,
   placeholder = 'Barista, delivery, part-time…',
   subtitle = 'Any category · Phnom Penh',
+  style,
 }: Props) {
   return (
     <View
-      style={{ borderColor: colors.border, borderRadius: radius.searchBar }}
+      style={[{ borderColor: colors.border, borderRadius: radius.searchBar }, style]}
       className="mt-3.5 mx-4 flex-row items-center gap-2.5 border px-3.5 py-3"
     >
-      <Search size={16} color={colors.textPrimary} />
+      <AppIcon name="search" size={16} color={colors.textPrimary} />
 
       <View className="flex-1">
         <TextInput
@@ -47,7 +50,7 @@ export function JobSearchBar({
         style={{ backgroundColor: colors.white, borderRadius: radius.circle }}
         className="w-7 h-7 items-center justify-center"
       >
-        <SlidersHorizontal size={14} color={colors.textPrimary} />
+        <AppIcon name="sliders" size={14} color={colors.textPrimary} />
       </Pressable>
     </View>
   );

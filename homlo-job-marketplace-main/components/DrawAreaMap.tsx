@@ -5,10 +5,16 @@ import {
   Pressable,
   StyleSheet,
   PanResponder,
+  Modal,
+  SafeAreaView,
   type LayoutChangeEvent,
+  type GestureResponderEvent,
 } from 'react-native';
-import MapView, { Polygon, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
-import { Undo2 } from 'lucide-react-native';
+import MapView, { Marker, Polygon, UrlTile } from 'react-native-maps';
+import Svg, { Polyline as SvgPolyline } from 'react-native-svg';
+import { AppIcon } from '@/components/ui/AppIcon';
+import { MAP_TILE_URL } from '@/lib/map-config';
+import { useUserLocation } from '@/lib/use-user-location';
 
 export type LatLng = { latitude: number; longitude: number };
 
@@ -47,13 +53,31 @@ const screenToCoordinate = (
   };
 };
 
-export function DrawAreaMap({ onAreaChange, initialRegion = PHNOM_PENH }: Props) {
+// Inverse of screenToCoordinate: converts a drawn point back to screen space so
+// the live trace can be painted as an SVG overlay that repaints on every move.
+const coordinateToScreen = (
+  point: LatLng,
+  region: Region,
+  size: { width: number; height: number }
+): { x: number; y: number } => ({
+  x: (0.5 + (point.longitude - region.longitude) / region.longitudeDelta) * size.width,
+  y: (0.5 - (point.latitude - region.latitude) / region.latitudeDelta) * size.height,
+});
+
+export function DrawAreaMap({ onAreaChange, initialRegion }: Props) {
+  const { location: userLocation } = useUserLocation({ requestOnMount: true });
   const [drawing, setDrawing] = useState(false);
   const [polygon, setPolygon] = useState<LatLng[]>([]);
+  const [twoFinger, setTwoFinger] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [lastRegion, setLastRegion] = useState<Region>(initialRegion ?? PHNOM_PENH);
+  const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const pointsRef = useRef<LatLng[]>([]);
-  const regionRef = useRef<Region>(initialRegion);
+  const regionRef = useRef<Region>(initialRegion ?? PHNOM_PENH);
   const sizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
   const drawingRef = useRef(drawing);
+  const twoFingerRef = useRef(twoFinger);
+  const interruptedRef = useRef(false);
   const onAreaChangeRef = useRef(onAreaChange);
 
   useEffect(() => {
@@ -61,22 +85,47 @@ export function DrawAreaMap({ onAreaChange, initialRegion = PHNOM_PENH }: Props)
   }, [drawing]);
 
   useEffect(() => {
+    twoFingerRef.current = twoFinger;
+  }, [twoFinger]);
+
+  useEffect(() => {
     onAreaChangeRef.current = onAreaChange;
   });
 
-  // The panResponder must be created outside render so its handlers can read
-  // refs; it is held in state (with the latest drawing/onAreaChange mirrored
-  // through refs) so the overlay can spread its panHandlers in JSX.
+  // Helper to finalize the trace. Guarded by `interrupted` so a two-finger
+  // gesture (which abandons the lasso to let the user move the map) never
+  // accidentally commits a half-drawn area.
+  const finalizeTrace = () => {
+    if (interruptedRef.current || pointsRef.current.length <= 2) return;
+    const closed = [...pointsRef.current, pointsRef.current[0]];
+    setPolygon(closed);
+    onAreaChangeRef.current(closed);
+    setDrawing(false);
+  };
+
+  // The panResponder lives on a transparent OVERLAY rendered above the
+  // MapView. Hit-testing delivers the touch to the topmost view, so the
+  // overlay — not the native MapView beneath — owns single-finger traces.
+  // A two-finger gesture is detected on the wrapper (see syncTouchCount) and
+  // flips the overlay to pointerEvents="none", so the touch falls through to
+  // the MapView underneath and the user can pan/zoom with two fingers.
   const [panResponder, setPanResponder] = useState<ReturnType<typeof PanResponder.create> | null>(null);
   useEffect(() => {
     const responder = PanResponder.create({
       onStartShouldSetPanResponder: () => drawingRef.current,
       onMoveShouldSetPanResponder: () => drawingRef.current,
       onPanResponderGrant: () => {
+        interruptedRef.current = false;
         pointsRef.current = [];
         setPolygon([]);
       },
       onPanResponderMove: (evt) => {
+        // A second finger means "move the map", not "draw": drop the lasso so
+        // the running gesture is never committed (see finalizeTrace).
+        if (evt.nativeEvent.touches.length > 1) {
+          interruptedRef.current = true;
+          return;
+        }
         const { locationX, locationY } = evt.nativeEvent;
         const coord = screenToCoordinate(locationX, locationY, regionRef.current, sizeRef.current);
         if (!coord) return;
@@ -91,27 +140,32 @@ export function DrawAreaMap({ onAreaChange, initialRegion = PHNOM_PENH }: Props)
           setPolygon(pointsRef.current);
         }
       },
-      onPanResponderRelease: () => {
-        if (pointsRef.current.length > 2) {
-          const closed = [...pointsRef.current, pointsRef.current[0]];
-          setPolygon(closed);
-          onAreaChangeRef.current(closed);
-          setDrawing(false);
-        }
-        // Fewer than 3 points is a mis-draw: stay in drawing mode so the user
-        // can trace the lasso again instead of it silently doing nothing.
-      },
+      onPanResponderRelease: finalizeTrace,
+      // A two-finger gesture can yank the responder away mid-draw; finalize
+      // exactly like a normal release so we never leave a stuck draw state.
+      onPanResponderTerminate: finalizeTrace,
     });
     setPanResponder(responder);
   }, []);
 
+  // Counts active touches so a two-finger gesture unlocks the native map
+  // (pan/zoom) while a single-finger trace keeps the map frozen for drawing.
+  const syncTouchCount = (event: GestureResponderEvent) => {
+    const active = drawingRef.current && event.nativeEvent.touches.length >= 2;
+    if (active === twoFingerRef.current) return;
+    twoFingerRef.current = active;
+    setTwoFinger(active);
+  };
+
   const onLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     sizeRef.current = { width, height };
+    if (size.width !== width || size.height !== height) setSize({ width, height });
   };
 
   const onRegionChangeComplete = (region: Region) => {
     regionRef.current = region;
+    setLastRegion(region);
   };
 
   const clear = () => {
@@ -120,25 +174,44 @@ export function DrawAreaMap({ onAreaChange, initialRegion = PHNOM_PENH }: Props)
     onAreaChange([]);
   };
 
-  return (
-    <View style={styles.wrapper} onLayout={onLayout}>
+  const touchHandlers = {
+    onTouchStart: syncTouchCount,
+    onTouchMove: syncTouchCount,
+    onTouchEnd: syncTouchCount,
+    onTouchCancel: syncTouchCount,
+  };
+
+  // Shared between the embedded card and the fullscreen modal so polygon,
+  // drawing state, and controls behave identically in both.
+  const renderMapArea = (isFullscreen: boolean) => (
+    <>
       <MapView
-        provider={PROVIDER_DEFAULT}
+        mapType="none"
         style={StyleSheet.absoluteFill}
-        initialRegion={initialRegion}
-        scrollEnabled={!drawing}
-        zoomEnabled={!drawing}
+        initialRegion={userLocation ? { ...userLocation, latitudeDelta: 0.12, longitudeDelta: 0.12 } : lastRegion}
+        // Locked for a single-finger trace; unlocked the moment a second
+        // finger lands so two-finger pan/zoom still works while drawing.
+        scrollEnabled={!drawing || twoFinger}
+        zoomEnabled={!drawing || twoFinger}
         rotateEnabled={false}
         pitchEnabled={false}
+        showsMyLocationButton
+        showsUserLocation
         onRegionChangeComplete={onRegionChangeComplete}
       >
-        {drawing && polygon.length > 1 && (
-          <Polyline
-            coordinates={polygon}
-            strokeColor="#5DCAA5"
-            strokeWidth={3}
-            lineCap="round"
-            lineJoin="round"
+        <UrlTile
+          maximumZ={19}
+          minimumZ={2}
+          shouldReplaceMapContent
+          urlTemplate={MAP_TILE_URL}
+        />
+        {userLocation && (
+          <Marker
+            coordinate={userLocation}
+            title="Your location"
+            description="You are here"
+            pinColor="#007AFF"
+            tracksViewChanges={false}
           />
         )}
         {!drawing && polygon.length > 2 && (
@@ -151,8 +224,39 @@ export function DrawAreaMap({ onAreaChange, initialRegion = PHNOM_PENH }: Props)
         )}
       </MapView>
 
+      {/* Live trace painted as an SVG overlay (react-native-maps' Polyline
+          doesn't repaint reliably on every move). The map is frozen while
+          drawing, so the screen-space projection stays stable; once drawing
+          ends, the native Polygon above inherits all map movement. */}
+      {drawing && polygon.length > 1 && size.width > 0 && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg width={size.width} height={size.height}>
+            <SvgPolyline
+              points={polygon
+                .map((point) => {
+                  const screen = coordinateToScreen(point, lastRegion, size);
+                  return `${screen.x},${screen.y}`;
+                })
+                .join(' ')}
+              fill="none"
+              stroke="#5DCAA5"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </View>
+      )}
+
+      {/* Transparent overlay that owns single-finger traces. When a second
+          finger lands (twoFinger), pointerEvents flips to "none" so the touch
+          falls through to the MapView underneath and the user can pan/zoom. */}
       {drawing && panResponder && (
-        <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers} />
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents={twoFinger ? 'none' : 'auto'}
+          {...panResponder.panHandlers}
+        />
       )}
 
       <View style={styles.controls}>
@@ -167,16 +271,54 @@ export function DrawAreaMap({ onAreaChange, initialRegion = PHNOM_PENH }: Props)
 
         {polygon.length > 0 && (
           <Pressable style={styles.control} onPress={clear}>
-            <Undo2 size={14} color="#12271F" />
+            <AppIcon name="undo" size={14} color="#12271F" />
+          </Pressable>
+        )}
+
+        {!isFullscreen && (
+          <Pressable style={styles.control} onPress={() => setFullscreen(true)} hitSlop={6}>
+            <AppIcon name="maximize" size={14} color="#12271F" />
           </Pressable>
         )}
       </View>
 
       {drawing && (
         <View style={styles.hint}>
-          <Text style={styles.hintText}>Drag to trace your area</Text>
+          <Text style={styles.hintText}>One finger traces — two fingers move the map</Text>
         </View>
       )}
+    </>
+  );
+
+  if (fullscreen) {
+    return (
+      <Modal animationType="fade" visible onRequestClose={() => setFullscreen(false)}>
+        <SafeAreaView style={styles.fullscreenRoot}>
+          <View style={styles.fullscreenHeader}>
+            <Pressable onPress={() => setFullscreen(false)} hitSlop={10}>
+              <AppIcon name="close" size={20} color="#12271F" />
+            </Pressable>
+            <Text style={styles.fullscreenTitle}>Draw area</Text>
+          </View>
+          <View
+            style={styles.fullscreenMap}
+            onLayout={onLayout}
+            {...touchHandlers}
+          >
+            {renderMapArea(true)}
+          </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
+  return (
+    <View
+      style={styles.wrapper}
+      onLayout={onLayout}
+      {...touchHandlers}
+    >
+      {renderMapArea(false)}
     </View>
   );
 }
@@ -191,6 +333,17 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#DCE5E0',
   },
+  fullscreenRoot: { flex: 1, backgroundColor: '#FFFFFF' },
+  fullscreenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  fullscreenTitle: { fontSize: 15, fontWeight: '600', color: '#12271F' },
+  fullscreenMap: { flex: 1, backgroundColor: '#EAF6EF' },
   controls: {
     position: 'absolute',
     top: 10,

@@ -2,17 +2,10 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "types": [
-      "node",
-      "nativewind/types"
-    ],
+    "types": ["node", "nativewind/types", "geojson"],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@shared/*": [
-        "./shared/*"
-      ]
+      "@/*": ["./*"],
+      "@shared/*": ["./shared/*"]
     }
   },
   "include": [
@@ -25,6 +18,20 @@
   "exclude": [
     "node_modules",
     "dist",
-    "supabase/functions"
+    "mnt",
+    "supabase/functions",
+    "reference",
+    "files-3",
+    "files-4",
+    "files-5",
+    "FinderButton.tsx",
+    "HomeScreen.tsx",
+    "JobCard.tsx",
+    "QuickSearchRow.tsx",
+    "backend/feed/pangolin_sql_proof.ts",
+    "??_*.ts",
+    "??_*.tsx",
+    "tmp_*.ts",
+    "tmp_*.tsx"
   ]
 }

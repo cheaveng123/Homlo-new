@@ -1,5 +1,6 @@
 import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
@@ -30,14 +31,27 @@ function buildTRPCLink() {
     },
     // Custom fetch to include credentials for cookie-based auth
     async fetch(url, options) {
-      const request = () => fetch(url, { ...options, credentials: "include" });
-      let response = await request();
+      const requestUrl = String(url);
+      const request = async (label: string) => {
+        const startedAt = Date.now();
+        try {
+          const response = await fetch(url, { ...options, credentials: "include" });
+          if (__DEV__) {
+            console.log(`[trpc] ${label}:`, response.status, requestUrl, `${Date.now() - startedAt}ms`);
+          }
+          return response;
+        } catch (err) {
+          console.error(`[trpc] ${label} failed:`, requestUrl, `${Date.now() - startedAt}ms`, err);
+          throw err;
+        }
+      };
+      let response = await request("response");
       if (response.status === 401) {
         const refreshToken = await Auth.getRefreshToken();
         try {
           const refreshed = await Api.refreshSupabaseSession(refreshToken ?? undefined);
           if (refreshed.session) await Auth.setAuthSession(refreshed.session);
-          response = await request();
+          response = await request("response after refresh");
         } catch {
           // The caller receives the original unauthorized response when refresh is unavailable or invalid.
         }
@@ -64,3 +78,8 @@ export function createTRPCClient() {
 export const trpcDirect = createTRPCProxyClient<AppRouter>({
   links: [buildTRPCLink()],
 });
+
+/** Holds the live QueryClient instance so sign-out / account switch can clear the cache. */
+export let queryClientInstance: QueryClient | null = null;
+export function setQueryClientInstance(qc: QueryClient) { queryClientInstance = qc; }
+export function clearQueryClient() { queryClientInstance?.clear(); }

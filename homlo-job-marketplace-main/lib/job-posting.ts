@@ -37,6 +37,10 @@ export type JobPostingDraft = {
   status: JobPostingStatus;
   createdAt: string;
   updatedAt: string;
+  /** Number of open positions (workers_needed). Defaults to 1 when absent. */
+  workersNeeded?: number;
+  /** Auto-close the job once all positions are filled. Defaults to true. */
+  autoCloseEnabled?: boolean;
 };
 
 export const jobPostingDraftKey = "homlo-employer-job-draft";
@@ -149,9 +153,11 @@ export type JobSaveInput = {
   postalCode: string | null;
   latitude: number | null;
   longitude: number | null;
+  workArrangement: WorkArrangement | null;
   workersNeeded: number;
   status: "draft" | "open";
   bannerImage: string | null;
+  autoCloseEnabled: boolean;
 };
 
 export function buildJobSaveInput(draft: JobPostingDraft, status: "draft" | "open", jobId: string | null): JobSaveInput {
@@ -176,9 +182,14 @@ export function buildJobSaveInput(draft: JobPostingDraft, status: "draft" | "ope
     postalCode: remote ? null : draft.postalCode.trim() || null,
     latitude: remote ? null : draft.latitude,
     longitude: remote ? null : draft.longitude,
-    workersNeeded: 1,
+    // Must be forwarded: the RPC inserts it on create and coalesces it on
+    // update, so omitting it here stored NULL and every listing came back as
+    // "Not specified" no matter what the employer picked in step 2.
+    workArrangement: draft.workArrangement || null,
+    workersNeeded: draft.workersNeeded ?? 1,
     status,
     bannerImage: draft.bannerImage || null,
+    autoCloseEnabled: draft.autoCloseEnabled ?? true,
   };
 }
 

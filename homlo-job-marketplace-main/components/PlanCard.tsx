@@ -10,7 +10,7 @@ import {
 import { AppIcon } from "@/components/ui/AppIcon";
 
 import { type BoostPlan, fmt, priceFor } from "@/lib/boostData";
-import { colors, fonts } from "@/lib/theme";
+import { colors, fonts } from "@/theme";
 
 export function PlanCard({
   plan,
@@ -25,7 +25,7 @@ export function PlanCard({
   isPro?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const foreground = selected ? "#FFFFFF" : colors.mutedText;
+  const foreground = selected ? "#FFFFFF" : colors.muted;
   return (
     <Pressable
       accessibilityLabel={`${plan.name} boost, ${fmt(priceFor(plan, isPro))}`}
@@ -65,16 +65,16 @@ export function PlanCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.muted,
+    backgroundColor: colors.track,
     borderRadius: 16,
     marginBottom: 10,
     overflow: "hidden",
     padding: 14,
   },
   selected: {
-    backgroundColor: colors.green,
+    backgroundColor: colors.teal,
     elevation: 6,
-    shadowColor: colors.green,
+    shadowColor: colors.teal,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

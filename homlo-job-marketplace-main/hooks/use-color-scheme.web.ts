@@ -8,6 +8,7 @@ export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- detecting client hydration requires exactly one post-mount state flip; a render-time check would run on the server too.
     setHasHydrated(true);
   }, []);
 

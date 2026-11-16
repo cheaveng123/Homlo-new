@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, type ViewStyle } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
+import { AppIcon } from "@/components/ui/AppIcon";
 import { colors } from "./colors";
 import { fonts } from "./typography";
 
@@ -17,7 +17,7 @@ type Props = {
   width?: number;
   height?: number;
   borderRadius?: number;
-  icon?: keyof typeof Feather.glyphMap;
+  icon?: string;
   label?: string;
   style?: ViewStyle;
 };
@@ -32,7 +32,7 @@ export default function ImagePlaceholder({
 }: Props) {
   return (
     <View style={[styles.base, { width, height, borderRadius }, style]}>
-      <Feather name={icon} size={21} color={colors.placeholderIcon} />
+      <AppIcon name="image" size={21} color={colors.placeholderIcon} />
       {label ? <Text style={styles.label}>{label}</Text> : null}
     </View>
   );

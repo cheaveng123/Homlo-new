@@ -49,9 +49,11 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+      NSLocationWhenInUseUsageDescription:
+        "Allow Homlo Jobs to use your location to show your position, nearby jobs, and driving routes.",
+    },
   },
   android: {
     adaptiveIcon: {
@@ -61,12 +63,12 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     package: env.androidPackage,
-    permissions: ["POST_NOTIFICATIONS", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
-    config: {
-      googleMaps: {
-        apiKey: "",
-      },
-    },
+    permissions: [
+      "POST_NOTIFICATIONS",
+      "INTERNET",
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION",
+    ],
     intentFilters: [
       {
         action: "VIEW",
@@ -81,13 +83,18 @@ const config: ExpoConfig = {
       },
     ],
   },
-  web: {
-    bundler: "metro",
-    output: "static",
-    favicon: "./assets/images/favicon.png",
-  },
   plugins: [
+    [
+      "expo-build-properties",
+      {
+        ios: {
+          enableSceneSupport: true,
+        },
+      },
+    ],
     "expo-router",
+    "@maplibre/maplibre-react-native",
+    "./plugins/with-react-native-config",
     "expo-font",
     "expo-asset",
     "expo-image",
@@ -97,13 +104,15 @@ const config: ExpoConfig = {
     [
       "expo-location",
       {
-        locationWhenInUsePermission: "Allow $(PRODUCT_NAME) to use your location to find nearby jobs.",
+        locationWhenInUsePermission:
+          "Allow Homlo Jobs to use your location to show your position, nearby jobs, and driving routes.",
       },
     ],
     [
       "expo-audio",
       {
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
+        microphonePermission:
+          "Allow $(PRODUCT_NAME) to access your microphone.",
       },
     ],
     [
@@ -128,8 +137,10 @@ const config: ExpoConfig = {
     [
       "expo-image-picker",
       {
-        photosPermission: "Allow $(PRODUCT_NAME) to access your photos so you can add a banner or photo to your job listing.",
-        cameraPermission: "Allow $(PRODUCT_NAME) to use your camera to take a photo for your job listing.",
+        photosPermission:
+          "Allow $(PRODUCT_NAME) to access your photos so you can add a banner or photo to your job listing.",
+        cameraPermission:
+          "Allow $(PRODUCT_NAME) to use your camera to take a photo for your job listing.",
         microphonePermission: false,
       },
     ],
