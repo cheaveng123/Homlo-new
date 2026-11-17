@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import { AppIcon } from '@/components/ui/AppIcon';
+import { AdsIcon } from '@/src/components/icons/AdsIcon';
+import { BoostIcon } from '@/src/components/icons/BoostIcon';
 import { useBoostCountdown } from './useBoostCountdown';
 
 // Mapped to the existing Lagoon & Sunrise theme tokens (key names kept).
@@ -23,8 +24,9 @@ export function BoostBadge(props: Props) {
     return (
       <View
         style={[s.adPill, { backgroundColor: boostColors.adBg, borderColor: boostColors.adBorder }]}
-        accessibilityLabel="Advertisement"
+        accessibilityLabel="Sponsored listing"
       >
+        <AdsIcon size={13} />
         <Text style={s.adText}>Ads</Text>
       </View>
     );
@@ -38,7 +40,7 @@ function EmployerBadge({ endsAt, serverNow, onExpire }: { endsAt: string; server
   return (
     <View style={[s.pill, { backgroundColor: boostColors.employerBg, borderColor: boostColors.employerBorder }]}
           accessibilityLabel={`Boosted, ${label} left`}>
-      <AppIcon name="zap" size={12} color={boostColors.employerIcon} />
+      <BoostIcon size={16} />
       <Text style={[s.txt, { color: boostColors.employerText }]}>Boosted · {label} left</Text>
     </View>
   );
@@ -51,7 +53,7 @@ const s = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
           paddingHorizontal: 8, height: 22, borderRadius: 999, borderWidth: 1 },
   txt: { fontSize: 11, fontWeight: '700', letterSpacing: 0.1 },
-  adPill: { alignSelf: 'flex-start', paddingHorizontal: 8, height: 22, borderRadius: 999,
+  adPill: { alignSelf: 'flex-start', flexDirection: 'row', gap: 4, paddingLeft: 6, paddingRight: 8, height: 22, borderRadius: 999,
             borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   adText: { fontSize: 11, fontWeight: '700', color: boostColors.adText },
 });

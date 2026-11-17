@@ -5,6 +5,8 @@ import { AppIconNew } from '../icons/AppIconNew';
 import { TextNew } from './TextNew';
 import { ChipNew, PressableScaleNew } from './PrimitivesNew';
 import { PhotoPlaceholder } from '@/src/design/primitives';
+import { AdsIcon } from '@/src/components/icons/AdsIcon';
+import { useIsFocused } from 'expo-router';
 import { colorsNew, radiusNew } from '../theme/tokensNew';
 import { motionNew } from '../theme/motionNew';
 import { useCopyNew } from '../theme/copyNew';
@@ -33,11 +35,14 @@ export function PositionsBarNew({ left, total, maxWidth = 84 }: { left: number; 
 }
 
 export function AdBadgeNew() {
+  const focused = useIsFocused();
   return (
     <View
-      style={{ alignSelf: 'flex-start', backgroundColor: colorsNew.cream, borderRadius: radiusNew.pill, paddingHorizontal: 8, paddingVertical: 2 }}
-      accessibilityLabel="Advertisement"
+      style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colorsNew.cream, borderRadius: radiusNew.pill, paddingLeft: 6, paddingRight: 8, paddingVertical: 2 }}
+      accessibilityLabel="Sponsored listing"
+      accessibilityRole="text"
     >
+      <AdsIcon size={14} active={focused} />
       <TextNew variant="caption" weight="semibold" color={colorsNew.creamInk}>Ads</TextNew>
     </View>
   );

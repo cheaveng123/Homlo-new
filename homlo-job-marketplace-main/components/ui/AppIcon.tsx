@@ -1,5 +1,6 @@
 // components/ui/AppIcon.tsx
-// The app's icon set. Spec: 24px grid, thin 1.6 line, round caps + joins, no fill, one color.
+// The app's icon set (HOMLO tier C). 24px grid, 1.8 line, round caps + joins, one color;
+// shared glyphs (home/search/plus/bell/clock/heart) match AppIconNew and the dashboard nav.
 // Needs: react-native-svg
 import React from 'react';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
@@ -24,7 +25,7 @@ const ICONS: Record<IconName, (p: P, c: string) => React.ReactNode> = {
   pin: (p) => (<><Path d="M12 21s7-6 7-11.5a7 7 0 0 0-14 0C5 15 12 21 12 21z" {...p} /><Circle cx="12" cy="9.5" r="2.5" {...p} /></>),
   call: (p) => <Path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" {...p} />,
   brief: (p) => (<><Rect x="3" y="7" width="18" height="13" rx="3" {...p} /><Path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h18" {...p} /></>),
-  clock: (p) => (<><Circle cx="12" cy="12" r="9" {...p} /><Path d="M12 7v5l3 2" {...p} /></>),
+  clock: (p, c) => (<><Circle cx="12" cy="12" r="8.5" {...p} /><Path d="M12 7.5V12l3 2" {...p} /><Circle cx="12" cy="12" r="1.3" fill={c} /></>),
   crown: (p) => <Path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" {...p} />,
   lang: (p) => (<><Circle cx="12" cy="12" r="9.5" {...p} /><Path d="M7.5 8.5h7M11 7v1.5M8.5 8.5c.6 3 2.4 4.8 5.2 5.8M14 8.5c-.6 3-2.6 5-6 6.2" {...p} /></>),
   cur: (p) => (<><Path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" {...p} /><Circle cx="12" cy="12" r="4.5" {...p} /><Path d="M12 9.6v4.8M13.6 10.6h-2.2a1 1 0 0 0 0 2h1.2a1 1 0 0 1 0 2h-2.3" {...p} /></>),
@@ -38,14 +39,14 @@ const ICONS: Record<IconName, (p: P, c: string) => React.ReactNode> = {
   edit: (p) => (<><Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z" {...p} /><Path d="M13.5 6.5l4 4" {...p} /></>),
   check: (p) => <Path d="M5 12.5l4.5 4.5L19 7.5" {...p} />,
   logout: (p) => <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" {...p} />,
-  home: (p) => (<><Path d="M4 11l8-7 8 7v9H4z" {...p} /><Path d="M10 20v-6h4v6" {...p} /></>),
-  search: (p) => (<><Circle cx="11" cy="11" r="7" {...p} /><Path d="M20 20l-4-4" {...p} /></>),
-  plus: (p) => <Path d="M12 5v14M5 12h14" {...p} />,
-  bell: (p) => (<><Path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4z" {...p} /><Path d="M10 21h4" {...p} /></>),
+  home: (p) => (<><Path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19Z" {...p} /><Path d="M9.5 20.5v-5h5v5" {...p} /></>),
+  search: (p) => (<><Circle cx="11" cy="11" r="6.5" {...p} /><Path d="m16 16 4.5 4.5" {...p} /></>),
+  plus: (p) => <Path d="M12 4.5v15M4.5 12h15" {...p} />,
+  bell: (p) => (<><Path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.8h-15Z" {...p} /><Path d="M10 20.3a2.2 2.2 0 0 0 4 0" {...p} /></>),
   nav: (p) => <Path d="M12 3l8 18-8-4-8 4z" {...p} />,
   eye: (p) => (<><Path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" {...p} /><Circle cx="12" cy="12" r="3" {...p} /></>),
   close: (p) => <Path d="M6 6l12 12M18 6L6 18" {...p} />,
-  heart: (p) => <Path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" {...p} />,
+  heart: (p) => <Path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z" {...p} />,
   laptop: (p) => (<><Rect x="4" y="5" width="16" height="11" rx="2" {...p} /><Path d="M2.5 19h19" {...p} /></>),
   calendar: (p) => (<><Rect x="3.5" y="5" width="17" height="15.5" rx="3" {...p} /><Path d="M3.5 10h17M8 3v4M16 3v4" {...p} /></>),
   arrow: (p) => <Path d="M4 12h14M13 6l6 6-6 6" {...p} />,
@@ -92,7 +93,7 @@ const ICONS: Record<IconName, (p: P, c: string) => React.ReactNode> = {
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number; style?: StyleProp<ViewStyle> };
 
-export function AppIcon({ name, size = 24, color = '#0E3B2E', strokeWidth = 1.6, style }: Props) {
+export function AppIcon({ name, size = 24, color = '#14324A', strokeWidth = 1.8, style }: Props) {
   const p: P = { stroke: color, strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" style={style}>

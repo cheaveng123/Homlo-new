@@ -7,6 +7,7 @@ import Animated, {
 import { useIsFocused } from 'expo-router';
 import { Skeleton } from '@/src/design/primitives';
 import { featureIcons, type FeatureIconName } from '@/src/components/icons';
+import { SectionIcon, type SectionIconName } from '@/src/components/icons/SectionIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIconNew, AppIconNameNew } from '../icons/AppIconNew';
 import { TextNew, hasKhmerNew } from './TextNew';
@@ -143,15 +144,15 @@ export function IconDiscNew({ icon, tone = 'lagoon', size = 44, round }: { icon:
   );
 }
 
-/* ---------- section title: icon or sun dot + fading line + optional action ---------- */
-export function SectionTitleNew({ title, icon, actionLabel, onAction, style }: { title: string; icon?: AppIconNameNew; actionLabel?: string; onAction?: () => void; style?: StyleProp<ViewStyle> }) {
+/* ---------- section title: custom section icon (or utility icon / amber dot) + fading line + optional action ---------- */
+export function SectionTitleNew({ title, icon, glyph, actionLabel, onAction, style }: { title: string; icon?: AppIconNameNew; glyph?: SectionIconName; actionLabel?: string; onAction?: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 24, marginBottom: 12 }, style]}>
-      {icon ? <AppIconNew name={icon} size={20} color={colorsNew.deep} /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colorsNew.sun }} />}
+      {glyph ? <SectionIcon name={glyph} size={22} /> : icon ? <AppIconNew name={icon} size={20} color={colorsNew.deep} /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colorsNew.sun }} />}
       <TextNew variant="section" accessibilityRole="header">{title}</TextNew>
       <LinearGradient colors={[colorsNew.border, 'rgba(228,236,236,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, height: 1 }} />
       {!!actionLabel && (
-        <PressableScaleNew onPress={onAction} style={{ minHeight: 44, justifyContent: 'center' }}>
+        <PressableScaleNew onPress={onAction} accessibilityLabel={`${actionLabel}: ${title}`} style={{ minHeight: 44, justifyContent: 'center' }}>
           <TextNew variant="meta" weight="semibold" color={colorsNew.primary}>{actionLabel}</TextNew>
         </PressableScaleNew>
       )}
