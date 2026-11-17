@@ -6,11 +6,12 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 import Animated, {
   Easing, FadeInDown, FadeOutUp, cancelAnimation, useAnimatedStyle, useReducedMotion,
-  useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming,
+  useSharedValue, withDelay, withRepeat, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Tint, c, fonts, r, shadow, sp, tints, type } from './tokens';
 
+import { smooth } from '@/src/design/motion';
 /* ───────── Icons (24px grid, 1.6 line, round caps/joins). Swap for the app's AppIcon if the names exist. ───────── */
 const ICONS = {
   search: { p: ['M16 16l4 4'], o: [[11, 11, 6.5]] },
@@ -75,7 +76,7 @@ export function SegmentedSwitch({ value, onChange, style }: { value: ViewMode; o
   const thumbW = Math.max(0, (w - 8) / 2);
   useEffect(() => {
     const t = value === 'map' ? thumbW : 0;
-    x.value = reduce ? t : withSpring(t, { damping: 16, stiffness: 220, mass: 0.8 });
+    x.value = reduce ? t : smooth(t);
   }, [value, thumbW, reduce, x]);
   const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const items: { key: ViewMode; label: string; icon: IconName }[] = [

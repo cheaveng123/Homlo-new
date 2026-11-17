@@ -88,7 +88,7 @@ export function LocationLineNew({ label }: { label: string }) {
 export function HeartButtonNew({ liked, onPress }: { liked?: boolean; onPress?: () => void }) {
   const s = useSharedValue(1);
   const reduced = useReducedMotion();
-  useEffect(() => { if (liked && !reduced) s.value = withSequence(withTiming(1.25, { duration: 120 }), withTiming(1, { duration: 160 })); }, [liked, reduced, s]);
+  useEffect(() => { if (liked && !reduced) s.value = withSequence(withTiming(1.08, { duration: 140 }), withTiming(1, { duration: 200 })); }, [liked, reduced, s]);
   const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
     <PressableScaleNew onPress={onPress} accessibilityLabel="Save" accessibilityState={{ selected: !!liked }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>

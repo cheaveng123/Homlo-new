@@ -1,10 +1,11 @@
 // SunriseJobChipMk7.tsx — white pill with a yellow check badge + job-type label. Mobile only.
 import React, { useEffect } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import type { OutfitVariant } from './SunriseOutfitPersonMk7';
 
+import { smooth } from '@/src/design/motion';
 const LABELS = ['Café & Restaurant', 'Delivery & Courier', 'Office & Admin'];
 
 function Label({ text, on, headingFont, bodyFont }: { text: string; on: boolean; headingFont?: string; bodyFont?: string }) {
@@ -23,7 +24,7 @@ export default function SunriseJobChipMk7({ variant, headingFont, bodyFont }: { 
   const pop = useSharedValue(1);
   useEffect(() => {
     pop.value = 0;
-    pop.value = withSpring(1, { damping: 9, stiffness: 140 });
+    pop.value = smooth(1);
   }, [variant, pop]);
   const badge = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }, { rotate: `${(1 - pop.value) * -30}deg` }] }));
   return (

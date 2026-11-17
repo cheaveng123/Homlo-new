@@ -2,7 +2,7 @@ import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, PressableProps, StyleProp, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import Animated, {
   Easing, FadeIn, FadeOut, cancelAnimation, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue,
-  withDelay, withRepeat, withSequence, withSpring, withTiming,
+  withDelay, withRepeat, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { useIsFocused } from 'expo-router';
 import { Skeleton } from '@/src/design/primitives';
@@ -15,6 +15,7 @@ import { AccentNew, accentNew, colorsNew, radiusNew, shadowNew } from '../theme/
 import { motionNew } from '../theme/motionNew';
 import { familyNew } from '../theme/fontsNew';
 
+import { smooth } from '@/src/design/motion';
 const APressable = Animated.createAnimatedComponent(Pressable);
 const SELECTED_INK = '#0B6F8A';
 
@@ -30,7 +31,7 @@ export function PressableScaleNew({ scaleTo = motionNew.pressButton, style, onPr
       hitSlop={8}
       {...rest}
       onPressIn={(e) => { if (!reduced) s.set(withTiming(scaleTo, { duration: 120 })); onPressIn?.(e); }}
-      onPressOut={(e) => { s.set(reduced ? 1 : withSpring(1, { damping: 14, stiffness: 260 })); onPressOut?.(e); }}
+      onPressOut={(e) => { s.set(reduced ? 1 : smooth(1)); onPressOut?.(e); }}
       style={[style, a]}
     />
   );

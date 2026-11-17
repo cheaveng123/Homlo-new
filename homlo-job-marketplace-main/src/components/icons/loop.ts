@@ -53,4 +53,5 @@ export const around = (s: number, x: number, y: number) => {
 };
 
 export const FADE = [[0, 0], [0.06, 0], [0.24, 1], [0.8, 1], [0.92, 0], [1, 0]];
-export const POP = [[0, 0.2], [0.24, 0.2], [0.34, 1.15], [0.4, 1], [1, 1]];
+// Badges settle in smoothly (no overshoot).
+export const POP = [[0, 0.6], [0.24, 0.6], [0.4, 1], [1, 1]];

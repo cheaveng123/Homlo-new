@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { TextNew } from '../TextNew';
 import {
   ApplicationsIcon,
@@ -11,6 +11,7 @@ import {
 } from '@/src/components/icons/ManageIcons';
 import { dash } from './dashTokens';
 
+import { smooth } from '@/src/design/motion';
 export type DashManageItem = { key: string; label: string; count: number };
 
 const ICONS: Record<string, React.ComponentType<ManageIconProps>> = {
@@ -36,7 +37,7 @@ function ManageCell({ item, index, showCount, focused, onPress }: {
       style={s.cell}
       onPressIn={() => { if (!reduced) scale.set(withTiming(0.94, { duration: 120 })); }}
       onPressOut={() => {
-        if (!reduced) scale.set(withSequence(withSpring(1.1, { damping: 9, stiffness: 380 }), withSpring(1, { damping: 12, stiffness: 260 })));
+        if (!reduced) scale.set(smooth(1, 220));
         setReplay((r) => r + 1);
       }}
       onPress={onPress}

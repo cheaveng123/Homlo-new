@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QzCount, QzCta, QzDock, QzIcon, QzPress, QzText } from './plnQzx_bits';
 import { QzJobsGlyph, QzPostsGlyph } from './plnQzx_glyphs';
 import { QZ, qzShadow } from './plnQzx_tokens';
 import type { PlnQzxPlan, PlnQzxPlansCopy } from './plnQzx_types';
 
+import { smooth } from '@/src/design/motion';
 export type PlnQzxPlansViewProps = {
   plans: PlnQzxPlan[];            // whatever the existing data returns, any length
   currentPlanId: string;
@@ -24,7 +25,7 @@ function Switcher({ plans, selectedId, currentId, onSelect, fmt, current }: { pl
   const idx = Math.max(0, plans.findIndex((p) => p.id === selectedId));
   const seg = w ? (w - 8) / plans.length : 0;
   const x = useSharedValue(0);
-  useEffect(() => { x.value = rm ? idx * seg : withSpring(idx * seg, { damping: 18, stiffness: 220 }); }, [idx, seg, rm, x]);
+  useEffect(() => { x.value = rm ? idx * seg : smooth(idx * seg); }, [idx, seg, rm, x]);
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
     <View style={st.seg} onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} accessibilityRole="tablist">

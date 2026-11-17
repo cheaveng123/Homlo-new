@@ -3,13 +3,13 @@ import { Dimensions, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
 import { useHeroTransitionStore } from '@/store/heroTransitionStore';
 import { HERO_IMAGE_HEIGHT } from '@/constants/hero';
 
+import { smooth } from '@/src/design/motion';
 const { width: SCREEN_W } = Dimensions.get('window');
 const SPRING = { damping: 18, stiffness: 180, mass: 1 };
 
@@ -33,10 +33,10 @@ export function HeroOverlay() {
       h.value = startRect.height;
       opacity.value = 1;
 
-      x.value = withSpring(0, SPRING);
-      y.value = withSpring(0, SPRING);
-      w.value = withSpring(SCREEN_W, SPRING);
-      h.value = withSpring(HERO_IMAGE_HEIGHT, SPRING, (finished) => {
+      x.value = smooth(0);
+      y.value = smooth(0);
+      w.value = smooth(SCREEN_W);
+      h.value = smooth(HERO_IMAGE_HEIGHT, undefined, (finished) => {
         if (finished) {
           opacity.value = withTiming(0, { duration: 80 }, (done) => {
             if (done) runOnJS(clear)();

@@ -5,13 +5,13 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { TextNew } from '../TextNew';
 import { DraftTabGlyph, LiveTabGlyph, ReviewTabGlyph } from '@/src/components/icons/DashIcons';
 import { dash, easeInOut } from './dashTokens';
 
+import { SMOOTH, smooth } from '@/src/design/motion';
 export type DashTab = { key: string; label: string; count?: number };
 
 const GLYPHS: Record<string, typeof LiveTabGlyph> = {
@@ -28,7 +28,7 @@ function TabItem({ tab, active, onPress, onLayout }: {
   const first = useRef(true);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
-    if (active && !reduced) pop.value = withSequence(withTiming(1.2, { duration: 140 }), withSpring(1, { damping: 10, stiffness: 260 }));
+    if (active && !reduced) pop.value = withSequence(withTiming(1.06, { duration: 140, easing: SMOOTH }), smooth(1, 220));
   }, [active, reduced, pop]);
   const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
   const Glyph = GLYPHS[tab.key.toLowerCase()] ?? LiveTabGlyph;

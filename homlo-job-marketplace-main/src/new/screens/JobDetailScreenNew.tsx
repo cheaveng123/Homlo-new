@@ -24,6 +24,7 @@ import { HeartButtonNew, PositionsBarNew } from '../components/JobPartsNew';
 import { colorsNew, radiusNew } from '../theme/tokensNew';
 import { useCopyNew } from '../theme/copyNew';
 import { PhotoPlaceholder, Reveal } from '@/src/design/primitives';
+import { SMOOTH } from '@/src/design/motion';
 import { easings, palette, shadows } from '@/src/design/tokens';
 import { SectionIcon, type SectionIconName } from '@/src/components/icons/SectionIcons';
 
@@ -71,11 +72,11 @@ function ScrollSection({ title, glyph, scrollY, viewportH, children }: {
     () => y.value >= 0 && y.value + 40 < scrollY.value + viewportH.value,
     (visible, prev) => {
       if (!visible || prev || t.value > 0) return;
-      t.value = withTiming(1, { duration: 600, easing: easings.out });
+      t.value = withTiming(1, { duration: 550, easing: SMOOTH });
       runOnJS(setSeen)(true);
     },
   );
-  const st = useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: 26 * (1 - t.value) }] }));
+  const st = useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: 16 * (1 - t.value) }] }));
   return (
     <Animated.View style={st} onLayout={(e: LayoutChangeEvent) => { y.value = e.nativeEvent.layout.y; }}>
       <View style={s.sectionHead} accessibilityRole="header" accessible accessibilityLabel={title}>

@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -20,6 +19,7 @@ import { PhotoGlyph } from '@/src/components/icons/DashIcons';
 import { useBoostCountdown } from '@/components/boost/useBoostCountdown';
 import { cardShadow, dash, easeOut } from './dashTokens';
 
+import { smooth } from '@/src/design/motion';
 export type DashCardJob = {
   id: string;
   title: string;
@@ -228,7 +228,7 @@ export function DashJobCardNew({ job, index, scrollY, listTop, viewportH, focuse
         accessibilityLabel={job.title}
         onPress={onPress}
         onPressIn={() => { if (!reduced) press.set(withTiming(0.985, { duration: 120 })); }}
-        onPressOut={() => { if (!reduced) press.set(withSpring(1, { damping: 16, stiffness: 300 })); }}
+        onPressOut={() => { if (!reduced) press.set(smooth(1)); }}
         style={[s.card, cardShadow]}
       >
         <View style={s.clip} pointerEvents="none">

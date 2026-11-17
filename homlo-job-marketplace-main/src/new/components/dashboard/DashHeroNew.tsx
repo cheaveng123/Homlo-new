@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -20,6 +19,7 @@ import { kf } from '@/src/components/icons/loop';
 import { PlusGlyph } from '@/src/components/icons/DashIcons';
 import { dash, easeInOut, easeOut, HEADER_H } from './dashTokens';
 
+import { smooth } from '@/src/design/motion';
 const ACircle = Animated.createAnimatedComponent(Circle);
 
 type Stat = { label: string; value: number };
@@ -210,8 +210,8 @@ function AddButton({ label, onPress }: { label: string; onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      onPressIn={() => { press.set(reduced ? 1 : withSpring(1, spring)); }}
-      onPressOut={() => { press.set(reduced ? 0 : withSpring(0, spring)); }}
+      onPressIn={() => { press.set(reduced ? 1 : smooth(1)); }}
+      onPressOut={() => { press.set(reduced ? 0 : smooth(0)); }}
     >
       <Animated.View style={[s.addBtn, btn]} onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}>
         <View style={s.addClip} pointerEvents="none">

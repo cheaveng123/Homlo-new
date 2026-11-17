@@ -5,12 +5,12 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
 } from 'react-native-reanimated';
 import { JOB_CATEGORIES, JobCategorySlug } from '../../constants/jobCategories';
 import { jobCategoryTheme as t } from './jobCategoryTheme';
 import { jobTypeImage } from '../shared/jobTypeImage';
 
+import { smooth } from '@/src/design/motion';
 interface Props {
   active: JobCategorySlug;
   onSelect: (slug: JobCategorySlug) => void;
@@ -43,7 +43,7 @@ function CategoryItem({
   const progress = useSharedValue(isActive ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withSpring(isActive ? 1 : 0, SPRING);
+    progress.value = smooth(isActive ? 1 : 0);
   }, [isActive, progress]);
 
   const chipStyle = useAnimatedStyle(() => ({

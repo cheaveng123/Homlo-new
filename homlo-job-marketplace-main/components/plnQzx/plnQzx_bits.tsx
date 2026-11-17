@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleProp, StyleSheet, Text, TextProps, TextStyle, View, ViewStyle } from 'react-native';
 import Animated, {
   Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue,
-  withDelay, withRepeat, withSequence, withSpring, withTiming,
+  withDelay, withRepeat, withSequence, withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QZ } from './plnQzx_tokens';
 
+import { smooth } from '@/src/design/motion';
 /* ---------- press feedback (scale 0.975) ---------- */
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function QzPress(props: {
@@ -157,7 +158,7 @@ export function QzBadge({ tone }: { tone: 'ok' | 'bad' }) {
   const pop = useSharedValue(rm ? 1 : 0), draw = useSharedValue(rm ? 0 : 40), ring1 = useSharedValue(rm ? 1 : 0), ring2 = useSharedValue(rm ? 1 : 0), shake = useSharedValue(0);
   useEffect(() => {
     if (rm) return;
-    pop.value = withSpring(1, { damping: 10, stiffness: 160 });
+    pop.value = smooth(1);
     draw.value = withDelay(300, withTiming(0, { duration: 500 }));
     ring1.value = withDelay(350, withTiming(1, { duration: 1400 }));
     ring2.value = withDelay(750, withTiming(1, { duration: 1400 }));

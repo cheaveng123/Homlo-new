@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TextNew } from '../TextNew';
 import { BellGlyph, HomeGlyph, PlusGlyph, SearchGlyph, UserGlyph } from '@/src/components/icons/DashIcons';
 import { haptic } from '@/lib/haptics';
 import { dash, easeOut, NAV_BASE_H } from './dashTokens';
 
+import { smooth } from '@/src/design/motion';
 type Glyph = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 const TABS: { key: string; label: string; Icon: Glyph }[] = [
   { key: 'home', label: 'Home', Icon: HomeGlyph },
@@ -36,8 +37,8 @@ function NavItem({ tab, active, badgeCount, onPress }: { tab: (typeof TABS)[numb
       accessibilityState={{ selected: active }}
       accessibilityLabel={badgeCount ? `${tab.label}, ${badgeCount} unread` : tab.label}
       onPress={onPress}
-      onPressIn={() => { if (isPost && !reduced) spin.set(withSpring(90, { damping: 14, stiffness: 180 })); }}
-      onPressOut={() => { if (isPost && !reduced) spin.set(withSpring(0, { damping: 14, stiffness: 180 })); }}
+      onPressIn={() => { if (isPost && !reduced) spin.set(smooth(90)); }}
+      onPressOut={() => { if (isPost && !reduced) spin.set(smooth(0)); }}
       style={s.item}
       hitSlop={4}
     >
