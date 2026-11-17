@@ -148,8 +148,10 @@ export function IconDiscNew({ icon, tone = 'lagoon', size = 44, round }: { icon:
 export function SectionTitleNew({ title, icon, glyph, actionLabel, onAction, style }: { title: string; icon?: AppIconNameNew; glyph?: SectionIconName; actionLabel?: string; onAction?: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginTop: 24, marginBottom: 12 }, style]}>
-      {glyph ? <SectionIcon name={glyph} size={22} /> : icon ? <AppIconNew name={icon} size={20} color={colorsNew.deep} /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colorsNew.sun }} />}
+      {glyph ? null : icon ? <AppIconNew name={icon} size={20} color={colorsNew.deep} /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colorsNew.sun }} />}
       <TextNew variant="section" accessibilityRole="header">{title}</TextNew>
+      {/* custom section icon sits right of the title, in plain slate */}
+      {glyph ? <SectionIcon name={glyph} size={20} tone="mono" /> : null}
       <LinearGradient colors={[colorsNew.border, 'rgba(228,236,236,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1, height: 1 }} />
       {!!actionLabel && (
         <PressableScaleNew onPress={onAction} accessibilityLabel={`${actionLabel}: ${title}`} style={{ minHeight: 44, justifyContent: 'center' }}>

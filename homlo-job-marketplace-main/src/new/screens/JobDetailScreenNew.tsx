@@ -49,7 +49,7 @@ function Fact({ icon, label, value, index, a11y }: { icon: SectionIconName; labe
     <Reveal index={index + 2} style={s.fact}>
       <View accessible accessibilityLabel={a11y ?? `${label}: ${value}`} style={s.factInner}>
         <View style={s.factHead}>
-          <SectionIcon name={icon} size={18} delay={250 + index * 90} />
+          <SectionIcon name={icon} size={18} tone="mono" delay={250 + index * 90} />
           <TextNew variant="caption" color={colorsNew.muted}>{label}</TextNew>
         </View>
         <TextNew variant="title" heading weight="extrabold" numberOfLines={1}>{value}</TextNew>
@@ -79,8 +79,8 @@ function ScrollSection({ title, glyph, scrollY, viewportH, children }: {
   return (
     <Animated.View style={st} onLayout={(e: LayoutChangeEvent) => { y.value = e.nativeEvent.layout.y; }}>
       <View style={s.sectionHead} accessibilityRole="header" accessible accessibilityLabel={title}>
-        <SectionIcon key={seen ? 'on' : 'off'} name={glyph} size={22} delay={seen ? 150 : 100000} />
         <TextNew variant="section">{title}</TextNew>
+        <SectionIcon key={seen ? 'on' : 'off'} name={glyph} size={20} tone="mono" delay={seen ? 150 : 100000} />
         <LinearGradient colors={[colorsNew.border, 'rgba(230,237,239,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.sectionRule} />
       </View>
       {children}
@@ -248,7 +248,7 @@ export function JobDetailScreenNew({ job, mapSlot, showMap = true, onBack, onTog
             accessibilityLabel={`${copy.job.location}: ${job.locationLabel}${job.addressNote ? `, ${job.addressNote}` : ''}`}
             style={s.locRow}
           >
-            <SectionIcon name="nearby" size={26} />
+            <SectionIcon name="nearby" size={24} tone="mono" />
             <View style={s.flex}>
               <TextNew variant="title" weight="semibold">{job.locationLabel}</TextNew>
               {!!job.addressNote && <TextNew variant="meta" color={colorsNew.muted}>{job.addressNote}</TextNew>}
