@@ -1,9 +1,12 @@
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, PressableProps, StyleProp, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
 import Animated, {
-  Easing, FadeIn, FadeOut, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue,
-  withDelay, withRepeat, withSequence, withTiming,
+  Easing, FadeIn, FadeOut, cancelAnimation, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue,
+  withDelay, withRepeat, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
+import { useIsFocused } from 'expo-router';
+import { Skeleton } from '@/src/design/primitives';
+import { featureIcons, type FeatureIconName } from '@/src/components/icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppIconNew, AppIconNameNew } from '../icons/AppIconNew';
 import { TextNew, hasKhmerNew } from './TextNew';
@@ -12,6 +15,7 @@ import { motionNew } from '../theme/motionNew';
 import { familyNew } from '../theme/fontsNew';
 
 const APressable = Animated.createAnimatedComponent(Pressable);
+const SELECTED_INK = '#0B6F8A';
 
 /* ---------- press feedback: 0.975 buttons/rows, 0.985 cards ---------- */
 type PSProps = Omit<PressableProps, 'style'> & { scaleTo?: number; style?: StyleProp<ViewStyle> };
@@ -24,8 +28,8 @@ export function PressableScaleNew({ scaleTo = motionNew.pressButton, style, onPr
       accessibilityRole="button"
       hitSlop={8}
       {...rest}
-      onPressIn={(e) => { if (!reduced) s.value = withTiming(scaleTo, { duration: 120 }); onPressIn?.(e); }}
-      onPressOut={(e) => { s.value = withTiming(1, { duration: 160 }); onPressOut?.(e); }}
+      onPressIn={(e) => { if (!reduced) s.set(withTiming(scaleTo, { duration: 120 })); onPressIn?.(e); }}
+      onPressOut={(e) => { s.set(reduced ? 1 : withSpring(1, { damping: 14, stiffness: 260 })); onPressOut?.(e); }}
       style={[style, a]}
     />
   );
@@ -45,7 +49,7 @@ export function ButtonNew({ label, onPress, variant = 'primary', sweep, leftIcon
     if (!sweep || reduced || !w) return;
     x.value = withRepeat(withSequence(withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }), withDelay(3100, withTiming(0, { duration: 0 }))), -1);
     return () => cancelAnimation(x);
-  }, [sweep, reduced, w]);
+  }, [sweep, reduced, w, x]);
   const sw = useAnimatedStyle(() => ({ transform: [{ translateX: -60 + x.value * (w + 120) }, { skewX: '-20deg' }] }));
   const primary = variant === 'primary';
   const fg = primary ? colorsNew.white : colorsNew.deep;
@@ -83,7 +87,7 @@ export function RoundButtonNew({ icon, onPress, bg = colorsNew.bg, color = color
       style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, style]}>
       <AppIconNew name={icon} color={color} />
       {count > 0 ? (
-        <View style={{ position: 'absolute', top: 4, right: 2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colorsNew.clayInk, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', top: 4, right: 2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colorsNew.deep, alignItems: 'center', justifyContent: 'center' }}>
           <TextNew variant="caption" weight="bold" color={colorsNew.white} style={{ fontSize: 10, lineHeight: 13 }}>{count > 99 ? '99+' : count}</TextNew>
         </View>
       ) : dot ? (
@@ -99,13 +103,13 @@ export function ChipNew({ label, tone = 'lagoon', size = 'sm', icon, selected, o
 }) {
   const a = accentNew[tone];
   const lg = size === 'lg';
-  const fg = lg ? (selected ? colorsNew.white : colorsNew.text) : a.ink;
+  const fg = lg ? (selected ? SELECTED_INK : colorsNew.text) : a.ink;
   const body = (
     <View style={{
       height: height ?? (lg ? 44 : 28), paddingHorizontal: lg ? 16 : 12, borderRadius: lg ? radiusNew.pill : radiusNew.chip,
       flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-      backgroundColor: lg ? (selected ? colorsNew.primary : colorsNew.white) : a.bg,
-      borderWidth: lg ? 1 : 0, borderColor: selected ? colorsNew.primary : colorsNew.border,
+      backgroundColor: lg ? (selected ? colorsNew.tint : colorsNew.white) : a.bg,
+      borderWidth: lg ? 1 : 0, borderColor: selected ? colorsNew.tint : colorsNew.border,
     }}>
       {icon && <AppIconNew name={icon} size={lg ? 18 : 14} color={fg} />}
       <TextNew variant={lg ? 'body' : 'caption'} weight={lg ? 'medium' : 'semibold'} color={fg}>{label}</TextNew>
@@ -158,43 +162,67 @@ export function SectionTitleNew({ title, icon, actionLabel, onAction, style }: {
 /* ---------- text field (52px, radius 16) ---------- */
 export function FieldNew({ label, leftIcon, multiline, style, ...input }: TextInputProps & { label?: string; leftIcon?: AppIconNameNew }) {
   const [focus, setFocus] = useState(false);
+  const f = useSharedValue(0);
+  const reducedF = useReducedMotion();
   const khmer = hasKhmerNew(input.value);
+  const borderAnim = useAnimatedStyle(() => ({ borderColor: interpolateColor(f.value, [0, 1], [colorsNew.border, colorsNew.primary]) }));
+  const setFocused = (on: boolean) => { setFocus(on); f.set(reducedF ? (on ? 1 : 0) : withTiming(on ? 1 : 0, { duration: 180 })); };
   return (
     <View>
       {!!label && <TextNew variant="body" weight="semibold" style={{ marginTop: 16, marginBottom: 8 }}>{label}</TextNew>}
-      <View style={{
-        minHeight: multiline ? 110 : 52, borderRadius: radiusNew.tile, backgroundColor: colorsNew.bg, borderWidth: focus ? 1.5 : 1,
-        borderColor: focus ? colorsNew.primary : colorsNew.border, paddingHorizontal: 16, paddingTop: multiline ? 14 : 0,
+      <Animated.View style={[{
+        minHeight: multiline ? 110 : 52, borderRadius: 14, backgroundColor: focus ? colorsNew.white : colorsNew.bg, borderWidth: focus ? 1.5 : 1,
+        paddingHorizontal: 16, paddingTop: multiline ? 14 : 0,
         flexDirection: 'row', alignItems: multiline ? 'flex-start' : 'center', gap: 8,
-      }}>
+      }, borderAnim]}>
         {leftIcon && <AppIconNew name={leftIcon} color={colorsNew.muted} />}
         <TextInput
           maxFontSizeMultiplier={1.3}
           placeholderTextColor={colorsNew.muted}
           multiline={multiline}
           {...input}
-          onFocus={(e) => { setFocus(true); input.onFocus?.(e); }}
-          onBlur={(e) => { setFocus(false); input.onBlur?.(e); }}
+          onFocus={(e) => { setFocused(true); input.onFocus?.(e); }}
+          onBlur={(e) => { setFocused(false); input.onBlur?.(e); }}
           style={[{ flex: 1, fontFamily: khmer ? familyNew.khmer.regular : familyNew.body.regular, fontSize: 14, color: colorsNew.text, minHeight: multiline ? 90 : 52, textAlignVertical: multiline ? 'top' : 'center' }, style]}
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
 /* ---------- underlined tabs ---------- */
 export function UnderlineTabsNew({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
+  const reduced = useReducedMotion();
+  const [frames, setFrames] = useState<Record<string, { x: number; w: number }>>({});
+  const x = useSharedValue(0);
+  const w = useSharedValue(0);
+  const placed = useRef(false);
+  useEffect(() => {
+    const f = frames[active];
+    if (!f) return;
+    const cfg = { duration: 300, easing: Easing.bezier(0.4, 0, 0.2, 1) };
+    const glide = placed.current && !reduced;
+    x.set(glide ? withTiming(f.x, cfg) : f.x);
+    w.set(glide ? withTiming(f.w, cfg) : f.w);
+    placed.current = true;
+  }, [active, frames, reduced, x, w]);
+  const ind = useAnimatedStyle(() => ({ width: w.value, transform: [{ translateX: x.value }] }));
   return (
     <View style={{ flexDirection: 'row', gap: 24, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: colorsNew.border }}>
       {tabs.map((t) => {
         const on = t.key === active;
         return (
-          <PressableScaleNew key={t.key} onPress={() => onChange(t.key)} accessibilityState={{ selected: on }}
-            style={{ minHeight: 48, justifyContent: 'center', borderBottomWidth: 3, borderColor: on ? colorsNew.primary : 'transparent', marginBottom: -1 }}>
-            <TextNew variant="title" weight="semibold" color={on ? colorsNew.deep : colorsNew.muted}>{t.label}</TextNew>
+          <PressableScaleNew key={t.key} onPress={() => onChange(t.key)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+            onLayout={(e: LayoutChangeEvent) => {
+              const { x: fx, width } = e.nativeEvent.layout;
+              setFrames((p) => (p[t.key]?.x === fx && p[t.key]?.w === width ? p : { ...p, [t.key]: { x: fx, w: width } }));
+            }}
+            style={{ minHeight: 48, justifyContent: 'center' }}>
+            <TextNew variant="title" weight="semibold" color={on ? SELECTED_INK : colorsNew.muted}>{t.label}</TextNew>
           </PressableScaleNew>
         );
       })}
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, bottom: -1, height: 3, borderRadius: 2, backgroundColor: colorsNew.primary }, ind]} />
     </View>
   );
 }
@@ -256,16 +284,16 @@ export function TicketNew({ eyebrow, title, subtitle, stubTop, stubBottom, onPre
 
 /* ---------- loading / empty / error ---------- */
 export function SkeletonNew({ width = '100%', height = 16, radius = 8, style }: { width?: number | `${number}%`; height?: number; radius?: number; style?: StyleProp<ViewStyle> }) {
-  const o = useSharedValue(1);
-  const reduced = useReducedMotion();
-  useEffect(() => { if (!reduced) o.value = withRepeat(withSequence(withTiming(0.5, { duration: 700 }), withTiming(1, { duration: 700 })), -1); }, [reduced]);
-  const a = useAnimatedStyle(() => ({ opacity: o.value }));
-  return <Animated.View style={[{ width, height, borderRadius: radius, backgroundColor: colorsNew.track }, a, style]} />;
+  // 1.4s shimmer sweep, shaped by the caller (static under Reduce Motion).
+  return <Skeleton width={width} height={height} radius={radius} style={style} />;
 }
-export function EmptyStateNew({ icon, title, actionLabel, onAction, tone = 'lagoon' }: { icon: AppIconNameNew; title: string; actionLabel?: string; onAction?: () => void; tone?: AccentNew }) {
+const EMPTY_ART: Partial<Record<AppIconNameNew, FeatureIconName>> = { bell: 'inbox', chat: 'inbox', x: 'error', search: 'noResults', heart: 'noResults' } as Partial<Record<AppIconNameNew, FeatureIconName>>;
+export function EmptyStateNew({ icon, title, actionLabel, onAction }: { icon: AppIconNameNew; title: string; actionLabel?: string; onAction?: () => void; tone?: AccentNew }) {
+  const focused = useIsFocused();
+  const Art = featureIcons[EMPTY_ART[icon] ?? 'noResults'];
   return (
     <View style={{ alignItems: 'center', gap: 12, padding: 32 }}>
-      <IconDiscNew icon={icon} tone={tone} size={72} round />
+      <Art size={72} active={focused} />
       <TextNew variant="title" weight="semibold" align="center">{title}</TextNew>
       {!!actionLabel && <ButtonNew label={actionLabel} variant="tint" onPress={onAction} />}
     </View>
@@ -276,7 +304,7 @@ export function EmptyStateNew({ icon, title, actionLabel, onAction, tone = 'lago
 export function FloatingShapeNew({ style, dx = 10, dy = 14, duration = 9000 }: { style: StyleProp<ViewStyle>; dx?: number; dy?: number; duration?: number }) {
   const t = useSharedValue(0);
   const reduced = useReducedMotion();
-  useEffect(() => { if (!reduced) t.value = withRepeat(withSequence(withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration, easing: Easing.inOut(Easing.sin) })), -1); }, [reduced]);
+  useEffect(() => { if (!reduced) t.value = withRepeat(withSequence(withTiming(1, { duration, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration, easing: Easing.inOut(Easing.sin) })), -1); }, [duration, reduced, t]);
   const a = useAnimatedStyle(() => ({ transform: [{ translateX: -dx * t.value }, { translateY: dy * t.value }, { rotate: `${t.value * 6}deg` }] }));
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute' }, style, a]} />;
 }
@@ -285,7 +313,7 @@ export function FloatingShapeNew({ style, dx = 10, dy = 14, duration = 9000 }: {
 export function PulseDotNew({ color = colorsNew.primary, size = 8 }: { color?: string; size?: number }) {
   const t = useSharedValue(0);
   const reduced = useReducedMotion();
-  useEffect(() => { if (!reduced) t.value = withRepeat(withTiming(1, { duration: 1800, easing: Easing.out(Easing.quad) }), -1); }, [reduced]);
+  useEffect(() => { if (!reduced) t.value = withRepeat(withTiming(1, { duration: 1800, easing: Easing.out(Easing.quad) }), -1); }, [reduced, t]);
   const ring = useAnimatedStyle(() => ({ opacity: 0.6 * (1 - t.value), transform: [{ scale: 0.6 + t.value * 1.6 }] }));
   return (
     <View style={{ width: size, height: size }}>
