@@ -25,6 +25,13 @@ Say "continue" to resume from **Next**. Each batch: typecheck, lint, tests, comm
 | Map job pin: flat cyan pin replaces the glossy briefcase image | `src/components/map/assets/job-suitcase*` |
 | Bottom nav (all tab screens) | `components/home/BottomTabBar.tsx`: no pill, cyan icon + 16x3 bar, amber dot on active Post (**uncommitted**, see below) |
 
+### Motion rule (no bounce)
+
+All motion uses `smooth()` / `SMOOTH` from `src/design/motion.tsx` (decelerating ease, bezier .2,0,0,1, no overshoot).
+`withSpring`, `.springify()` and pop overshoots were removed app-wide. Don't reintroduce springs or >1.08 pops.
+
+Title icons follow the Popular flame: one solid slate silhouette + one darker inner shape + white cut-outs.
+
 ## Screen inventory and status
 
 Legend: ✅ done (restyled) · 🎨 repainted via shared layer only (tokens/primitives), needs per-screen polish · ⏭ skipped
@@ -77,6 +84,7 @@ These files changed for the redesign but **also contain unrelated uncommitted wo
 so they were left out of the `design:` commits to avoid sweeping that work in. Commit them with that work:
 
 - `components/home/BottomTabBar.tsx` (new nav style)
+- Spring-to-smooth rewrite in files that also hold other pending edits: `components/home/BottomTabBar.tsx`, `components/jobs/HiringComposerScreen.tsx`, `components/vista/VistaCategoryScreen.tsx`, `NewEditJob.tsx`, `NewUI.tsx`, `NewBoost.tsx`, `NewEmployerProfile.tsx`, `components/employer-v2/*`, `components/common/SegmentedTabs.tsx`, `components/explore/JobMapScreen.tsx`, `src/new/applications/StatePanel.tsx`, `src/new/screens/ChatScreenNew.tsx`, `app/jobs/recommended.tsx`
 - `components/jobs-v2/PostJobFlow.tsx` (category tiles without the tinted disc, slate/cyan icon)
 - `src/new/screens/HomeScreenNew.tsx`, `SearchScreenNew.tsx`, `InboxScreenNew.tsx` (section icons: only `glyph=` props added)
 - `src/new/screens/PostDashboardScreenNew.tsx`, `screens/EmployerDashboardNewAdapter.tsx`, `src/new/theme/copyNew.ts` (dashboard)
