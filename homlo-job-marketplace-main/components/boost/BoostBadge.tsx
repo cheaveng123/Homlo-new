@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AdsIcon } from '@/src/components/icons/AdsIcon';
 import { BoostIcon } from '@/src/components/icons/BoostIcon';
 import { useBoostCountdown } from './useBoostCountdown';
@@ -23,10 +24,12 @@ export function BoostBadge(props: Props) {
   if (props.audience === 'employee') {
     return (
       <View
-        style={[s.adPill, { backgroundColor: boostColors.adBg, borderColor: boostColors.adBorder }]}
+        style={s.adPill}
         accessibilityLabel="Sponsored listing"
       >
-        <AdsIcon size={13} />
+        <LinearGradient colors={['#F7B23B', '#E8870F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(255,255,255,0.32)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.6 }} style={StyleSheet.absoluteFill} />
+        <AdsIcon size={13} color="#FFFFFF" accent="rgba(255,255,255,0.85)" />
         <Text style={s.adText}>Ads</Text>
       </View>
     );
@@ -53,7 +56,7 @@ const s = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
           paddingHorizontal: 8, height: 22, borderRadius: 999, borderWidth: 1 },
   txt: { fontSize: 11, fontWeight: '700', letterSpacing: 0.1 },
-  adPill: { alignSelf: 'flex-start', flexDirection: 'row', gap: 4, paddingLeft: 6, paddingRight: 8, height: 22, borderRadius: 999,
-            borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  adText: { fontSize: 11, fontWeight: '700', color: boostColors.adText },
+  adPill: { alignSelf: 'flex-start', flexDirection: 'row', gap: 4, paddingLeft: 7, paddingRight: 9, height: 22, borderRadius: 999,
+            overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  adText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
 });

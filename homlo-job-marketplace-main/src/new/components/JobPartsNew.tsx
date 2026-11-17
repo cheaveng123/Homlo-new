@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from 'react';
-import { Image, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { AppIconNew } from '../icons/AppIconNew';
 import { TextNew } from './TextNew';
@@ -34,19 +35,45 @@ export function PositionsBarNew({ left, total, maxWidth = 84 }: { left: number; 
   );
 }
 
+/* Shaded amber fill shared by the Ads tab and pill: amber -> amber-deep, soft top highlight. */
+function AdFill() {
+  return (
+    <>
+      <LinearGradient colors={['#F7B23B', '#E8870F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(255,255,255,0.32)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.6 }} style={StyleSheet.absoluteFill} />
+    </>
+  );
+}
+
+/** Inline "Ads" pill for small thumbnails and title rows. */
 export function AdBadgeNew() {
   const focused = useIsFocused();
   return (
-    <View
-      style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colorsNew.cream, borderRadius: radiusNew.pill, paddingLeft: 6, paddingRight: 8, paddingVertical: 2 }}
-      accessibilityLabel="Sponsored listing"
-      accessibilityRole="text"
-    >
-      <AdsIcon size={14} active={focused} />
-      <TextNew variant="caption" weight="semibold" color={colorsNew.creamInk}>Ads</TextNew>
+    <View style={adStyles.pill} accessibilityLabel="Sponsored listing" accessibilityRole="text">
+      <AdFill />
+      <AdsIcon size={13} color="#FFFFFF" accent="rgba(255,255,255,0.85)" active={focused} />
+      <TextNew variant="caption" weight="semibold" color="#FFFFFF" style={adStyles.text}>Ads</TextNew>
     </View>
   );
 }
+
+/** "Ads" tab tucked into the photo's bottom-left edge, rounded top-right (like a promo tab). */
+export function AdTabNew() {
+  const focused = useIsFocused();
+  return (
+    <View style={adStyles.tab} accessibilityLabel="Sponsored listing" accessibilityRole="text">
+      <AdFill />
+      <AdsIcon size={14} color="#FFFFFF" accent="rgba(255,255,255,0.85)" active={focused} />
+      <TextNew variant="caption" weight="semibold" color="#FFFFFF" style={adStyles.text}>Ads</TextNew>
+    </View>
+  );
+}
+
+const adStyles = StyleSheet.create({
+  pill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radiusNew.pill, overflow: 'hidden', paddingLeft: 7, paddingRight: 9, paddingVertical: 2 },
+  tab: { position: 'absolute', left: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, paddingLeft: 10, paddingRight: 13, borderTopRightRadius: 14, overflow: 'hidden' },
+  text: { fontSize: 12, lineHeight: 16, letterSpacing: 0.2 },
+});
 
 export function LocationLineNew({ label }: { label: string }) {
   return (
@@ -81,6 +108,7 @@ export function JobPhotoNew({ job, width, height, radius = radiusNew.card, onTog
       {job.imageUri
         ? <Image source={{ uri: job.imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         : <PhotoPlaceholder compact={height < 90} />}
+      {job.boosted && height >= 90 ? <AdTabNew /> : null}
       {!hideHeart && <View style={{ position: 'absolute', right: 0, top: 0 }}><HeartButtonNew liked={job.liked} onPress={onToggleLike} /></View>}
       {children}
     </View>
@@ -97,7 +125,6 @@ export function JobCardTallNew({ job, onPress, onToggleLike, width = 210 }: Card
       <View style={{ paddingTop: 12, paddingHorizontal: 4, gap: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TextNew variant="title" weight="semibold" numberOfLines={1} style={{ flex: 1 }}>{job.title}</TextNew>
-          {job.boosted && <AdBadgeNew />}
         </View>
         <LocationLineNew label={job.locationLabel} />
         <View style={{ marginVertical: 4 }}><PositionsBarNew left={job.positionsLeft} total={job.positionsTotal} /></View>
@@ -139,7 +166,6 @@ export function JobResultCardNew({ job, onPress, onToggleLike }: CardProps) {
       <View style={{ flex: 1, gap: 4 }}>
         <View style={{ paddingRight: 36, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TextNew variant="title" heading weight="bold" numberOfLines={2} style={{ flex: 1 }}>{job.title}</TextNew>
-          {job.boosted && <AdBadgeNew />}
         </View>
         <LocationLineNew label={job.locationLabel} />
         {!!job.typeLabel && <View style={{ marginVertical: 2 }}><ChipNew label={job.typeLabel} /></View>}
