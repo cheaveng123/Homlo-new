@@ -18,6 +18,10 @@ Say "continue" to resume from **Next**. Each batch: typecheck, lint, tests, comm
 | Legacy brand hex literals replaced in screen code | 53 files (commit "map central palettes") |
 | Shared `*New` primitives restyled | `PrimitivesNew.tsx`: spring press, cyan-deep selected chips, radius-14 inputs with animated focus, sliding tab indicator, shimmer skeletons, tier A empty states |
 | Job cards | `JobPartsNew.tsx`: Photo placeholder, no avatar over photos, cyan positions bar (amber only for the last position) |
+| Icons: `AppIconNew` redrawn in-house (1.8 line, rounded, one solid signature detail); legacy `AppIcon` shares the same core glyphs, 1.8 line | `src/new/icons/AppIconNew.tsx`, `components/ui/AppIcon.tsx` |
+| Section-title + fact icons (tier B, two-tone, one-shot entrance): jobField, jobType, recommended, nearby, popular, explore, recent, suggestions, trending, conversations, location, details, employer, pay, positions | `src/components/icons/SectionIcons.tsx`, `SectionTitleNew glyph=` |
+| Animated Ads badge (megaphone + rippling waves, focus-gated) | `src/components/icons/AdsIcon.tsx`, `AdBadgeNew`, `BoostBadge` |
+| Map job pin: flat cyan pin replaces the glossy briefcase image | `src/components/map/assets/job-suitcase*` |
 | Bottom nav (all tab screens) | `components/home/BottomTabBar.tsx`: no pill, cyan icon + 16x3 bar, amber dot on active Post (**uncommitted**, see below) |
 
 ## Screen inventory and status
@@ -30,11 +34,11 @@ Legend: ✅ done (restyled) · 🎨 repainted via shared layer only (tokens/prim
 | 1 | `/login` | Auth | `app/login.tsx` | 🎨 |
 | 1 | `/onboarding` | Auth | `app/onboarding/index.tsx` | 🎨 |
 | 1 | `/complete-profile` | Form | `app/complete-profile.tsx` | 🎨 |
-| 2 | `/` Home | List/Overview | `HomeScreenNewAdapter` → `HomeScreenNew` | 🎨 (job cards ✅) |
+| 2 | `/` Home | List/Overview | `HomeScreenNewAdapter` → `HomeScreenNew` | 🎨 (job cards ✅, section icons ✅ uncommitted) |
 | 2 | `/search-detail`, `/search-results`, `/quick-search` | List | `SearchScreenNew`, `SearchResultsScreenNew`, `app/quick-search.tsx` | 🎨 |
 | 2 | `/explore`, `/explore/filters` | List/Form | `components/explore/*`, `04_FilterScreen` | 🎨 |
 | 2 | `/jobs/*` (recommended, popular, near-you, ways-to-work, category) | List | `app/jobs/*`, `components/jobs-v2/*` | 🎨 |
-| 3 | `/job/[id]` | Detail | `app/job/[id].tsx` + `JobDetailScreenNew` | 🎨 |
+| 3 | `/job/[id]` | Detail | `app/job/[id].tsx` + `JobDetailScreenNew` | ✅ scroll choreography: stretchy/parallax hero, collapsing header + title, reading progress, scroll-revealed sections, custom fact icons, labels |
 | 3 | `/job/[id]/apply` | Form | `app/job/[id]/apply.tsx` | 🎨 |
 | 4 | `/applications`, `/applications/[id]` | List/Detail | `src/new/applications/*` | 🎨 |
 | 4 | `/employer/applications`, `/employer/new-applicants`, `/employer/live-now`, `/employer/jobs-posted` | List | `components/employer-job/*` | 🎨 |
@@ -50,6 +54,8 @@ Legend: ✅ done (restyled) · 🎨 repainted via shared layer only (tokens/prim
 | — | `/dev/theme-lab`, `/messages/stub`, `/oauth/callback` | Dev/utility | — | ⏭ |
 
 ## Next (in priority order)
+
+0. **Icons still to redraw in house style**: `components/jobs-v2/AppIcon.tsx` (8 importers, jobs-v2 screens), the ~60 remaining glyphs in `components/ui/AppIcon.tsx` (already custom, need the 1.8/rounded pass glyph by glyph), and `src/components/icons/Icons.tsx`. Then give the remaining section headers (legacy screens use their own headers, not `SectionTitleNew`) `SectionIcon` glyphs.
 
 1. **Auth/onboarding**: gradient `Hero` + one tier A icon per step; `PrimaryButton`; radius-14 inputs (`login.tsx`, `onboarding/index.tsx`, `complete-profile.tsx` use their own inline styles, not `FieldNew`).
 2. **Job detail + apply**: hero photo with `PhotoPlaceholder`, tier B fact rows, sticky bottom bar with `PrimaryButton` + `SuccessIcon` after submit.
@@ -70,6 +76,7 @@ These files changed for the redesign but **also contain unrelated uncommitted wo
 so they were left out of the `design:` commits to avoid sweeping that work in. Commit them with that work:
 
 - `components/home/BottomTabBar.tsx` (new nav style)
+- `src/new/screens/HomeScreenNew.tsx`, `SearchScreenNew.tsx`, `InboxScreenNew.tsx` (section icons: only `glyph=` props added)
 - `src/new/screens/PostDashboardScreenNew.tsx`, `screens/EmployerDashboardNewAdapter.tsx`, `src/new/theme/copyNew.ts` (dashboard)
 - ~11 screen files where the hex recolor overlapped pre-existing edits (see `git diff`)
 
