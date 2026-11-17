@@ -19,8 +19,9 @@ Say "continue" to resume from **Next**. Each batch: typecheck, lint, tests, comm
 | Shared `*New` primitives restyled | `PrimitivesNew.tsx`: spring press, cyan-deep selected chips, radius-14 inputs with animated focus, sliding tab indicator, shimmer skeletons, tier A empty states |
 | Job cards | `JobPartsNew.tsx`: Photo placeholder, no avatar over photos, cyan positions bar (amber only for the last position) |
 | Icons: `AppIconNew` redrawn in-house (1.8 line, rounded, one solid signature detail); legacy `AppIcon` shares the same core glyphs, 1.8 line | `src/new/icons/AppIconNew.tsx`, `components/ui/AppIcon.tsx` |
-| Section-title + fact icons (tier B, two-tone, one-shot entrance): jobField, jobType, recommended, nearby, popular, explore, recent, suggestions, trending, conversations, location, details, employer, pay, positions | `src/components/icons/SectionIcons.tsx`, `SectionTitleNew glyph=` |
-| Animated Ads badge (megaphone + rippling waves, focus-gated) | `src/components/icons/AdsIcon.tsx`, `AdBadgeNew`, `BoostBadge` |
+| Section-title + fact icons (tier B, two-tone, one-shot entrance): jobField, jobType, recommended, nearby, popular, explore, recent, suggestions, trending, conversations, location, details, employer, pay, positions | `src/components/icons/SectionIcons.tsx`, `SectionTitleNew glyph=` (right of the title, `tone="mono"` slate) |
+| Ads label: shaded amber tab flush to the photo's bottom-left (rounded top-right), animated megaphone; matching pill on small thumbnails | `AdTabNew` / `AdBadgeNew` in `JobPartsNew.tsx`, `BoostBadge` |
+| jobs-v2 icon set redrawn (1.8 outline, one custom detail each) + per-category glyphs | `components/jobs-v2/AppIcon.tsx`, `categories.ts` |
 | Map job pin: flat cyan pin replaces the glossy briefcase image | `src/components/map/assets/job-suitcase*` |
 | Bottom nav (all tab screens) | `components/home/BottomTabBar.tsx`: no pill, cyan icon + 16x3 bar, amber dot on active Post (**uncommitted**, see below) |
 
@@ -55,7 +56,7 @@ Legend: ✅ done (restyled) · 🎨 repainted via shared layer only (tokens/prim
 
 ## Next (in priority order)
 
-0. **Icons still to redraw in house style**: `components/jobs-v2/AppIcon.tsx` (8 importers, jobs-v2 screens), the ~60 remaining glyphs in `components/ui/AppIcon.tsx` (already custom, need the 1.8/rounded pass glyph by glyph), and `src/components/icons/Icons.tsx`. Then give the remaining section headers (legacy screens use their own headers, not `SectionTitleNew`) `SectionIcon` glyphs.
+0. **Icons still to redraw in house style**: the ~60 remaining glyphs in `components/ui/AppIcon.tsx` (already custom, need the 1.8/rounded pass glyph by glyph), and `src/components/icons/Icons.tsx`. Then give the remaining section headers (legacy screens use their own headers, not `SectionTitleNew`) `SectionIcon` glyphs.
 
 1. **Auth/onboarding**: gradient `Hero` + one tier A icon per step; `PrimaryButton`; radius-14 inputs (`login.tsx`, `onboarding/index.tsx`, `complete-profile.tsx` use their own inline styles, not `FieldNew`).
 2. **Job detail + apply**: hero photo with `PhotoPlaceholder`, tier B fact rows, sticky bottom bar with `PrimaryButton` + `SuccessIcon` after submit.
@@ -76,6 +77,7 @@ These files changed for the redesign but **also contain unrelated uncommitted wo
 so they were left out of the `design:` commits to avoid sweeping that work in. Commit them with that work:
 
 - `components/home/BottomTabBar.tsx` (new nav style)
+- `components/jobs-v2/PostJobFlow.tsx` (category tiles without the tinted disc, slate/cyan icon)
 - `src/new/screens/HomeScreenNew.tsx`, `SearchScreenNew.tsx`, `InboxScreenNew.tsx` (section icons: only `glyph=` props added)
 - `src/new/screens/PostDashboardScreenNew.tsx`, `screens/EmployerDashboardNewAdapter.tsx`, `src/new/theme/copyNew.ts` (dashboard)
 - ~11 screen files where the hex recolor overlapped pre-existing edits (see `git diff`)
