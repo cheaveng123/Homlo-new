@@ -184,11 +184,12 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }: { w
 }
 
 /** Neutral photo placeholder: never an owner avatar over a photo. */
-export function PhotoPlaceholder({ style, label = 'Photo' }: { style?: StyleProp<ViewStyle>; label?: string }) {
+export function PhotoPlaceholder({ style, label = 'Photo', compact }: { style?: StyleProp<ViewStyle>; label?: string; compact?: boolean }) {
+  // `compact` (thumbnails under ~80pt): glyph only, centered.
   return (
-    <LinearGradient colors={['#EEF5F7', '#D2E1E6']} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={[s.ph, style]}>
-      <View style={s.phGlyph}><PhotoGlyph /></View>
-      <TextNew variant="caption" weight="semibold" color="#6D8C97" style={s.phLabel}>{label}</TextNew>
+    <LinearGradient colors={['#EEF5F7', '#D2E1E6']} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={[s.ph, compact && s.phCompact, style]}>
+      {compact ? <PhotoGlyph /> : <View style={s.phGlyph}><PhotoGlyph /></View>}
+      {compact ? null : <TextNew variant="caption" weight="semibold" color="#6D8C97" style={s.phLabel}>{label}</TextNew>}
     </LinearGradient>
   );
 }
@@ -214,6 +215,7 @@ const s = StyleSheet.create({
   emptyBtn: { marginTop: 12, alignSelf: 'stretch' },
   shimmer: { position: 'absolute', top: 0, bottom: 0, width: '60%' },
   ph: { flex: 1, alignItems: 'center', overflow: 'hidden' },
+  phCompact: { justifyContent: 'center' },
   phGlyph: { position: 'absolute', top: '50%', marginTop: -22 },
   phLabel: { position: 'absolute', bottom: 10, fontSize: 11, lineHeight: 14 },
 });
