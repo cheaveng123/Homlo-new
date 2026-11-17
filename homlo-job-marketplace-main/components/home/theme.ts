@@ -3,38 +3,38 @@
 
 export const colors = {
   bg: '#FFFFFF',
-  mint: '#0F9D62',
-  mintTint: '#E7F7EF',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#717171',
-  border: '#EBEBEB',
+  mint: '#0891B2',
+  mintTint: '#DCF1F6',
+  textPrimary: '#12303C',
+  textSecondary: '#6A7C84',
+  border: '#E6EDEF',
   divider: '#F0F0F0',
-  chipBg: '#F2F2F2',
+  chipBg: '#EEF3F4',
   white: '#FFFFFF',
 
   // Homlo mint design-system tokens (home-page mockup). The soft mint bloom
   // uses `mintBloom` to avoid clashing with the legacy `mint` brand green.
-  green: '#0F6E56',
-  greenDark: '#0B5443',
-  greenTint10: 'rgba(15,110,86,0.10)',
-  greenTint30: 'rgba(15,110,86,0.30)',
-  greenTint35: 'rgba(15,110,86,0.35)',
-  mintBloom: '#96D1BE',
+  green: '#0891B2',
+  greenDark: '#0B6F8A',
+  greenTint10: 'rgba(8,145,178,0.10)',
+  greenTint30: 'rgba(8,145,178,0.30)',
+  greenTint35: 'rgba(8,145,178,0.35)',
+  mintBloom: '#8BD3E3',
 
-  ink: '#12211D',
-  sub: '#5C6B67',
-  line: '#E7EEEC',
+  ink: '#12303C',
+  sub: '#6A7C84',
+  line: '#E6EDEF',
   cardBg: '#FFFFFF',
-  pageBg: '#F6F8F7',
+  pageBg: '#F3F6F5',
 
   overlayScrim: 'rgba(255,255,255,0.55)', // fallback tint behind the light blur
-  salaryOnDark: '#B7F2D9',
+  salaryOnDark: '#BDEBF5',
   locationOnDark: 'rgba(255,255,255,0.85)',
 
   // Warm amber accent (the app's non-mint highlight — matches the
   // urgent/popular-category pills on the category & search-detail screens).
-  amber: '#F5A623',
-  amberDark: '#C97A16',
+  amber: '#F5A524',
+  amberDark: '#E8870F',
   amberTint: 'rgba(245,166,35,0.14)',
   amberGlow: 'rgba(245,166,35,0.30)',
 };

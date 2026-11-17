@@ -10,8 +10,8 @@ import { Icon, Job, PressableScale, SegmentedSwitch, ViewMode } from './ExploreU
 import { c, fonts, r, shadow, sp, type } from './tokens';
 
 /* Custom marker for the free map (MapLibre / OpenStreetMap). Use it as the marker's child view.
-   Style the map itself to the palette: water #B5E2DF, parks #D8F0EE, land #E6F3F1, roads #FFFFFF, labels #58696B.
-   Draw the radius as a map circle layer: stroke #0E7C86 dashed 1.5, fill rgba(14,124,134,0.07). */
+   Style the map itself to the palette: water #8BD3E3, parks #DCF1F6, land #E6F3F1, roads #FFFFFF, labels #6A7C84.
+   Draw the radius as a map circle layer: stroke #0891B2 dashed 1.5, fill rgba(14,124,134,0.07). */
 export function PricePin({ pay, selected, index = 0 }: { pay: string; selected?: boolean; index?: number }) {
   const reduce = useReducedMotion();
   const pop = useSharedValue(reduce ? 1 : 0);

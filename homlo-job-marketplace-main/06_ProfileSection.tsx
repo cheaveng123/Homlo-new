@@ -105,7 +105,7 @@ function Plan() {
       <Text style={[s.planT, { marginTop: 10 }]}>Free</Text>
       <View style={s.list}>{['Post and manage listings', 'Apply to jobs', 'Standard support'].map((t) => check(t, C.mint, C.fg))}</View>
     </View>
-    <LinearGradient colors={['#0E7C86', '#073B42']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.plan}>
+    <LinearGradient colors={['#0891B2', '#14324A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.plan}>
       <Text style={[s.planT, { color: '#fff' }]}>Pro</Text>
       <Text style={s.price}>$19.99<Text style={s.per}> / month</Text></Text>
       <View style={s.list}>{['Discounted boosts', 'Priority in search', 'Applicant insights'].map((t) => check(t, '#fff', '#fff'))}</View>

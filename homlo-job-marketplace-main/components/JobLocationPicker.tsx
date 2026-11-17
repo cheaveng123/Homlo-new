@@ -258,7 +258,7 @@ export function JobLocationPicker({ onSelect, initialRegion = PHNOM_PENH_REGION 
 
       {searching && (
         <View style={styles.searchStatus}>
-          <ActivityIndicator size="small" color="#0F6E56" />
+          <ActivityIndicator size="small" color="#0B6F8A" />
           <Text style={styles.searchStatusText}>Searching…</Text>
         </View>
       )}

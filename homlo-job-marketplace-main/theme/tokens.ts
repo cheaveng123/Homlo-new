@@ -11,28 +11,28 @@ export const colors = {
   white: '#FFFFFF',
   card: '#FAFCFB',
 
-  mint100: '#DFF7E9',
-  mint300: '#8BE0B4',
-  mint500: '#34C784',
-  mint700: '#1E9E63',
+  mint100: '#DCF1F6',
+  mint300: '#8BD3E3',
+  mint500: '#0891B2',
+  mint700: '#0B6F8A',
 
-  forest900: '#0E3B2A',
-  gray: '#6B7A75',
+  forest900: '#14324A',
+  gray: '#6A7C84',
 
-  coral100: '#FFE3D8',
-  coral500: '#FF8B6B',
+  coral100: '#FDF0D9',
+  coral500: '#F5A524',
 
-  sand100: '#F4F5F3',
+  sand100: '#F3F6F5',
   sand400: '#C9BFA8',
 
-  amber100: '#FCEBC7',
-  amber500: '#F4B740',
+  amber100: '#FDF0D9',
+  amber500: '#F5A524',
 
-  line: '#EDF1EE',
+  line: '#E6EDEF',
 
   // status-pill text colors (not swatches above — matched from mockup)
-  appliedText: '#B5502F',
-  interviewText: '#8A5B06',
+  appliedText: '#A8620B',
+  interviewText: '#0B6F8A',
 } as const;
 
 export const radius = {

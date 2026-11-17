@@ -19,7 +19,7 @@ type SearchResultsMapProps = {
 };
 
 const tileUrl = MAP_TILE_URL;
-const primaryColor = "#16803C";
+const primaryColor = "#0891B2";
 
 function isValidCoordinate(coordinate: MapCoordinate | null | undefined): coordinate is MapCoordinate {
   if (!coordinate) return false;

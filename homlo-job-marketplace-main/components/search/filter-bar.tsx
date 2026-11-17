@@ -39,7 +39,7 @@ export function FilterBar({ filters, categoryOptions, activeCount, onChange, onO
           return <FilterChip key={pill.key} active={active} label={pill.label} value={String(value)} onPress={() => onChange(pill.key, value === pill.options[0] ? value : pill.options[0])} />;
         })}
         <Pressable accessibilityRole="button" accessibilityLabel="Open all filters" onPress={onOpenMore} style={({ pressed }) => [styles.chip, pressed && styles.pressed, activeCount > 0 ? styles.chipActive : null]}>
-          <AppIcon name="sliders" size={13} color={activeCount > 0 ? "#16803C" : "#17201A"} />
+          <AppIcon name="sliders" size={13} color={activeCount > 0 ? "#0891B2" : "#17201A"} />
           <Text style={activeCount > 0 ? styles.chipTextActive : styles.chipText}>More filters{activeCount ? ` · ${activeCount}` : ""}</Text>
         </Pressable>
       </ScrollView>
@@ -51,7 +51,7 @@ function FilterChip({ active, label, value, onPress }: { active: boolean; label:
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}>
       <Text style={active ? styles.chipTextActive : styles.chipText}>{label}{value !== "Any" && value !== "All" ? ` · ${value}` : ""}</Text>
-      <AppIcon name="chevron" size={12} color={active ? "#16803C" : "#17201A"} style={{ transform: [{ rotate: "90deg" }] }} />
+      <AppIcon name="chevron" size={12} color={active ? "#0891B2" : "#17201A"} style={{ transform: [{ rotate: "90deg" }] }} />
     </Pressable>
   );
 }
@@ -62,7 +62,7 @@ function CategoryPill({ filters, onChange, options }: { filters: SearchFilters; 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Category: ${value}`} onPress={() => onChange("category", active ? "All" : value)} style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}>
       <Text style={active ? styles.chipTextActive : styles.chipText}>{active ? `Category · ${value}` : "Category"}</Text>
-      <AppIcon name="chevron" size={12} color={active ? "#16803C" : "#17201A"} style={{ transform: [{ rotate: "90deg" }] }} />
+      <AppIcon name="chevron" size={12} color={active ? "#0891B2" : "#17201A"} style={{ transform: [{ rotate: "90deg" }] }} />
     </Pressable>
   );
 }
@@ -82,8 +82,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  chipActive: { backgroundColor: "#EAF6EC", borderColor: "#16803C" },
+  chipActive: { backgroundColor: "#EAF6EC", borderColor: "#0891B2" },
   chipText: { color: "#17201A", fontSize: 12, fontWeight: "600" },
-  chipTextActive: { color: "#16803C", fontSize: 12, fontWeight: "700" },
+  chipTextActive: { color: "#0891B2", fontSize: 12, fontWeight: "700" },
   pressed: { opacity: 0.7 },
 });

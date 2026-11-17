@@ -24,7 +24,7 @@ const T = {
 } as const;
 
 const GUTTER = 16; // layoutNew.screenX
-const DIVIDER = '#E4ECEC'; // card/divider border used in the new screens
+const DIVIDER = '#E6EDEF'; // card/divider border used in the new screens
 const WHITE = '#FFFFFF';
 
 /** One line of text: wrapper height = real lineHeight (no layout jump), bar = ~0.8 x fontSize. */

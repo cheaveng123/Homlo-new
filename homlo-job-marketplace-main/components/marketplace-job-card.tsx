@@ -14,7 +14,7 @@ import { usePressLock } from "@/hooks/use-press-lock";
 import { logJobEvent } from "@/lib/event-logging";
 
 const palette = ["#E8F2EC", "#EAF1FA", "#FBF1E5", "#F4ECF7", "#F8ECEC", "#EAF6F0"];
-const inkPalette = ["#16803C", "#1F5397", "#A65C18", "#7144A4", "#A04141", "#0E8A6A"];
+const inkPalette = ["#0891B2", "#1F5397", "#A65C18", "#7144A4", "#A04141", "#0E8A6A"];
 
 function avatarFor(company: string) {
   const trimmed = company.trim();
@@ -85,7 +85,7 @@ function MarketplaceJobCardImpl({ job, selected = false, onPress, showBookmark =
           <Text numberOfLines={2} style={styles.title}>{safeJob.title}</Text>
           <View style={styles.companyRow}>
             <Text numberOfLines={1} style={styles.company}>{safeJob.company}</Text>
-            <AppIcon name="circle-check" size={12} color="#16803C" />
+            <AppIcon name="circle-check" size={12} color="#0891B2" />
           </View>
           <Text numberOfLines={1} style={styles.pay}>{safeJob.pay}</Text>
           <View style={styles.metaRow}>
@@ -111,7 +111,7 @@ function MarketplaceJobCardImpl({ job, selected = false, onPress, showBookmark =
             hitSlop={10}
             style={({ pressed }) => [styles.bookmark, pressed && styles.bookmarkPressed]}
           >
-            <AppIcon name="heart" size={18} color={saved ? "#16803C" : "#83918A"} />
+            <AppIcon name="heart" size={18} color={saved ? "#0891B2" : "#83918A"} />
           </Pressable>
         ) : null}
       </Pressable>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
-  cardSelected: { borderColor: "#16803C", backgroundColor: "#F1F8F2" },
+  cardSelected: { borderColor: "#0891B2", backgroundColor: "#F1F8F2" },
   touchArea: { flexDirection: "row", alignItems: "flex-start", flex: 1 },
   pressed: { opacity: 0.78 },
   avatar: {
@@ -163,14 +163,14 @@ const styles = StyleSheet.create({
   title: { color: "#17201A", fontSize: 14.5, fontWeight: "600", letterSpacing: -0.1, lineHeight: 19 },
   companyRow: { alignItems: "center", flexDirection: "row", gap: 4, marginTop: 3 },
   company: { color: "#66736A", fontSize: 12, fontWeight: "500" },
-  pay: { color: "#16803C", fontSize: 14, fontWeight: "700", marginTop: 6 },
+  pay: { color: "#0891B2", fontSize: 14, fontWeight: "700", marginTop: 6 },
   metaRow: { alignItems: "center", flexDirection: "row", marginTop: 5 },
   metaIcon: { marginRight: 3 },
   metaText: { color: "#83918A", fontSize: 11, fontWeight: "400" },
   metaDot: { backgroundColor: "#D0D9D4", borderRadius: 2, height: 3, marginHorizontal: 5, width: 3 },
   tagRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
   tag: { backgroundColor: "#EAF6EC", borderColor: "#D5EBDC", borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
-  tagText: { color: "#16803C", fontSize: 10, fontWeight: "600" },
+  tagText: { color: "#0891B2", fontSize: 10, fontWeight: "600" },
   bookmark: { alignItems: "center", height: 44, justifyContent: "center", position: "absolute", right: 0, top: 0, width: 32 },
   bookmarkPressed: { opacity: 0.55, transform: [{ scale: 0.9 }] },
 });

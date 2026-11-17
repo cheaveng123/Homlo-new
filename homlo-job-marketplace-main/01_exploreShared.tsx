@@ -2,7 +2,7 @@ import React, { createContext, useContext, useRef } from 'react';
 import { View, Text, Image, ImageSourcePropType, StyleProp, ViewStyle, useWindowDimensions } from 'react-native';
 import Animated, { SharedValue, useAnimatedReaction, useAnimatedStyle, useSharedValue, withDelay, withTiming, Easing } from 'react-native-reanimated';
 
-export const C = { forest: '#0E3B2E', mint: '#0F9D62', mint100: '#DFF7E9', mint50: '#EEF9F2', bg: '#F6F8F7', text: '#17201A', muted: '#66736A', line: '#E2E8E5', orange: '#F08A3C', white: '#FFFFFF' };
+export const C = { forest: '#0E3B2E', mint: '#0891B2', mint100: '#DFF7E9', mint50: '#EEF9F2', bg: '#F6F8F7', text: '#17201A', muted: '#66736A', line: '#E2E8E5', orange: '#F08A3C', white: '#FFFFFF' };
 // Swap for the app's familyForWeight() helper if preferred
 export const F = { h800: 'PlusJakartaSans_800ExtraBold', h700: 'PlusJakartaSans_700Bold', b400: 'Inter_400Regular', b500: 'Inter_500Medium', b600: 'Inter_600SemiBold' };
 export const shadow = { shadowColor: '#173C25', shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 3 } as const;

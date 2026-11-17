@@ -114,9 +114,9 @@ export function JobLocationMap({ coordinate, defaultCoordinate, onChange }: JobL
         style={{
           alignItems: "center",
           background: "rgba(255,255,255,0.94)",
-          border: "1px solid #E4ECEC",
+          border: "1px solid #E6EDEF",
           borderRadius: 999,
-          color: "#14272B",
+          color: "#12303C",
           cursor: "pointer",
           display: "flex",
           fontFamily: "Inter, system-ui, sans-serif",

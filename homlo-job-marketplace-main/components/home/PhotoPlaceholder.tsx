@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 // always resolves a real photo, this is only visible while the image streams
 // in or after a load failure.
 const PALETTES: Record<number, [string, string, string]> = {
-  1: ["#3A6E63", "#0F6E56", "#0A4436"],
+  1: ["#3A6E63", "#0B6F8A", "#0A4436"],
   2: ["#8A6D3C", "#C99A4A", "#7A5A28"],
   3: ["#375D7A", "#4E86A8", "#233F52"],
   4: ["#6E3B57", "#9C5C7C", "#43223A"],

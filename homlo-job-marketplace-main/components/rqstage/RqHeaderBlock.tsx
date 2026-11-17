@@ -110,7 +110,7 @@ export function RqHeaderBlock({
 
   return (
     <View
-      style={{ height: BANNER_H + insets.top, backgroundColor: '#0E7C86', overflow: 'hidden' }}
+      style={{ height: BANNER_H + insets.top, backgroundColor: '#0891B2', overflow: 'hidden' }}
     >
       <SunriseLagoonBackdropMk7 edgeColor={pageBg} autoCycle />
       <RqSceneDeck tick={tick} scrollY={scrollY} />

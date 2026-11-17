@@ -13,9 +13,9 @@ import { Card, ts } from './ui';
 // ts.caption = fontSize 12, lineHeight 17
 // ts.tag     = fontSize 12, lineHeight 16
 // ts.big     = fontSize 20, lineHeight 26
-// Card: bg #FFFFFF, borderRadius 20, borderWidth 1, borderColor #E4ECEC, padding 12, marginBottom 12, shadow
+// Card: bg #FFFFFF, borderRadius 20, borderWidth 1, borderColor #E6EDEF, padding 12, marginBottom 12, shadow
 
-const SKEL_BG = colors.track; // #D9EAEA
+const SKEL_BG = colors.track; // #D5E6EA
 
 function usePulse() {
   const reduce = useReducedMotion();

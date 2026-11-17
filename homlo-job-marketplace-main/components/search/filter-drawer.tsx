@@ -104,7 +104,7 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
           <Section title="Location">
             <TextInput accessibilityLabel="Filter by location" onChangeText={(value) => onChange("location", value)} placeholder="City or area" placeholderTextColor="#94A098" style={styles.input} value={draft.location} />
             <Pressable accessibilityRole="button" accessibilityState={{ selected: isValidPolygon(draft.polygon) }} accessibilityLabel="Draw area on map" onPress={openDraw} style={({ pressed }) => [styles.drawButton, isValidPolygon(draft.polygon) && styles.drawButtonActive, pressed && styles.pressed]}>
-              <AppIcon name="pin" size={15} color={isValidPolygon(draft.polygon) ? "#16803C" : "#17201A"} />
+              <AppIcon name="pin" size={15} color={isValidPolygon(draft.polygon) ? "#0891B2" : "#17201A"} />
               <Text style={isValidPolygon(draft.polygon) ? styles.drawButtonTextActive : styles.drawButtonText}>{isValidPolygon(draft.polygon) ? `Drawn area (${draft.polygon!.length} points)` : "Draw area on map"}</Text>
             </Pressable>
           </Section>
@@ -203,19 +203,19 @@ const styles = StyleSheet.create({
   halfField: { flex: 1 },
   optionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   option: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
-  optionActive: { backgroundColor: "#EAF6EC", borderColor: "#16803C" },
+  optionActive: { backgroundColor: "#EAF6EC", borderColor: "#0891B2" },
   optionText: { color: "#17201A", fontSize: 12, fontWeight: "500" },
-  optionTextActive: { color: "#16803C", fontSize: 12, fontWeight: "700" },
+  optionTextActive: { color: "#0891B2", fontSize: 12, fontWeight: "700" },
   pressed: { opacity: 0.75 },
   footer: { alignItems: "center", borderTopColor: "#EEF2EF", borderTopWidth: 1, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
   clearButton: { alignItems: "center", borderColor: "#E2E8E5", borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
   clearText: { color: "#17201A", fontSize: 13, fontWeight: "600" },
-  applyButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 12, flex: 1, paddingVertical: 13 },
+  applyButton: { alignItems: "center", backgroundColor: "#0891B2", borderRadius: 12, flex: 1, paddingVertical: 13 },
   applyText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   drawButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 12, borderWidth: 1, flexDirection: "row", gap: 8, marginTop: 10, paddingHorizontal: 14, paddingVertical: 11 },
-  drawButtonActive: { backgroundColor: "#EAF6EC", borderColor: "#16803C" },
+  drawButtonActive: { backgroundColor: "#EAF6EC", borderColor: "#0891B2" },
   drawButtonText: { color: "#17201A", fontSize: 13, fontWeight: "600" },
-  drawButtonTextActive: { color: "#16803C", fontSize: 13, fontWeight: "700" },
+  drawButtonTextActive: { color: "#0891B2", fontSize: 13, fontWeight: "700" },
   drawScreen: { backgroundColor: "#FFFFFF", flex: 1 },
   drawHeader: { alignItems: "center", borderBottomColor: "#EEF2EF", borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingBottom: 12, paddingHorizontal: 20 },
   drawTitle: { color: "#17201A", fontSize: 17, fontWeight: "700" },

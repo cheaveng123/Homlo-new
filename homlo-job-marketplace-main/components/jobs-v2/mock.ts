@@ -29,9 +29,9 @@ export const categoryJobs: CategoryJob[] = [
 ];
 
 export const partTime: PartTimeJob[] = [
-  { id: '1', title: 'Barista', company: 'Café Lotus', pay: '$4/h', location: 'Daun Penh · 1.2 km', photoColors: ['#B5E2DF', '#D8F0EE'] },
+  { id: '1', title: 'Barista', company: 'Café Lotus', pay: '$4/h', location: 'Daun Penh · 1.2 km', photoColors: ['#8BD3E3', '#DCF1F6'] },
   { id: '2', title: 'Tutor', company: 'Bright Kids', pay: '$8/h', location: 'Toul Kork · 3.0 km', photoColors: ['#FFE0A0', '#FFF1D2'] },
-  { id: '3', title: 'Shop Assistant', company: 'Miniso', pay: '$3/h', location: 'Chamkar Mon · 0.8 km', photoColors: ['#F8CDB6', '#FDE6DA'] },
+  { id: '3', title: 'Shop Assistant', company: 'Miniso', pay: '$3/h', location: 'Chamkar Mon · 0.8 km', photoColors: ['#F8CDB6', '#FDF0D9'] },
 ];
 
 export const fullTime: FullTimeJob[] = [

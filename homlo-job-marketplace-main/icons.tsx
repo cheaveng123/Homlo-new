@@ -30,7 +30,7 @@ export function PinIcon({ size = 13, color = '#FFFFFF', strokeWidth = 2 }: IconP
   );
 }
 
-export function ClockIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 }: IconProps) {
+export function ClockIcon({ size = 17, color = '#0B6F8A', strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={strokeWidth} />
@@ -39,7 +39,7 @@ export function ClockIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 }: I
   );
 }
 
-export function BriefcaseIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 }: IconProps) {
+export function BriefcaseIcon({ size = 17, color = '#0B6F8A', strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Rect x="3" y="8" width="18" height="12" rx="2" stroke={color} strokeWidth={strokeWidth} />
@@ -49,7 +49,7 @@ export function BriefcaseIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 
   );
 }
 
-export function CalendarIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 }: IconProps) {
+export function CalendarIcon({ size = 17, color = '#0B6F8A', strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Rect x="3" y="5" width="18" height="16" rx="2" stroke={color} strokeWidth={strokeWidth} />
@@ -60,7 +60,7 @@ export function CalendarIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 }
   );
 }
 
-export function HomeIcon({ size = 17, color = '#0F6E56', strokeWidth = 1.8 }: IconProps) {
+export function HomeIcon({ size = 17, color = '#0B6F8A', strokeWidth = 1.8 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path d="M4 11.5 12 4l8 7.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />

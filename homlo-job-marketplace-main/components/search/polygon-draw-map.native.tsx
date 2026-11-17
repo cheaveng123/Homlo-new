@@ -36,7 +36,7 @@ export function PolygonDrawMap({ center = { latitude: 11.5564, longitude: 104.92
       >
         <UrlTile maximumZ={MAP_MAX_TILE_ZOOM} minimumZ={2} shouldReplaceMapContent urlTemplate={openStreetMapTiles} />
         {showShape ? (
-          <Polygon coordinates={polygon} fillColor="rgba(22,128,60,0.18)" strokeColor="#16803C" strokeWidth={2} />
+          <Polygon coordinates={polygon} fillColor="rgba(22,128,60,0.18)" strokeColor="#0891B2" strokeWidth={2} />
         ) : null}
         {polygon.map((point, index) => (
           <Marker key={`${index}-${point.latitude}-${point.longitude}`} anchor={{ x: 0.5, y: 0.5 }} coordinate={point} tracksViewChanges={false}>
@@ -45,7 +45,7 @@ export function PolygonDrawMap({ center = { latitude: 11.5564, longitude: 104.92
             </View>
           </Marker>
         ))}
-        {closed ? <Polygon coordinates={[polygon[0], polygon[polygon.length - 1]]} strokeColor="#16803C" strokeWidth={2} /> : null}
+        {closed ? <Polygon coordinates={[polygon[0], polygon[polygon.length - 1]]} strokeColor="#0891B2" strokeWidth={2} /> : null}
       </MapView>
       <MapAttribution />
     </View>
@@ -55,7 +55,7 @@ export function PolygonDrawMap({ center = { latitude: 11.5564, longitude: 104.92
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
-  vertexDot: { alignItems: "center", backgroundColor: "#16803C", borderColor: "#FFFFFF", borderRadius: 9, borderWidth: 2.5, height: 18, justifyContent: "center", width: 18 },
+  vertexDot: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 9, borderWidth: 2.5, height: 18, justifyContent: "center", width: 18 },
   vertexDotStart: { backgroundColor: "#0B5D3B" },
   vertexDotCore: { backgroundColor: "#FFFFFF", borderRadius: 3, height: 6, width: 6 },
 });

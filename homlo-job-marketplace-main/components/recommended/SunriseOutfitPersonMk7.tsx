@@ -85,26 +85,26 @@ export default function SunriseOutfitPersonMk7({ variant, width }: { variant: Ou
           <Torso c="#FFF1D2" />
           <Path d="M86 150l14 14 14-14" fill="#DE9C72" />
           <Path d="M82 148l18 20 18-20" fill="none" stroke="#E8D3A0" strokeWidth={3} />
-          <Path d="M72 262l-4-92h64l-4 92z" fill="#C4531F" />
+          <Path d="M72 262l-4-92h64l-4 92z" fill="#E8870F" />
           <Path d="M80 152l-10 20M120 152l10 20" stroke="#A8431A" strokeWidth={6} strokeLinecap="round" />
           <Rect x={76} y={196} width={22} height={18} rx={3} fill="#A8431A" opacity={0.55} />
           <Rect x={124} y={182} width={14} height={8} rx={2} fill="#FFF1D2" />
           <Sleeves c="#F4E2B6" />
           <Path d="M86 196h28l-3 34H89z" fill="#fff" />
-          <Rect x={85} y={206} width={30} height={10} fill="#F5B52B" />
+          <Rect x={85} y={206} width={30} height={10} fill="#F5A524" />
           <Path d="M114 200c8 0 8 12 0 12" fill="none" stroke="#fff" strokeWidth={3.5} />
           <Ellipse cx={82} cy={224} rx={9} ry={7} fill={HAND} /><Ellipse cx={118} cy={224} rx={9} ry={7} fill={HAND} />
         </Layer>
 
         {/* DELIVERY */}
         <Layer W={W} H={H} on={variant === 1}>
-          <Torso c="#F5B52B" />
+          <Torso c="#F5A524" />
           <Path d="M66 262c-6-40-4-80 18-112h-6c-28 28-40 70-38 112zM134 262c6-40 4-80-18-112h6c28 28 40 70 38 112z" fill="#E09B10" />
           <Path d="M78 150l22 26 22-26-8-8H86z" fill="#E09B10" />
           <Path d="M100 176v86" stroke="#B9780A" strokeWidth={3} />
           <Rect x={30} y={206} width={140} height={9} fill="#fff" opacity={0.85} />
           <Path d="M62 150l82 112" stroke="#0A4D55" strokeWidth={12} opacity={0.9} />
-          <Sleeves c="#F5B52B" />
+          <Sleeves c="#F5A524" />
           <Path d="M70 200l30-14 30 14v36l-30 14-30-14z" fill="#E8B27A" />
           <Path d="M70 200l30 14 30-14M100 214v36" stroke="#C48A4E" strokeWidth={3} fill="none" />
           <Rect x={88} y={192} width={24} height={9} fill="#F7D27A" />
@@ -113,18 +113,18 @@ export default function SunriseOutfitPersonMk7({ variant, width }: { variant: Ou
 
         {/* OFFICE */}
         <Layer W={W} H={H} on={variant === 2}>
-          <Torso c="#073B42" />
+          <Torso c="#14324A" />
           <Path d="M84 150l16 112 16-112-16 8z" fill="#fff" />
           <Path d="M84 150l-14 14 18 60 12-62zM116 150l14 14-18 60-12-62z" fill="#0A5560" />
-          <Path d="M96 160h8l4 14-8 56-8-56z" fill="#C4531F" />
+          <Path d="M96 160h8l4 14-8 56-8-56z" fill="#E8870F" />
           <Path d="M92 158h16l-8 8z" fill="#9E3F16" />
           <Path d="M76 140c10 40 14 70 24 90" stroke="#9FE3E0" strokeWidth={2.5} fill="none" />
           <Rect x={108} y={196} width={18} height={24} rx={4} fill="#9FE3E0" />
-          <Circle cx={117} cy={203} r={3.5} fill="#073B42" />
+          <Circle cx={117} cy={203} r={3.5} fill="#14324A" />
           <Sleeves c="#0A5560" />
-          <Rect x={66} y={204} width={68} height={44} rx={6} fill="#14272B" />
+          <Rect x={66} y={204} width={68} height={44} rx={6} fill="#12303C" />
           <Rect x={71} y={209} width={58} height={34} rx={3} fill="#EAF6F5" />
-          <Path d="M78 217h30M78 226h40M78 235h22" stroke="#0E7C86" strokeWidth={3} strokeLinecap="round" />
+          <Path d="M78 217h30M78 226h40M78 235h22" stroke="#0891B2" strokeWidth={3} strokeLinecap="round" />
           <Ellipse cx={68} cy={230} rx={9} ry={8} fill={HAND} /><Ellipse cx={132} cy={228} rx={9} ry={8} fill={HAND} />
         </Layer>
 
@@ -151,11 +151,11 @@ export default function SunriseOutfitPersonMk7({ variant, width }: { variant: Ou
           </Svg>
           <Layer W={W} H={H} on={variant === 1}>
             <Path d="M66 70C66 44 82 34 100 34s34 10 34 36c-12-6-24-8-34-8s-22 2-34 8z" fill="#0A4D55" />
-            <Path d="M62 72c14-8 28-12 38-12s30 4 40 12c-12 2-24 0-40 0s-26 2-38 0z" fill="#073B42" />
-            <Circle cx={100} cy={46} r={3.5} fill="#F5B52B" />
+            <Path d="M62 72c14-8 28-12 38-12s30 4 40 12c-12 2-24 0-40 0s-26 2-38 0z" fill="#14324A" />
+            <Circle cx={100} cy={46} r={3.5} fill="#F5A524" />
           </Layer>
           <Layer W={W} H={H} on={variant === 2}>
-            <G fill="none" stroke="#14272B" strokeWidth={2.6}>
+            <G fill="none" stroke="#12303C" strokeWidth={2.6}>
               <Circle cx={89} cy={85} r={10} fill="#fff" fillOpacity={0.14} /><Circle cx={111} cy={85} r={10} fill="#fff" fillOpacity={0.14} />
               <Path d="M99 84h2M79 83l-9-2M121 83l9-2" />
             </G>

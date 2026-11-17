@@ -3,13 +3,13 @@
 
 export const colors = {
   bg: '#FFFFFF',
-  mint: '#0F9D62',
-  mintTint: '#E7F7EF',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#717171',
-  border: '#EBEBEB',
+  mint: '#0891B2',
+  mintTint: '#DCF1F6',
+  textPrimary: '#12303C',
+  textSecondary: '#6A7C84',
+  border: '#E6EDEF',
   divider: '#F0F0F0',
-  chipBg: '#F2F2F2',
+  chipBg: '#EEF3F4',
   white: '#FFFFFF',
 };
 

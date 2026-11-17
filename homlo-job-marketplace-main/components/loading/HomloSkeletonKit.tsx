@@ -31,5 +31,5 @@ export function SkeletonGroup({ count, height, gap = 8 }: { count: number; heigh
 }
 
 const styles = StyleSheet.create({
-  block: { backgroundColor: '#D9EAEA', borderRadius: 8 },
+  block: { backgroundColor: '#D5E6EA', borderRadius: 8 },
 });

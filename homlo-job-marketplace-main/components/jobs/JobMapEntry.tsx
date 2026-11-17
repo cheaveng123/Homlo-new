@@ -5,7 +5,7 @@ import { AppIcon } from "@/components/ui/AppIcon";
 import { router } from 'expo-router';
 
 const FOREST = '#0E3B2E';
-const MINT = '#0F9D62';
+const MINT = '#0891B2';
 const MINT100 = '#DFF7E9';
 const BORDER = '#E2E8E5';
 const MUTED = '#66736A';

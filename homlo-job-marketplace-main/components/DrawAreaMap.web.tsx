@@ -97,5 +97,5 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8 },
   action: { borderRadius: 999, borderWidth: 1, borderColor: '#DDEAE6', paddingHorizontal: 12, paddingVertical: 6 },
   actionDisabled: { opacity: 0.4 },
-  actionText: { fontSize: 11.5, fontWeight: '700', color: '#0F6E56' },
+  actionText: { fontSize: 11.5, fontWeight: '700', color: '#0B6F8A' },
 });

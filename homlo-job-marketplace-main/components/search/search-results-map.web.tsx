@@ -19,9 +19,9 @@ type SearchResultsMapProps = {
 };
 
 const styleUrl = MAP_STYLE_URL;
-const selectedColor = "#16803C";
+const selectedColor = "#0891B2";
 const neutralColor = "#FFFFFF";
-const neutralBorder = "#16803C";
+const neutralBorder = "#0891B2";
 
 export function SearchResultsMap({ center, zoom, radiusKm, markers, selectedId, onSelectMarker, onMapClick }: SearchResultsMapProps) {
   const elementRef = useRef<HTMLDivElement | null>(null);

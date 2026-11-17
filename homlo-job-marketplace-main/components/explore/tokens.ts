@@ -3,26 +3,26 @@
 import { Platform, TextStyle } from 'react-native';
 
 export const c = {
-  teal: '#0E7C86',
-  deep: '#073B42',
-  deepStart: '#052E34',
-  tint: '#D8F0EE',
-  tint2: '#B5E2DF',
-  page: '#F4F8F8',
+  teal: '#0891B2',
+  deep: '#14324A',
+  deepStart: '#0B7F99',
+  tint: '#DCF1F6',
+  tint2: '#8BD3E3',
+  page: '#F3F6F5',
   card: '#FFFFFF',
-  line: '#E4ECEC',
-  track: '#D9EAEA',
-  text: '#14272B',
-  muted: '#58696B',
-  sun: '#F5B52B',
-  clay: '#C4531F',
+  line: '#E6EDEF',
+  track: '#D5E6EA',
+  text: '#12303C',
+  muted: '#6A7C84',
+  sun: '#F5A524',
+  clay: '#E8870F',
   cream: '#FFF1D2',
   cream2: '#FFE0A0',
   creamInk: '#7A4300',
   creamEyebrow: '#8A4B00',
-  clayTint: '#FDE6DA',
-  clayTint2: '#F8CDB6',
-  clayInk: '#8A3A12',
+  clayTint: '#FDF0D9',
+  clayTint2: '#F8DDB0',
+  clayInk: '#A8620B',
   purple: '#6B4FA0', // logo/avatar solid only
   white: '#FFFFFF',
 } as const;
@@ -35,7 +35,7 @@ export const tints = {
 } satisfies Record<string, Tint>;
 
 export const sp = { xs: 4, s: 8, m: 12, l: 16, xl: 24, xxl: 32 } as const;
-export const r = { chip: 14, tile: 16, card: 20, hero: 24, sheet: 28, pill: 999 } as const;
+export const r = { chip: 14, tile: 16, card: 22, hero: 24, sheet: 26, pill: 999 } as const;
 
 // Install: @expo-google-fonts/plus-jakarta-sans, @expo-google-fonts/inter, @expo-google-fonts/noto-sans-khmer
 // Khmer: use the matching Noto Sans Khmer weight for each family below and check line heights.

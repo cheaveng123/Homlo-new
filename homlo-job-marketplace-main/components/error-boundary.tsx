@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   iconText: { color: "#A04141", fontSize: 24, fontWeight: "800" },
   title: { color: "#17201A", fontSize: 18, fontWeight: "800", marginTop: 16 },
   copy: { color: "#66736A", fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: "center" },
-  button: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 13, marginTop: 22, minWidth: 160, paddingHorizontal: 20, paddingVertical: 13 },
+  button: { alignItems: "center", backgroundColor: "#0891B2", borderRadius: 13, marginTop: 22, minWidth: 160, paddingHorizontal: 20, paddingVertical: 13 },
   buttonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   pressed: { opacity: 0.86 },
 });

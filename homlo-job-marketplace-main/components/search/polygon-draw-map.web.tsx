@@ -8,7 +8,7 @@ import { useUserLocation } from "@/lib/use-user-location";
 import type { PolygonDrawMapProps } from "./polygon-draw-map";
 
 const styleUrl = MAP_STYLE_URL;
-const selectedColor = "#16803C";
+const selectedColor = "#0891B2";
 
 export function PolygonDrawMap({ center, polygon, onAddPoint }: PolygonDrawMapProps) {
   const elementRef = useRef<HTMLDivElement | null>(null);

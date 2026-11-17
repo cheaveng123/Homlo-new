@@ -19,6 +19,6 @@ const styles = StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
   title: { color: "#16211F", fontSize: 19, fontWeight: "600", letterSpacing: -0.35, lineHeight: 25 },
   actionHitbox: { paddingLeft: 10, paddingVertical: 3 },
-  action: { color: "#16803C", fontSize: 13, fontWeight: "600" },
+  action: { color: "#0891B2", fontSize: 13, fontWeight: "600" },
   pressed: { opacity: 0.55 },
 });

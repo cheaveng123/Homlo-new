@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   calloutDot: {
-    backgroundColor: "#16803C",
+    backgroundColor: "#0891B2",
     borderRadius: 4,
     height: 8,
     width: 8,

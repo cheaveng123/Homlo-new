@@ -1,17 +1,17 @@
 // Lagoon & Sunrise design tokens. Light only. Do not add colours.
 export const colors = {
-  teal: '#0E7C86',
-  deep: '#073B42',
-  tint: '#D8F0EE',
-  tint2: '#B5E2DF',
-  page: '#F4F8F8',
+  teal: '#0891B2',
+  deep: '#14324A',
+  tint: '#DCF1F6',
+  tint2: '#8BD3E3',
+  page: '#F3F6F5',
   card: '#FFFFFF',
-  border: '#E4ECEC',
-  track: '#D9EAEA',
-  text: '#14272B',
-  muted: '#58696B',
-  sun: '#F5B52B',
-  clay: '#C4531F',
+  border: '#E6EDEF',
+  track: '#D5E6EA',
+  text: '#12303C',
+  muted: '#6A7C84',
+  sun: '#F5A524',
+  clay: '#E8870F',
   cream: '#FFF1D2',
   ink: '#7A4300',
   white: '#FFFFFF',
@@ -29,7 +29,7 @@ export const radii = { badge: 10, chip: 14, tile: 16, card: 20, hero: 24, pill: 
 export const SIDE_MARGIN = 16;
 
 export const cardShadow = {
-  shadowColor: '#0E7C86',
+  shadowColor: '#0891B2',
   shadowOpacity: 0.1,
   shadowRadius: 16,
   shadowOffset: { width: 0, height: 6 },

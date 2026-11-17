@@ -3,8 +3,8 @@
 // codebase's other theme files (there is known drift between them).
 export const jobCategoryTheme = {
   color: {
-    mint: '#0F9D62',       // live home screen mint — confirmed choice for this page
-    mintTint: '#E7F7EF',
+    mint: '#0891B2',       // live home screen mint — confirmed choice for this page
+    mintTint: '#DCF1F6',
     forest: '#0E3B2E',
     bg: '#FFFFFF',
     bgGutter: '#F6F8F7',

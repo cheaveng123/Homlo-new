@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   badgeDot: { backgroundColor: "#007AFF", borderRadius: 4, height: 8, width: 8 },
   badgeDotPending: { backgroundColor: "#C0392B" },
-  badgeText: { color: "#14272B", fontSize: 11, fontWeight: "700" },
+  badgeText: { color: "#12303C", fontSize: 11, fontWeight: "700" },
   userHalo: {
     alignItems: "center",
     backgroundColor: "rgba(0,122,255,0.22)",

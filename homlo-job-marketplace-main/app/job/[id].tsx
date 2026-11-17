@@ -235,7 +235,7 @@ export default function JobDetailScreen() {
                   padding: 6,
                 }}
               >
-                <AppIcon name="maximize" size={20} color="#16803C" />
+                <AppIcon name="maximize" size={20} color="#0891B2" />
               </Pressable>
             </View>
           ) : undefined
@@ -294,7 +294,7 @@ export default function JobDetailScreen() {
                   alignSelf: "flex-start",
                 }}
               >
-                <AppIcon name="close" size={22} color="#16803C" />
+                <AppIcon name="close" size={22} color="#0891B2" />
               </Pressable>
             </View>
             <View style={{ flex: 1 }}>

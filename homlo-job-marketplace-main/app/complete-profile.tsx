@@ -45,7 +45,7 @@ export default function CompleteProfileScreen() {
   };
 
   if (loading) {
-    return <ScreenContainer edges={["top", "bottom", "left", "right"]}><View style={styles.loading}><ActivityIndicator color="#16803C" /><Text style={styles.loadingText}>Restoring your account…</Text></View></ScreenContainer>;
+    return <ScreenContainer edges={["top", "bottom", "left", "right"]}><View style={styles.loading}><ActivityIndicator color="#0891B2" /><Text style={styles.loadingText}>Restoring your account…</Text></View></ScreenContainer>;
   }
 
   return (
@@ -69,7 +69,7 @@ export default function CompleteProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: "space-between", paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
-  eyebrow: { color: "#16803C", fontSize: 11, fontWeight: "800", letterSpacing: 1.15 },
+  eyebrow: { color: "#0891B2", fontSize: 11, fontWeight: "800", letterSpacing: 1.15 },
   title: { color: "#17201A", fontSize: 30, fontWeight: "800", letterSpacing: -1, lineHeight: 36, marginTop: 10 },
   copy: { color: "#66736A", fontSize: 15, lineHeight: 22, marginTop: 10, maxWidth: 330 },
   form: { marginTop: 27 },
@@ -78,12 +78,12 @@ const styles = StyleSheet.create({
   roleLabel: { marginTop: 23 },
   roles: { gap: 9 },
   roleCard: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#D7DFDA", borderRadius: 14, borderWidth: 1, flexDirection: "row", minHeight: 67, paddingHorizontal: 14 },
-  roleCardSelected: { backgroundColor: "#F2F8F3", borderColor: "#16803C" },
+  roleCardSelected: { backgroundColor: "#EEF7FA", borderColor: "#0891B2" },
   radio: { alignItems: "center", borderColor: "#AAB6AE", borderRadius: 10, borderWidth: 1.5, height: 20, justifyContent: "center", width: 20 },
-  radioSelected: { borderColor: "#16803C" }, radioDot: { backgroundColor: "#16803C", borderRadius: 5, height: 10, width: 10 },
+  radioSelected: { borderColor: "#0891B2" }, radioDot: { backgroundColor: "#0891B2", borderRadius: 5, height: 10, width: 10 },
   roleText: { flex: 1, marginLeft: 12 }, roleTitle: { color: "#17201A", fontSize: 15, fontWeight: "800" }, roleCopy: { color: "#66736A", fontSize: 12.5, lineHeight: 17, marginTop: 2 },
   locationLabel: { marginTop: 21 }, optional: { color: "#859087", fontWeight: "600" },
   error: { color: "#B42318", fontSize: 13, lineHeight: 18, marginTop: 9 },
-  primary: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 14, justifyContent: "center", minHeight: 56 }, primaryText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
+  primary: { alignItems: "center", backgroundColor: "#0891B2", borderRadius: 14, justifyContent: "center", minHeight: 56 }, primaryText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
   loading: { alignItems: "center", flex: 1, gap: 12, justifyContent: "center" }, loadingText: { color: "#66736A", fontSize: 14, fontWeight: "600" }, pressed: { opacity: 0.84, transform: [{ scale: 0.98 }] }, disabled: { opacity: 0.65 },
 });

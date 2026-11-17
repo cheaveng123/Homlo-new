@@ -40,7 +40,7 @@ import {
 } from "@/components/auth/art";
 
 const C = {
-  green: "#0F6E56",
+  green: "#0B6F8A",
   deep: "#0A4A3A",
   cream: "#F6F2E9",
   amber: "#F0B04A",

@@ -8,7 +8,7 @@ import { fonts } from "@/lib/typography";
 import { fontFamily } from "@/theme/tokens";
 
 const BRAND = "#08675F";
-const BRAND_NEAR = "#0F6E56";
+const BRAND_NEAR = "#0B6F8A";
 
 // Build teal ramp around #08675F (deep teal from design.md)
 export const brand = {

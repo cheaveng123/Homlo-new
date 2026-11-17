@@ -12,7 +12,7 @@ import { logoColorFor } from '@/components/jobs/toJobCardData';
 import { useUserLocation } from '@/lib/use-user-location';
 import { locationService, type LocationState } from '@/lib/location-service';
 
-const TEAL = '#0E7C86';
+const TEAL = '#0891B2';
 
 const RADII = ['1 km', '3 km', '5 km', '10 km'];
 const KM: Record<string, number> = { '1 km': 1, '3 km': 3, '5 km': 5, '10 km': 10 };

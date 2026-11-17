@@ -5,10 +5,10 @@ import { useBoostCountdown } from './useBoostCountdown';
 
 // Mapped to the existing Lagoon & Sunrise theme tokens (key names kept).
 export const boostColors = {
-  employerBg: '#FDE6DA',
-  employerBorder: '#C4531F',
+  employerBg: '#FDF0D9',
+  employerBorder: '#E8870F',
   employerText: '#7A4300',
-  employerIcon: '#C4531F',
+  employerIcon: '#E8870F',
   adBg: 'rgba(20,39,43,0.06)',
   adBorder: 'rgba(20,39,43,0.18)',
   adText: '#4A564E',

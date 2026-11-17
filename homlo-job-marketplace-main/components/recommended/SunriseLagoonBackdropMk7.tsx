@@ -33,7 +33,7 @@ export type SunriseLagoonBackdropMk7Props = {
 
 const SUNS: [string, string][] = [
   ['#FFD98A', '#F29B3C'],
-  ['#FFF0A8', '#F5B52B'],
+  ['#FFF0A8', '#F5A524'],
   ['#E8FFFB', '#7FD6D2'],
 ];
 
@@ -92,7 +92,7 @@ export default function SunriseLagoonBackdropMk7({
   autoCycle = false,
   cycleMs = 5600,
   onCycle,
-  edgeColor = '#F4F8F8',
+  edgeColor = '#F3F6F5',
   showEdge = true,
   style,
 }: SunriseLagoonBackdropMk7Props) {
@@ -147,7 +147,7 @@ export default function SunriseLagoonBackdropMk7({
             <Defs>
               <LinearGradient id="mk7bg" x1="0.15" y1="0" x2="0.85" y2="1">
                 <Stop offset="0" stopColor="#15A0AA" />
-                <Stop offset="0.5" stopColor="#0E7C86" />
+                <Stop offset="0.5" stopColor="#0891B2" />
                 <Stop offset="1" stopColor="#09535C" />
               </LinearGradient>
             </Defs>
@@ -174,7 +174,7 @@ export default function SunriseLagoonBackdropMk7({
           </Animated.View>
           <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, bottom: edgeH * 0.35, width: w * 2, height: waveH }, waveBStyle]}>
             <Svg width={w * 2} height={waveH} viewBox="0 0 800 70" preserveAspectRatio="none">
-              <Path d={WAVE_D} fill="#073B42" opacity={0.55} />
+              <Path d={WAVE_D} fill="#14324A" opacity={0.55} />
             </Svg>
           </Animated.View>
 

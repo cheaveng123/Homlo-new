@@ -22,7 +22,7 @@ const D: Record<IconName, string[]> = {
   sunrise: ['M3 18h18M6.5 18a5.5 5.5 0 0111 0M12 6v2M4.8 10.8l1.4 1.4M19.2 10.8l-1.4 1.4'],
 };
 
-export function Icon({ name, size = 20, color = '#14272B', strokeWidth = 1.6 }: {
+export function Icon({ name, size = 20, color = '#12303C', strokeWidth = 1.6 }: {
   name: IconName; size?: number; color?: string; strokeWidth?: number;
 }) {
   return (

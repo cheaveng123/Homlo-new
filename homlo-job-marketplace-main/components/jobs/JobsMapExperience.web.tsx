@@ -71,9 +71,9 @@ function priceMarkerElement(pay: string, selected: boolean) {
   element.type = 'button';
   element.textContent = pay;
   element.setAttribute('aria-label', `${pay} job`);
-  element.style.background = selected ? '#0E7C86' : '#FFFFFF';
-  element.style.color = selected ? '#FFFFFF' : '#14272B';
-  element.style.border = '1px solid #E4ECEC';
+  element.style.background = selected ? '#0891B2' : '#FFFFFF';
+  element.style.color = selected ? '#FFFFFF' : '#12303C';
+  element.style.border = '1px solid #E6EDEF';
   element.style.borderRadius = '999px';
   element.style.boxShadow = '0 3px 10px rgba(0, 0, 0, 0.2)';
   element.style.cursor = 'pointer';
@@ -126,13 +126,13 @@ export default function JobsMapExperience() {
         id: RADIUS_LAYER,
         type: 'fill',
         source: RADIUS_SOURCE,
-        paint: { 'fill-color': '#0E7C86', 'fill-opacity': 0.08 },
+        paint: { 'fill-color': '#0891B2', 'fill-opacity': 0.08 },
       });
       map.addLayer({
         id: `${RADIUS_LAYER}-outline`,
         type: 'line',
         source: RADIUS_SOURCE,
-        paint: { 'line-color': '#0E7C86', 'line-width': 1.5, 'line-dasharray': [3, 3] },
+        paint: { 'line-color': '#0891B2', 'line-width': 1.5, 'line-dasharray': [3, 3] },
       });
       setMapLoaded(true);
     });
@@ -222,7 +222,7 @@ export default function JobsMapExperience() {
           bottom: 4,
           background: 'rgba(255,255,255,0.82)',
           borderRadius: 4,
-          color: '#58696B',
+          color: '#6A7C84',
           fontFamily: 'Inter, system-ui, sans-serif',
           fontSize: 9,
           padding: '2px 5px',
