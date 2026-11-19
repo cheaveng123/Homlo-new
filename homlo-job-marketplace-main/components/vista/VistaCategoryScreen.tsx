@@ -1,17 +1,28 @@
 // VistaCategoryScreen.tsx
-// Category detail page: animated hero (scene + shaped edge), employers, job cards.
-// Deps: react-native-reanimated (3+), react-native-svg, react-native-safe-area-context
-import React, { memo, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+// Category detail page: ONE template for all 19 categories. Only the category
+// name, the employers and the jobs change.
+//   Top bar → location pill → title + subtitle → "Top employers hiring" →
+//   white jobs sheet that slides over the header as you scroll.
+// Visual layer only: jobs, handlers and routes come from app/vista/[categoryKey].tsx.
+import React, { memo, useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  FadeInDown, SharedValue, ZoomIn, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
-  withSequence, withSpring,
+  Extrapolation, FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle,
+  runOnJS, useAnimatedReaction, useReducedMotion, useSharedValue,
 } from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { VistaEdge } from './vistaEdge';
-import { VistaScene } from './vistaScenes';
-import { VistaJob, getVistaCategory, getVistaSceneIndex, vistaMix } from './vistaCategoryData';
+import { SMOOTH, smooth } from '@/src/design/motion';
+import { haptic } from '@/lib/haptics';
+import { VistaJob, getVistaCategory } from './vistaCategoryData';
+import { AreaSheet, type AreaRow } from './category/AreaSheet';
+import { EmptyArt } from './category/EmptyArt';
+import { BackGlyph, MoreGlyph } from './category/glyphs';
+import { JobCard } from './category/JobCard';
+import { LocationPill } from './category/LocationPill';
+import { LogoMark } from './category/LogoMark';
+import { AP, AREAS, CITY, F, LINE, areaOf } from './category/tokens';
 
 type Props = {
   categoryKey?: string; // one of the 19 keys in vistaCategoryData.ts
@@ -22,244 +33,283 @@ type Props = {
   onOpenJob?: (job: VistaJob) => void;
   onOpenEmployer?: (job: VistaJob) => void;
   onGetAlerts?: () => void;
+  isSaved?: (jobId: string) => boolean;
+  onToggleSave?: (job: VistaJob) => void;
 };
 
-const BASE = 270; // hero height (+ safe-area top)
-const MIN_BASE = 92; // collapsed hero height (+ safe-area top)
-const EMP_H = 132; // "Hiring near you" block
-const LIST_PAD = 16; // air between the employers row and the first card
+const BAR_H = 68; // top bar height below the safe-area inset
+const OVERLAP = 26; // the jobs sheet overlaps the gradient block by this much
+const SHEET_R = 26;
+const VIEW_CONFIG = { itemVisiblePercentThreshold: 10 };
 
-const initials = (s: string) => s.split(' ').filter((w) => /^[A-Z]/.test(w)).map((w) => w[0]).slice(0, 2).join('');
-const kindLabel = (k: VistaJob['kind']) => (k === 'monthly' ? 'Monthly' : k === 'partTime' ? 'Part-time' : 'Remote');
+type EmployerItem = { company: string; count: number; job: VistaJob };
 
-export default function VistaCategoryScreen({ categoryKey = 'sales', jobs, loading, onBack, onOpenSettings, onOpenJob, onOpenEmployer, onGetAlerts }: Props) {
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList<VistaJob>);
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+function RoundButton({ label, onPress, children }: { label: string; onPress?: () => void; children: React.ReactNode }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [s.round, pressed && { opacity: 0.7 }]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+const EmployerAvatar = memo(function EmployerAvatar({ item, onPress }: { item: EmployerItem; onPress: (e: EmployerItem) => void }) {
+  const scale = useSharedValue(1);
+  const pic = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      onPressIn={() => { scale.set(smooth(0.94, 140)); }}
+      onPressOut={() => { scale.set(smooth(1, 200)); }}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.company}, ${plural(item.count, 'job', 'jobs')}`}
+      style={s.emp}
+    >
+      <Animated.View style={pic}>
+        <LogoMark company={item.company} uri={item.job.logoUrl} size={68} radius={34} />
+      </Animated.View>
+      <Text style={s.empName} numberOfLines={2}>{item.company}</Text>
+      <Text style={s.empCount}>{plural(item.count, 'job', 'jobs')}</Text>
+    </Pressable>
+  );
+});
+
+export default function VistaCategoryScreen({
+  categoryKey = 'sales', jobs, loading, onBack, onOpenSettings, onOpenJob, onOpenEmployer, isSaved, onToggleSave,
+}: Props) {
   const cat = useMemo(() => getVistaCategory(categoryKey), [categoryKey]);
-  const sceneIndex = getVistaSceneIndex(categoryKey);
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const MAX = BASE + insets.top, MIN = MIN_BASE + insets.top, RANGE = MAX - MIN;
-  const LIST_Y = MAX + EMP_H + LIST_PAD;
+  const reduce = useReducedMotion();
 
-  const all = jobs ?? cat.jobs;
-  const companies = useMemo(() => {
-    const seen = new Set<string>();
-    return all.filter((job) => {
-      if (seen.has(job.company)) return false;
-      seen.add(job.company);
-      return true;
-    });
+  const all = useMemo(() => jobs ?? cat.jobs, [jobs, cat.jobs]);
+  const [area, setArea] = useState<string | undefined>(undefined);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const visible = useMemo(() => (area ? all.filter((j) => areaOf(j) === area) : all), [all, area]);
+
+  const employers = useMemo<EmployerItem[]>(() => {
+    const map = new Map<string, EmployerItem>();
+    for (const job of all) {
+      const hit = map.get(job.company);
+      if (hit) {
+        hit.count += 1;
+        if (!hit.job.logoUrl && job.logoUrl) hit.job = job;
+      } else {
+        map.set(job.company, { company: job.company, count: 1, job });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 6);
   }, [all]);
-  const logoColor = (n: number) => [cat.pay, vistaMix(cat.pay, '#000000', 0.3), vistaMix(cat.pay, '#445566', 0.45)][n % 3];
 
+  const areaRows = useMemo<AreaRow[]>(() => [
+    { key: undefined, label: `All ${CITY}`, count: all.length },
+    ...AREAS.map((a) => ({ key: a.name, label: a.name, count: all.filter((j) => areaOf(j) === a.name).length })),
+  ], [all]);
+
+  // ---- scroll motion -------------------------------------------------------
   const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => { scrollY.value = e.contentOffset.y; });
-  const titleW = useSharedValue(190), titleH = useSharedValue(90);
+  const upperH = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => { scrollY.set(e.contentOffset.y); });
+  // Faded header stops taking touches (state-driven, avoids stale Fabric hit-tests).
+  const [headerLive, setHeaderLive] = useState(true);
+  useAnimatedReaction(
+    () => scrollY.value < 110,
+    (live, prev) => { if (live !== prev) runOnJS(setHeaderLive)(live); },
+  );
 
-  const heroStyle = useAnimatedStyle(() => ({ height: MAX - Math.min(Math.max(scrollY.value, 0), RANGE) }));
-  const sceneStyle = useAnimatedStyle(() => {
-    const y = Math.max(scrollY.value, 0), p = Math.min(y / RANGE, 1);
-    return { opacity: Math.max(0, 1 - p * 1.2), transform: [{ translateY: -y * 0.45 }, { scale: 1 - p * 0.35 }] };
+  const barFade = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [70, 120], [0, 1], Extrapolation.CLAMP),
+  }));
+  const parallax = useAnimatedStyle(() => {
+    if (reduce) return {};
+    const y = Math.max(scrollY.value, 0);
+    return { opacity: Math.max(0, 1 - y / 170), transform: [{ translateY: y * 0.42 }] };
   });
-  const titleStyle = useAnimatedStyle(() => {
-    const p = Math.min(Math.max(scrollY.value, 0) / RANGE, 1), s = 1 - p * 0.42;
-    // scale around the bottom-left corner
-    return { transform: [{ translateX: -(titleW.value / 2) * (1 - s) }, { translateY: (titleH.value / 2) * (1 - s) }, { scale: s }] };
+  // Pull-down past the top: stretch the gradient so no white shows above it.
+  const stretch = useAnimatedStyle(() => {
+    const y = Math.min(scrollY.value, 0);
+    const h = upperH.value || 1;
+    return { transform: [{ translateY: y / 2 }, { scaleY: (h - y) / h }] };
   });
-  const subStyle = useAnimatedStyle(() => ({ opacity: Math.max(0, 0.85 * (1 - Math.min(scrollY.value / RANGE, 1) * 1.8)) }));
-  const miniStyle = useAnimatedStyle(() => {
-    const p = Math.min(Math.max(scrollY.value, 0) / RANGE, 1);
-    return { opacity: Math.max(0, (p - 0.6) / 0.4), transform: [{ translateY: (1 - p) * 8 }] };
+  // Sheet corners ease 26 → 0 as its top reaches the top bar.
+  const sheetCorners = useAnimatedStyle(() => {
+    const r = Math.min(SHEET_R, Math.max(0, upperH.value - OVERLAP - scrollY.value));
+    return { borderTopLeftRadius: r, borderTopRightRadius: r };
   });
-  const fabStyle = useAnimatedStyle(() => ({ transform: [{ translateY: withSpring(scrollY.value > 140 ? 0 : 100, { damping: 14 }) }] }));
 
-  const longest = Math.max(...cat.title.split(' ').map((w) => w.length));
-  const titleSize = Math.min(34, Math.floor(170 / (0.56 * longest)));
-  const gradEnd = vistaMix(cat.bg, cat.light, 0.35);
+  // ---- card reveal (once per card, as it enters the screen) ----------------
+  const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set());
+  // Stable identity (FlatList rejects a changing onViewableItemsChanged).
+  const onViewable = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    setRevealed((prev) => {
+      let next: Set<string> | null = null;
+      for (const v of viewableItems) {
+        const id = (v.item as VistaJob | undefined)?.id;
+        if (id && !prev.has(id)) {
+          next ??= new Set(prev);
+          next.add(id);
+        }
+      }
+      return next ?? prev;
+    });
+  }, []);
+
+  // ---- handlers (pass-through to the route) --------------------------------
+  const openJob = useCallback((job: VistaJob) => onOpenJob?.(job), [onOpenJob]);
+  const toggleSave = useCallback((job: VistaJob) => onToggleSave?.(job), [onToggleSave]);
+  const openEmployer = useCallback((e: EmployerItem) => onOpenEmployer?.(e.job), [onOpenEmployer]);
+  const pickArea = useCallback((next: string | undefined) => {
+    haptic.selection();
+    setArea(next);
+    setSheetOpen(false);
+  }, []);
+
+  const enter = (i: number) => (reduce ? undefined : FadeInDown.delay(i * 70).duration(420).easing(SMOOTH));
+  const name = cat.title;
+  const isLoading = !!loading && all.length === 0;
+
+  const header = (
+    <View>
+      <View style={s.upper} onLayout={(e) => { upperH.set(e.nativeEvent.layout.height); }}>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, stretch]}>
+          <LinearGradient colors={['#FFFFFF', '#F0F4F5', '#E9EFF1']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+        </Animated.View>
+        <Animated.View style={parallax} pointerEvents={headerLive ? "auto" : "none"}>
+          <Animated.View entering={enter(0)} style={s.gutter}>
+            <LocationPill area={area} city={CITY} onPress={() => setSheetOpen(true)} />
+          </Animated.View>
+          <Animated.View entering={enter(1)} style={s.gutter}>
+            <Text style={s.title} accessibilityRole="header">{name}</Text>
+            <Text style={s.sub}>
+              {isLoading ? 'Loading jobs…' : `${plural(all.length, 'open job', 'open jobs')} across ${CITY}`}
+            </Text>
+          </Animated.View>
+          {employers.length > 0 ? (
+            <Animated.View entering={enter(2)}>
+              <Text style={[s.section, s.gutter, { marginTop: 16 }]}>Top employers hiring</Text>
+              <FlatList
+                horizontal
+                data={employers}
+                keyExtractor={(e) => e.company}
+                renderItem={({ item }) => <EmployerAvatar item={item} onPress={openEmployer} />}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}
+              />
+            </Animated.View>
+          ) : null}
+        </Animated.View>
+      </View>
+
+      <Animated.View style={[s.sheet, sheetCorners]}>
+        <Text style={s.section}>
+          {plural(visible.length, 'open job', 'open jobs')} in {name.toLowerCase()}
+        </Text>
+      </Animated.View>
+    </View>
+  );
+
+  const footer = (
+    <View style={[s.footer, { paddingBottom: insets.bottom + 32 }]}>
+      {isLoading ? (
+        <Text style={s.loading}>Loading jobs…</Text>
+      ) : visible.length === 0 ? (
+        area ? (
+          <EmptyArt
+            title="No jobs in this area"
+            body="New jobs will show up here. Try another area to see more."
+            actionLabel={`Show all ${CITY}`}
+            onAction={() => { haptic.selection(); setArea(undefined); }}
+          />
+        ) : (
+          <EmptyArt title="No open jobs right now" body="New jobs will show up here." />
+        )
+      ) : null}
+    </View>
+  );
 
   return (
-    <View style={s.root}>
-      <Animated.ScrollView
+    <View style={s.screen}>
+      <StatusBar style="dark" />
+
+      <View style={[s.bar, { paddingTop: insets.top, height: insets.top + BAR_H }]}>
+        <RoundButton label="Back" onPress={onBack}><BackGlyph size={22} color={AP.navy} /></RoundButton>
+        <Animated.Text style={[s.barTitle, barFade]} numberOfLines={1}>{name}</Animated.Text>
+        <RoundButton label="More options" onPress={onOpenSettings}><MoreGlyph size={22} color={AP.navy} /></RoundButton>
+        <Animated.View pointerEvents="none" style={[s.barLine, barFade]} />
+      </View>
+
+      <AnimatedFlatList
+        data={visible}
+        keyExtractor={(j) => j.id}
+        renderItem={({ item, index }) => (
+          <View style={s.cell}>
+            <JobCard
+              job={item}
+              index={index}
+              revealed={reduce || revealed.has(item.id)}
+              saved={isSaved?.(item.id) ?? false}
+              onOpen={openJob}
+              onToggleSave={toggleSave}
+            />
+          </View>
+        )}
+        extraData={revealed}
+        ListHeaderComponent={header}
+        ListFooterComponent={footer}
         onScroll={onScroll}
         scrollEventThrottle={16}
+        onViewableItemsChanged={onViewable}
+        viewabilityConfig={VIEW_CONFIG}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: MAX, minHeight: height + RANGE + 40, paddingBottom: 120 }}
-      >
-        <View style={{ height: EMP_H }}>
-          <View style={s.secRow}>
-            <Text style={s.sec}>Hiring near you</Text>
-            <Text style={s.secSmall}>
-              {loading && all.length === 0 ? 'Loading…' : `${all.length} ${all.length === 1 ? 'job' : 'jobs'} open`}
-            </Text>
-          </View>
-          <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.emps}>
-            {companies.map((companyJob, k) => {
-              const name = companyJob.company;
-              return (
-                <Animated.View key={name} entering={ZoomIn.delay(200 + k * 70).springify()} style={s.emp}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open ${name} profile`}
-                    disabled={!onOpenEmployer}
-                    onPress={() => onOpenEmployer?.(companyJob)}
-                    style={s.empPress}
-                  >
-                    <View style={[s.empLogo, { backgroundColor: logoColor(k) }]}><Text style={s.empTxt}>{initials(name)}</Text></View>
-                    <Text numberOfLines={1} style={s.empName}>{name.split(' ')[0]}</Text>
-                  </Pressable>
-                </Animated.View>
-              );
-            })}
-          </Animated.ScrollView>
-        </View>
-        <View style={s.list}>
-          {all.map((j) => (
-            <JobCard key={j.id} job={j} baseY={LIST_Y} scrollY={scrollY} viewH={height} color={logoColor(companies.findIndex((c) => c.company === j.company))}
-              pay={cat.pay} tagBg={cat.bg} tagInk={cat.ink} onPress={() => onOpenJob?.(j)} onOpenEmployer={onOpenEmployer} />
-          ))}
-          {all.length === 0 && <Text style={s.empty}>{loading ? 'Loading jobs…' : 'No jobs here yet.'}</Text>}
-        </View>
-        <Text style={s.end}>That’s everything here for now. New jobs show up first.</Text>
-      </Animated.ScrollView>
+        style={s.list}
+      />
 
-      {/* hero */}
-      <Animated.View style={[s.hero, heroStyle]}>
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
-          <Defs>
-            <LinearGradient id="vistaHeroGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={cat.bg} />
-              <Stop offset="1" stopColor={gradEnd} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#vistaHeroGrad)" />
-        </Svg>
-
-        <Animated.View style={[s.scene, { top: insets.top + 58 }, sceneStyle]} pointerEvents="none">
-          <VistaScene index={sceneIndex} ink={cat.ink} accent={cat.accent} light={cat.light} width={160} />
-        </Animated.View>
-
-        <VistaEdge width={width} type={cat.edge.type} n={cat.edge.n} seed={cat.edge.seed} seconds={24 + (sceneIndex % 5) * 7} />
-
-        <Pressable accessibilityLabel="Back" onPress={onBack} style={[s.round, { left: 18, top: insets.top + 10 }]}>
-          <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M15 5l-7 7 7 7" stroke="#12302a" strokeWidth={2.5} strokeLinecap="round" fill="none" /></Svg>
-        </Pressable>
-        <Pressable accessibilityLabel="Settings" onPress={onOpenSettings} style={[s.round, { right: 18, top: insets.top + 10 }]}>
-          <Svg width={18} height={18} viewBox="0 0 24 24"><Path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" stroke="#12302a" strokeWidth={2} strokeLinecap="round" fill="none" /></Svg>
-        </Pressable>
-
-        <Animated.View key={cat.key} entering={FadeInDown.duration(450)} style={[s.titleBox, titleStyle]}
-          onLayout={(e) => { titleW.value = e.nativeEvent.layout.width; titleH.value = e.nativeEvent.layout.height; }}>
-          <Text style={[s.h1, { color: cat.ink, fontSize: titleSize, lineHeight: titleSize * 1.05 }]}>{cat.title}</Text>
-          <Animated.Text style={[s.sub, { color: cat.ink }, subStyle]}>{cat.blurb}</Animated.Text>
-        </Animated.View>
-        <Animated.Text numberOfLines={1} style={[s.mini, { color: cat.ink }, miniStyle]}>{cat.title}</Animated.Text>
-      </Animated.View>
-
-      <Animated.View style={[s.fabWrap, fabStyle]} pointerEvents="box-none">
-        <Pressable onPress={onGetAlerts} style={[s.fab, { backgroundColor: cat.pay }]}><Text style={s.fabTxt}>Get job alerts</Text></Pressable>
-      </Animated.View>
+      <AreaSheet
+        open={sheetOpen}
+        category={name}
+        rows={areaRows}
+        selected={area}
+        onPick={pickArea}
+        onClose={() => setSheetOpen(false)}
+      />
     </View>
   );
 }
 
-type CardProps = {
-  job: VistaJob; baseY: number; scrollY: SharedValue<number>; viewH: number;
-  color: string; pay: string; tagBg: string; tagInk: string; onPress: () => void;
-  onOpenEmployer?: (job: VistaJob) => void;
-};
-
-const JobCard = memo(function JobCard({ job, baseY, scrollY, viewH, color, pay, tagBg, tagInk, onPress, onOpenEmployer }: CardProps) {
-  const y = useSharedValue(0);
-  const heart = useSharedValue(1);
-  const [saved, setSaved] = useState(false);
-
-  // scroll-driven entrance: cards rise, scale up and un-tilt as they enter from the bottom
-  const style = useAnimatedStyle(() => {
-    const rel = (baseY + y.value - scrollY.value) / viewH;
-    const t = Math.min(1, Math.max(0, (1 - rel) / 0.22));
-    return { opacity: t, transform: [{ perspective: 700 }, { translateY: (1 - t) * 34 }, { scale: 0.92 + t * 0.08 }, { rotateX: `${(1 - t) * 8}deg` }] };
-  });
-  const heartStyle = useAnimatedStyle(() => ({ transform: [{ scale: heart.value }] }));
-
-  return (
-    <Animated.View style={style} onLayout={(e) => { y.value = e.nativeEvent.layout.y; }}>
-      <Pressable onPress={onPress} style={s.card}>
-        {onOpenEmployer ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${job.company} profile`}
-            hitSlop={6}
-            onPress={(event) => {
-              event.stopPropagation();
-              onOpenEmployer(job);
-            }}
-            style={[s.logo, { backgroundColor: color }]}
-          >
-            <Text style={s.logoTxt}>{initials(job.company)}</Text>
-          </Pressable>
-        ) : (
-          <View style={[s.logo, { backgroundColor: color }]}><Text style={s.logoTxt}>{initials(job.company)}</Text></View>
-        )}
-        <View style={s.cardMid}>
-          <Text style={s.jobTitle} numberOfLines={2}>{job.title}</Text>
-          <Text style={s.company} numberOfLines={1}>{job.company}</Text>
-        </View>
-        <View style={s.cardRight}>
-          <Text style={[s.price, { color: pay }]}>${job.pay} / {job.kind === 'partTime' ? 'day' : 'mo'}</Text>
-          <Pressable hitSlop={10} accessibilityLabel="Save job"
-            // Reanimated's standard handler pattern; this rule only fires due to
-            // module-order analysis of memo()'d cards, not on the write itself.
-            // eslint-disable-next-line react-hooks/immutability
-            onPress={() => { setSaved((v) => !v); heart.value = withSequence(withSpring(1.4), withSpring(1)); }}>
-            <Animated.View style={heartStyle}>
-              <Svg width={20} height={20} viewBox="0 0 24 24">
-                <Path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" strokeWidth={2} strokeLinejoin="round"
-                  stroke={saved ? pay : '#9bb0ab'} fill={saved ? pay : 'none'} />
-              </Svg>
-            </Animated.View>
-          </Pressable>
-        </View>
-        <View style={s.tags}>
-          <Text style={[s.tag, { backgroundColor: tagBg, color: tagInk }]}>{kindLabel(job.kind)}</Text>
-          <Text style={s.dist}>{job.kind === 'remote' ? 'Work from home' : `${job.km.toFixed(1)} km away`}</Text>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-});
-
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
-  hero: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden', zIndex: 10 },
-  scene: { position: 'absolute', right: 10, width: 160 },
-  round: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  titleBox: { position: 'absolute', left: 20, bottom: 36, width: 190 },
-  h1: { fontWeight: '800', letterSpacing: -0.8 },
-  sub: { marginTop: 8, fontSize: 13, fontWeight: '500', lineHeight: 18, maxWidth: 170 },
-  mini: { position: 'absolute', left: 66, right: 66, bottom: 36, textAlign: 'center', fontWeight: '800', fontSize: 16 },
-  secRow: { paddingHorizontal: 20, paddingTop: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  sec: { fontSize: 17, fontWeight: '800', color: '#12302a' },
-  secSmall: { fontSize: 12, fontWeight: '600', color: '#5d7570' },
-  emps: { paddingHorizontal: 20, paddingTop: 14, gap: 14 },
-  emp: { width: 68, alignItems: 'center' },
-  empPress: { width: 68, alignItems: 'center' },
-  empLogo: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  empTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  empName: { fontSize: 11, fontWeight: '600', color: '#5d7570' },
-  list: { paddingHorizontal: 20, paddingTop: LIST_PAD, gap: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 22, borderWidth: 1.5, borderColor: '#e3ece9', padding: 16, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
-  logo: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  logoTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  cardMid: { flex: 1, marginHorizontal: 12 },
-  jobTitle: { fontSize: 15, fontWeight: '800', color: '#12302a' },
-  company: { fontSize: 13, fontWeight: '500', color: '#5d7570', marginTop: 2 },
-  cardRight: { alignItems: 'flex-end', gap: 6 },
-  price: { fontSize: 15, fontWeight: '800' },
-  tags: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
-  tag: { fontSize: 12, fontWeight: '700', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, overflow: 'hidden' },
-  dist: { fontSize: 12, fontWeight: '600', color: '#5d7570' },
-  empty: { textAlign: 'center', color: '#5d7570', paddingVertical: 24 },
-  end: { textAlign: 'center', color: '#5d7570', fontSize: 13, fontWeight: '500', paddingHorizontal: 30, paddingTop: 26 },
-  fabWrap: { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center', zIndex: 20 },
-  fab: { paddingHorizontal: 22, paddingVertical: 13, borderRadius: 99, elevation: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
-  fabTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+  bar: {
+    backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, zIndex: 2,
+  },
+  barTitle: { flex: 1, textAlign: 'center', fontFamily: F.h, fontSize: 16, color: AP.navy },
+  barLine: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, backgroundColor: LINE },
+  round: {
+    width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: LINE, backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  list: { flex: 1, backgroundColor: '#FFFFFF' },
+  gutter: { paddingHorizontal: 16 },
+  upper: { paddingTop: 4, paddingBottom: 40 },
+  title: { fontFamily: F.h, fontSize: 28, lineHeight: 32, letterSpacing: -0.45, color: AP.navy },
+  sub: { fontFamily: F.m, fontSize: 13, color: AP.muted, marginTop: 2 },
+  section: { fontFamily: F.h, fontSize: 18, color: AP.navy, marginBottom: 12 },
+  emp: { width: 84, alignItems: 'center' },
+  empName: { fontFamily: F.hb, fontSize: 13, lineHeight: 16, color: AP.navy, textAlign: 'center', marginTop: 8 },
+  empCount: { fontFamily: F.m, fontSize: 12, color: AP.muted, marginTop: 1 },
+  sheet: {
+    marginTop: -OVERLAP, backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 22,
+    borderTopLeftRadius: SHEET_R, borderTopRightRadius: SHEET_R,
+    shadowColor: AP.ink, shadowOpacity: 0.09, shadowRadius: 20, shadowOffset: { width: 0, height: -8 }, elevation: 4,
+  },
+  cell: { backgroundColor: '#FFFFFF', paddingHorizontal: 16 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 16 },
+  loading: { fontFamily: F.m, fontSize: 13, color: AP.muted, textAlign: 'center', paddingVertical: 24 },
 });

@@ -14,6 +14,8 @@ import { useUserLocation } from '@/lib/use-user-location';
 import { employerIdForCompany } from '@/lib/mock/employerMockData';
 import { goBack } from '@/lib/navigation';
 import { trpc } from '@/lib/trpc';
+import { getProfilePhotoUrl } from '@/lib/profile-photo';
+import { useJobStore } from '@/components/job-store';
 import VistaCategoryScreen from '@/components/vista/VistaCategoryScreen';
 import { fieldForVistaKey, type VistaJob } from '@/components/vista/vistaCategoryData';
 
@@ -21,6 +23,7 @@ export default function VistaCategoryRoute() {
   const params = useLocalSearchParams<{ categoryKey?: string }>();
   const key = typeof params.categoryKey === 'string' ? params.categoryKey : undefined;
   const router = useRouter();
+  const { isSaved, toggleSaved } = useJobStore();
 
   const fieldId = useMemo(() => (key ? fieldForVistaKey(key) : undefined), [key]);
   const { location } = useUserLocation();
@@ -55,6 +58,11 @@ export default function VistaCategoryRoute() {
         // 99 for "no coordinates": far enough to never match "Near me", while 0
         // stays reserved for remote (which the screen treats specially).
         km: remote ? 0 : hasCoords ? haversineDistance(center, { latitude, longitude }) : 99,
+        // Display-only fields for the card (already in the same record).
+        area: record.location_text ?? undefined,
+        postedAt: record.created_at,
+        logoUrl: getProfilePhotoUrl(record.employer_photo_key),
+        payUnit: record.pay_type === 'hourly' ? '/hr' : record.pay_type === 'daily' ? '/day' : '/mo',
       });
     }
     return mapped;
@@ -66,6 +74,8 @@ export default function VistaCategoryRoute() {
       jobs={jobs}
       loading={isLoading}
       onBack={() => goBack(router)}
+      isSaved={isSaved}
+      onToggleSave={(job) => toggleSaved(job.id)}
       onOpenSettings={() => {
         haptic.light();
         router.push('/search-detail' as never);
