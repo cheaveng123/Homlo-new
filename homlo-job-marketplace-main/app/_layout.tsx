@@ -200,6 +200,8 @@ export default function RootLayout() {
       const key = event.query.queryKey[0];
       if (Array.isArray(key) && key[0] === "homlo" && (key[1] === "publicJobs" || key[1] === "homeFeed")) {
         clearFeedClientCache();
+        // Job detail reads one job (homlo.publicJob); keep it as fresh as the list.
+        if (key[1] === "publicJobs") void client.invalidateQueries({ queryKey: [["homlo", "publicJob"]] });
       }
     });
     // PERF: cold starts paint public data from the last session, then refresh.

@@ -54,6 +54,8 @@ function normalizePublicJobRow(row: Record<string, unknown>): Record<string, unk
   return out;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function tokenKey(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -156,6 +158,7 @@ export class HomloDirectService {
   private readonly searchCache = new TtlCache<{ jobs: SearchJobRecord[]; total: number }>(SEARCH_CACHE_TTL_MS, 300, PUBLIC_STALE_WHILE_REVALIDATE_MS);
   private readonly categoriesCache = new TtlCache<{ categories: { id: string; name: string; slug: string }[] }>(CATEGORIES_CACHE_TTL_MS, 1, 60 * 60_000);
   private readonly employerProfileCache = new TtlCache<EmployerPublicProfile | null>(EMPLOYER_PROFILE_CACHE_TTL_MS, 500);
+  private readonly publicJobCache = new TtlCache<{ job: PublishedJobRecord | null }>(PUBLIC_JOBS_CACHE_TTL_MS, 1_000);
 
   /**
    * Called after any write request. Drops the caller's cached session (role,
@@ -209,6 +212,7 @@ export class HomloDirectService {
     this.publicJobsCache.clear();
     this.searchCache.clear();
     this.employerProfileCache.clear();
+    this.publicJobCache.clear();
   }
 
   private eventLogger: EventLoggingService | null = null;
@@ -357,6 +361,87 @@ export class HomloDirectService {
   }
 
   /**
+   * PERF: signed-in READ actions served straight from Postgres instead of the
+   * edge gateway. The gateway path costs: app server → edge function → auth
+   * check → session RPC → action RPC (3 Supabase hops + edge cold starts).
+   * Here: one query on the pooled connection, using the same security-definer
+   * function, called with the same named arguments, and JSON built by Postgres
+   * itself (json_agg / row_to_json — what PostgREST does), so numbers and
+   * timestamps serialize exactly as the gateway returned them.
+   *
+   * Falls back to the gateway (identical behaviour and errors) when the
+   * account is not active, the action has no direct reader, or the direct
+   * read fails. `user` must be the verified session user.
+   */
+  async read<T>(accessToken: string, user: HomloSessionUser, action: string, payload: Record<string, unknown> = {}): Promise<T> {
+    const direct = user.status === "active" ? this.directReader(action, user.id, payload) : null;
+    if (!direct) return this.invoke<T>(accessToken, action, payload);
+    try {
+      return (await direct()) as T;
+    } catch (error) {
+      console.warn(`[homlo] direct read ${action} failed; using gateway`, error instanceof Error ? error.message : error);
+      return this.invoke<T>(accessToken, action, payload);
+    }
+  }
+
+  private directReader(action: string, userId: string, payload: Record<string, unknown>): (() => Promise<unknown>) | null {
+    switch (action) {
+      case "profile.get":
+        return async () => ({ profile: await this.rowJson(`homlo_get_profile(p_user_id => $1::uuid)`, [userId]) });
+      case "application.list":
+        return async () => ({ applications: await this.setJson(`homlo_list_worker_applications_detailed(p_worker_id => $1::uuid)`, [userId]) });
+      case "application.for-job": {
+        const jobId = typeof payload.jobId === "string" ? payload.jobId : "";
+        if (!UUID_PATTERN.test(jobId)) return null; // let the gateway produce its usual error
+        return async () => {
+          const application = await this.rowJson<{ id?: string | null }>(
+            `homlo_get_application_for_worker(p_worker_id => $1::uuid, p_job_id => $2::uuid)`,
+            [userId, jobId],
+          );
+          // Same normalisation as the gateway: an all-null composite means "none".
+          return { application: application?.id ? application : null };
+        };
+      }
+      case "messaging.conversations":
+        return async () => ({ conversations: await this.setJson(`homlo_list_conversations(p_user_id => $1::uuid)`, [userId]) });
+      case "notifications.list":
+        return async () => ({ notifications: await this.setJson(`homlo_list_user_notifications(p_user_id => $1::uuid)`, [userId]) });
+      case "account.get":
+        return async () => {
+          // The gateway ran these one after the other; same result, run together.
+          const [accounts, activity] = await Promise.all([
+            this.setJson(`homlo_get_account(p_user_id => $1::uuid)`, [userId]),
+            this.setJson(`homlo_get_recent_activity(p_user_id => $1::uuid)`, [userId]),
+          ]);
+          const account = accounts[0] ?? null;
+          return { account, recentActivity: account ? activity[0] ?? null : null };
+        };
+      default:
+        return null;
+    }
+  }
+
+  /** A set-returning function's rows as JSON, like PostgREST's array response. */
+  private async setJson<T = Record<string, unknown>>(call: string, params: string[]): Promise<T[]> {
+    const { rows } = await this.adapter.query<{ data: T[] | string | null }>(
+      `select coalesce(json_agg(t), '[]'::json) as data from public.${call} t`,
+      params,
+    );
+    const data = rows[0]?.data;
+    return (typeof data === "string" ? JSON.parse(data) : data ?? []) as T[];
+  }
+
+  /** A composite-returning function as one JSON object (all-null when no row), like PostgREST. */
+  private async rowJson<T = Record<string, unknown>>(call: string, params: string[]): Promise<T | null> {
+    const { rows } = await this.adapter.query<{ data: T | string | null }>(
+      `select row_to_json(t) as data from public.${call} t`,
+      params,
+    );
+    const data = rows[0]?.data ?? null;
+    return (typeof data === "string" ? JSON.parse(data) : data) as T | null;
+  }
+
+  /**
    * The age a member gave after signing up (055_user_age.sql). Read and written
    * straight from Postgres by the app server, keyed by the already-verified
    * session user id, so it does not depend on the edge gateway version.
@@ -464,6 +549,44 @@ export class HomloDirectService {
   private async withBoostsAndWorkTime<T extends { id: string; boosted?: boolean }>(rows: T[]): Promise<T[]> {
     const [boosted, timed] = await Promise.all([this.withActiveBoosts(rows), this.withWorkTime(rows)]);
     return timed.map((row, index) => ({ ...row, boosted: boosted[index]?.boosted ?? false }));
+  }
+
+  /**
+   * PERF: one public job by id, for the job detail page, which used to
+   * download the whole public feed (up to 200 rows with descriptions) to show
+   * one job — and could not open a job past that 200-row cap at all.
+   * Same columns, joins and visibility rules as
+   * homlo_list_public_published_jobs() (20261101150000_boost_lifecycle.sql),
+   * plus the same boost flag and work-time fields as listPublishedJobs().
+   * Returns null when the job is not publicly visible (closed, full, expired,
+   * deleted). Cached briefly per id; cleared on writes like the list.
+   */
+  async getPublishedJob(id: string): Promise<{ job: PublishedJobRecord | null }> {
+    if (!UUID_PATTERN.test(id)) return { job: null };
+    return this.publicJobCache.get(id.toLowerCase(), async () => {
+      const { rows } = await this.adapter.query<Record<string, unknown>>(
+        `select
+           j.id, j.title, j.description, j.pay_amount, j.pay_currency, j.pay_type,
+           j.location_text, j.latitude, j.longitude, j.workers_needed, j.created_at,
+           coalesce(c.name, 'Other') as category,
+           p.full_name as employer_name,
+           p.profile_photo_key as employer_photo_key,
+           j.banner_image, j.status, j.workers_hired, j.work_arrangement
+         from jobs j
+         left join categories c on c.id = j.category_id
+         left join profiles p on p.user_id = j.employer_id and p.deleted_at is null
+         where j.id = $1::uuid
+           and j.deleted_at is null
+           and j.status = 'open'
+           and (j.workers_needed = 0 or j.workers_hired < j.workers_needed)
+           and (j.end_date is null or j.end_date >= current_date)
+         limit 1`,
+        [id],
+      );
+      if (!rows[0]) return { job: null };
+      const [job] = await this.withBoostsAndWorkTime([normalizePublicJobRow(rows[0]) as unknown as PublishedJobRecord]);
+      return { job: job ?? null };
+    });
   }
 
   /**
@@ -662,9 +785,21 @@ export class HomloDirectService {
       ]
     );
 
+    // 061_search_radius_and_total.sql adds `total_count` (matches before
+    // limit/offset). Strip it from the job rows so their shape is unchanged;
+    // before that migration is applied, keep the old value (page size).
+    let total = rows.length;
+    const jobs = rows.map((row) => {
+      const { total_count: totalCount, ...job } = row as SearchJobRecord & { total_count?: number | string | bigint };
+      if (totalCount !== undefined && totalCount !== null) {
+        const n = Number(totalCount);
+        if (Number.isFinite(n)) total = n;
+      }
+      return job as SearchJobRecord;
+    });
     return {
-      jobs: await this.withActiveBoosts(rows),
-      total: rows.length,
+      jobs: await this.withActiveBoosts(jobs),
+      total,
     };
   }
 

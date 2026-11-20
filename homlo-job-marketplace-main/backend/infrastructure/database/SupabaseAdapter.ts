@@ -1,5 +1,6 @@
 import { createClient, type User } from "@supabase/supabase-js";
 import { getSharedSql } from "./shared-pool";
+import { recordQuery, withQueryTimeout } from "./query-metrics";
 import postgres from "postgres";
 
 import type { DatabaseAdapter, QueryResult, SqlParameter } from "./DatabaseAdapter";
@@ -313,9 +314,14 @@ async function queryWith<Row extends Record<string, unknown>>(
   parameters: readonly SqlParameter[],
 ): Promise<QueryResult<Row>> {
   const startedAt = Date.now();
-  const rows = (await executor.unsafe(statement, [...parameters])) as Row[];
-  logIfSlow(statement, Date.now() - startedAt, rows.length);
-  return { rows, rowCount: rows.length };
+  try {
+    const pending = executor.unsafe(statement, [...parameters]) as Promise<unknown[]> & { cancel?: () => unknown };
+    const rows = (await withQueryTimeout(pending)) as Row[];
+    logIfSlow(statement, Date.now() - startedAt, rows.length);
+    return { rows, rowCount: rows.length };
+  } finally {
+    recordQuery(Date.now() - startedAt);
+  }
 }
 
 /**

@@ -22,7 +22,7 @@ count every statement sent to a fake database adapter
 | 8 | `server/_core/index.ts` | `GET /api/health/ready` — checks the database (2 s timeout), 503 when down. `/api/health` unchanged | — | liveness only | liveness + readiness | unit test of `checkDatabase` |
 | 9 | `scripts/loadtest/k6-hot-endpoints.js` | k6 ramp 100 → 500 → 1,000 VUs over the 5 hot public paths | p95, error rate | not run | not run | see §5 |
 
-Tests: `pnpm test` → 80 files passed, 1 skipped (801 tests passed, 12 skipped). `tsc --noEmit` → 0 errors.
+Tests (round 2): `pnpm test` → 82 files passed, 1 skipped (817 tests passed, 12 skipped). `tsc --noEmit` → 0 errors. `pnpm check:migrations` passes.
 
 ## 2. Query budget per hot endpoint
 
@@ -98,21 +98,47 @@ counted separately as `rate_limited`; raise the staging limits in
 | Parallel boosts/work time | restore nested `withWorkTime(await withActiveBoosts(...))` | Nothing |
 | `allApplications` | point the two hooks back at `trpc.useQueries(... employer.applications ...)`; the old endpoint is untouched | Nothing; dashboard goes back to 1 + N |
 
-## 7. Open issues (found, not fixed)
+## 7. Round 2 — open issues fixed (2026-11-20)
+
+| # | Was | File(s) | Change | Metric | Before | After | How measured |
+|---|---|---|---|---|---|---|---|
+| 10 | Job detail downloaded the whole feed; jobs past 200 couldn't open | `server/homlo-direct-service.ts` (`getPublishedJob`), `server/routers.ts` (`homlo.publicJob`), `app/job/[id].tsx`, `app/_layout.tsx` | New single-job endpoint, same columns and visibility rules as the feed function. Detail page renders the cached feed copy instantly if there is one, then the single-job answer. Client invalidates it with `publicJobs` | Rows sent to open one job | up to 200 (with descriptions) | 1 | `perf-direct-reads.test.ts` |
+| 11 | Signed-in reads went server → edge function → 3 Supabase hops | `server/homlo-direct-service.ts` (`read`), `server/routers.ts` | `profile.get`, `application.list`, `application.for-job`, `messaging.conversations`, `notifications.list`, `account.get` read Postgres directly via the same security-definer functions, JSON built by Postgres (`json_agg` / `row_to_json`, as PostgREST does). Inactive accounts, non-uuid ids and any direct failure fall back to the gateway, so errors are unchanged | Network hops to Supabase per read | 3 (+ edge cold start) | 1 (`account.get`: 2 in parallel) | `perf-direct-reads.test.ts` (gateway call count = 0) |
+| 12 | Caches per instance; other instances stale up to ~5 min after a write | `server/_core/cache-bus.ts`, `server/_core/index.ts` | Postgres `NOTIFY homlo_cache_invalidate` after each listing write; every instance `LISTEN`s and clears its caches. Payload = random instance id only. Best effort: if LISTEN isn't available it logs once and behaves as before. `CACHE_BUS=off` disables | Staleness on other instances after a write | up to TTL + 5 min | ~network latency | unit test with a fake pub/sub; **live LISTEN through your pooler: could not measure** |
+| 13 | No statement timeout | `backend/infrastructure/database/query-metrics.ts`, `SupabaseAdapter.ts` | Every adapter query is cancelled on the server (postgres.js `cancel()`) after `DB_QUERY_TIMEOUT_MS` (default 15 s). Chosen over a `statement_timeout` startup parameter, which the Supabase pooler may not pass through | Max time one query can hold a connection | unbounded | 15 s | unit test |
+| 14 | No per-request query count / request id in logs | `server/_core/index.ts`, `query-metrics.ts` | One JSON log line per API request: `requestId, method, route, status, durationMs, queries, dbMs`. `x-request-id` echoed or generated. No query strings, bodies or user data. `REQUEST_LOG=off` silences it | — | — | — | `request-metrics.test.ts` |
+| 15 | Radius search computed `acos()` for every open job | `061_search_radius_and_total.sql` (+ `supabase/migrations/20261120210000_…`) | Lat/lng bounding box in front of the distance check (always contains the circle, so same results) — can use `idx_jobs_location` | Rows given to `acos()` | every open job | jobs inside the box | **could not measure** (needs EXPLAIN) |
+| 16 | `searchJobs.total` was the page size | same migration + `searchJobsUncached` | `count(*) over ()` → real match count; stripped from job rows; falls back to the old value until 061 is applied. No client code reads `total` today | `total` | page size | match count | `perf-direct-reads.test.ts` |
+| 17 | No API compression | `server/_core/index.ts`, `package.json` (`compression@1.8.1`, already in the lockfile as a transitive dep), `types/compression.d.ts` | gzip above 1 KB when the client accepts it | Bytes over the wire | **could not measure** without data (JSON typically 4–6× smaller) | — | `request-metrics.test.ts` checks a gzip response decodes to the same JSON |
+| 18 | Unused font packages in `package.json` | `package.json`, `pnpm-lock.yaml` | Removed `@expo-google-fonts/manrope` and `@expo-google-fonts/space-grotesk` (nothing imports them) | — | — | — | `pnpm-lock.yaml` has 0 references |
+| 19 | Large PNGs | 13 referenced PNGs in `assets/images/` | Lossless re-deflate (pixel data verified byte-identical) | Total size | 3,182,901 B | 2,840,987 B (−11%) | `stat` |
+| 20 | No CI guardrails | `.github/workflows/perf-guardrails.yml`, `scripts/check-migrations.mjs`, `scripts/check-bundle-size.mjs` | CI runs typecheck, tests (incl. query budgets), migration lint, bundle-size limit | Android JS bundle | — | 9,737 KB measured; limit 10,240 KB | `expo export` run locally on 2026-11-20 |
+
+### How to apply round 2's migration
+
+`061_search_radius_and_total.sql` is a normal transactional migration (drop + recreate the search function, grants restored). Apply it with your usual flow. The server works before and after it.
+
+### Round 2 rollback
+
+| Change | How to undo | What breaks if undone |
+|---|---|---|
+| 061 search | re-run section 8 of `046_job_capacity_and_visibility.sql` | Nothing; `total` falls back to page size, radius search scans again |
+| Compression | remove `app.use(compression(...))` | Nothing; bigger responses |
+| Query timeout | `DB_QUERY_TIMEOUT_MS=600000` (or revert `queryWith`) | Nothing |
+| Request log | `REQUEST_LOG=off` | Nothing |
+| Cache bus | `CACHE_BUS=off` | Multi-instance staleness returns |
+| Direct reads | change `.read(ctx.supabaseAccessToken, ctx.homloUser, …)` back to `.invoke(ctx.supabaseAccessToken, …)` in `server/routers.ts` | Nothing; slower signed-in screens |
+| `homlo.publicJob` | revert `app/job/[id].tsx` to `usePublishedJobs()` | Detail downloads the full list again; jobs past 200 can't open |
+
+## 8. Open issues (still not fixed)
 
 | Priority | Issue | Why not fixed |
 |---|---|---|
-| High | Job detail (`app/job/[id].tsx:52`) loads the whole public feed (≤ 200 rows with descriptions) to show one job; jobs past the 200 cap can't be opened there | Needs a single-job endpoint and a rework of the detail page's data flow — larger behaviour risk than this pass allowed |
-| High | ~20 screens share `publicJobs`: no pagination, full `description` in the list, client-side filtering (incl. employer page matching by `employer_name`) | Changing the list shape touches every consumer; needs list/detail DTO split + cursor pagination |
-| High | Signed-in calls go server → edge function → 3 Supabase hops (`invoke()`) | Moving each action to a direct read is per-action work (the pattern exists: `listEmployerJobsDirect`) |
-| High | In-process caches are per instance; a write clears only the instance that took it. With 2+ instances other instances serve stale data up to TTL + 5 min stale window | Needs shared invalidation (Redis pub/sub or Postgres LISTEN/NOTIFY). Fine while you run one instance |
-| Med | No `statement_timeout` on the app's DB role/pool | DECISION NEEDED: set per-connection via postgres.js `connection: { statement_timeout }` (may not pass through the Supabase pooler — needs a staging test) or `alter role` (affects migrations too). Recommend testing the first on staging |
-| Med | Search radius uses Haversine `acos(...)` — no index can serve it; `ilike '%…%'` filters on description; OFFSET pagination | Rewrite of dynamic plpgsql; needs EXPLAIN data first |
-| Med | `homlo_list_conversations`, `homlo_list_employer_applications_detailed`, the new `allApplications`: no row cap; `homlo_list_messages` defaults to 500 | Adding caps truncates responses = behaviour change; needs paging in the UI |
-| Med | `homlo_list_employer_jobs_with_boosts`: per-job `count(distinct session_id)` over `job_events` | Needs a pre-aggregated views counter; schema change |
-| Med | No response compression (gzip) on the API | Needs the `compression` dependency or a proxy setting; hosting unknown — may already be done at the edge |
-| Low | `searchJobs` returns `total: rows.length` (page size, not match count) | Fixing changes a response value — DECISION NEEDED |
-| Low | Low-cardinality single-column indexes (`idx_jobs_status`, `idx_*_status`, `idx_profiles_role`) may be unused | Needs `pg_stat_user_indexes` from the live DB before dropping anything |
-| Low | `@expo-google-fonts/manrope` and `space-grotesk` still in `package.json`; two native map SDKs (`react-native-maps` + MapLibre) | Removing deps changes the lockfile / native build; do with a native rebuild |
-| Low | ~20 large PNGs (170–380 KB) displayed small | Each needs its display size checked; unreferenced ones (e.g. 10 MB `detail-page-part.mov`) are not bundled, so they cost nothing at runtime |
-| Low | No bundle-size or migration-lint CI check; no per-request query count in logs | Guardrail work for a follow-up |
+| Med | `publicJobs` is still one 200-row list (with descriptions) shared by ~20 screens, filtered on the device; no pagination | Splitting list/detail shapes and adding cursors touches every consumer screen — a redesign of the data flow. Compression (#17) and the detail endpoint (#10) remove most of the cost meanwhile |
+| Med | `homlo_list_conversations`, `homlo_list_employer_applications_detailed`, `employer.allApplications`: no row cap; `homlo_list_messages` default 500 | A cap silently drops rows the UI shows today = behaviour change. Needs paging in those screens first |
+| Med | `homlo_list_employer_jobs_with_boosts`: per-job `count(distinct session_id)` over `job_events` | Needs a pre-aggregated view counter (new table/trigger) |
+| Low | Employer page matches jobs by `employer_name` text on the device | Needs an employer id in the public job record (response shape change) |
+| Low | Low-cardinality single-column indexes may be unused | Needs `pg_stat_user_indexes` from the live DB before dropping anything |
+| Low | Two native map SDKs (`react-native-maps` + MapLibre) | Removing one needs a native rebuild and on-device testing of every map screen |
+| Low | Haversine `acos()` can return NaN for a job at the exact search point (float rounding > 1), excluding it | Pre-existing; fixing changes results. One-line fix: `acos(least(1, …))` — say if you want it |
+| Low | Lighthouse, load test, EXPLAIN plans not run | No staging access in this session — commands are in §3 and §5 |

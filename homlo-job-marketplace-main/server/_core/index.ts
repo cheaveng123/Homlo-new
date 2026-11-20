@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import compression from "compression";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -16,6 +17,14 @@ import { configureTrustProxy } from "./requestIp";
 import { createApiRateLimiters } from "./apiRateLimit";
 import { getHomloDirectService } from "../homlo-direct-service";
 import { shouldInvalidatePublicCaches } from "./write-invalidation";
+import { randomUUID } from "node:crypto";
+import { getCacheBus } from "./cache-bus";
+import {
+  currentRequestMetrics,
+  runWithExistingMetrics,
+  runWithRequestMetrics,
+  type RequestMetrics,
+} from "../../backend/infrastructure/database/query-metrics";
 
 validateProductionEnv();
 
@@ -41,11 +50,52 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{8,128}$/;
+
+/**
+ * PERF observability: one structured log line per API request with request
+ * id, route, status, duration, DB query count and DB time. No query strings,
+ * bodies, headers or user data are logged (the route is the path only; tRPC
+ * paths are procedure names). Set REQUEST_LOG=off to silence it.
+ */
+export function requestMetricsMiddleware(req: express.Request, res: express.Response, next: express.NextFunction): void {
+  const incoming = req.headers["x-request-id"];
+  const requestId = typeof incoming === "string" && REQUEST_ID_PATTERN.test(incoming) ? incoming : randomUUID();
+  res.setHeader("x-request-id", requestId);
+  const route = req.path;
+  const startedAt = Date.now();
+  const { metrics } = runWithRequestMetrics(() => {
+    res.locals.requestMetrics = currentRequestMetrics();
+    next();
+  });
+  res.on("finish", () => {
+    if (process.env.REQUEST_LOG === "off" || route.startsWith("/api/health")) return;
+    console.log(
+      JSON.stringify({
+        msg: "request",
+        requestId,
+        method: req.method,
+        route,
+        status: res.statusCode,
+        durationMs: Date.now() - startedAt,
+        queries: metrics.queries,
+        dbMs: metrics.dbMs,
+      }),
+    );
+  });
+}
+
 /** Build the Express app with all middleware. Exported for testing. */
 export function createApp() {
   const app = express();
 
   configureTrustProxy(app);
+  app.use(requestMetricsMiddleware);
+  // PERF: gzip API responses (the public job list is up to 200 rows with full
+  // descriptions; JSON text typically shrinks 4–6×). Only when the client
+  // sends Accept-Encoding, only above 1 KB. React Native's fetch, browsers
+  // and CDNs all decode it transparently; the JSON itself is unchanged.
+  app.use(compression({ threshold: 1024 }));
   app.use(createCorsMiddleware());
 
   const { trpcGeneral, trpcPublic, upload, feed } = createApiRateLimiters();
@@ -69,6 +119,13 @@ export function createApp() {
 
   app.use(express.json({ limit: DEFAULT_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_LIMIT, extended: true }));
+  // Body parsers resume on stream events; re-enter the request's metrics
+  // context so DB queries after this point are counted for this request.
+  app.use((_req, res, next) => {
+    const metrics = res.locals.requestMetrics as RequestMetrics | undefined;
+    if (metrics) runWithExistingMetrics(metrics, next);
+    else next();
+  });
 
   // PERF: server-side read caches (session, public jobs, search) are cleared
   // whenever a write request finishes, so posts/edits/applies/boosts appear
@@ -87,6 +144,8 @@ export function createApp() {
       if (shouldInvalidatePublicCaches(path)) {
         service.invalidateAfterWrite(service.getAccessToken(req));
         invalidateFeedCache();
+        // Tell the other server instances to clear theirs too.
+        void getCacheBus().then((bus) => bus.publish());
       } else {
         service.invalidateSessionAfterWrite(service.getAccessToken(req));
       }
@@ -164,5 +223,11 @@ export async function startServer() {
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
     void getHomloDirectService().warmUp();
+    void getCacheBus().then((bus) =>
+      bus.start(() => {
+        getHomloDirectService().invalidateAfterWrite(null);
+        invalidateFeedCache();
+      }),
+    );
   });
 }

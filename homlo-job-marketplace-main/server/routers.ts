@@ -245,12 +245,12 @@ export const appRouter = router({
   }),
   applications: router({
     list: supabaseProtectedProcedure.query(({ ctx }) =>
-      getHomloDirectService().invoke(ctx.supabaseAccessToken, "application.list"),
+      getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "application.list"),
     ),
     byJob: supabaseProtectedProcedure
       .input(z.object({ jobId: z.string().min(1).max(120) }))
       .query(({ ctx, input }) =>
-        getHomloDirectService().invoke(ctx.supabaseAccessToken, "application.for-job", {
+        getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "application.for-job", {
           jobId: input.jobId,
         }),
       ),
@@ -297,7 +297,7 @@ export const appRouter = router({
   }),
   profile: router({
     me: supabaseProtectedProcedure.query(({ ctx }) =>
-      getHomloDirectService().invoke(ctx.supabaseAccessToken, "profile.get"),
+      getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "profile.get"),
     ),
     save: supabaseProtectedProcedure
       .input(z.object({
@@ -313,6 +313,10 @@ export const appRouter = router({
   }),
     homlo: router({
     publicJobs: publicProcedure.query(() => getHomloDirectService().listPublishedJobs()),
+    /** PERF: one public job by id (job detail) instead of the whole list. */
+    publicJob: publicProcedure
+      .input(z.object({ id: z.string().trim().min(1).max(120) }))
+      .query(({ input }) => getHomloDirectService().getPublishedJob(input.id)),
     categories: publicProcedure.query(() => getHomloDirectService().listCategories()),
     employerProfile: publicProcedure
       .input(z.object({ name: z.string().trim().min(1).max(120) }))
@@ -383,7 +387,7 @@ export const appRouter = router({
     }),
     profile: router({
       get: supabaseProtectedProcedure.query(({ ctx }) =>
-        getHomloDirectService().invoke(ctx.supabaseAccessToken, "profile.get"),
+        getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "profile.get"),
       ),
       upsert: supabaseProtectedProcedure.input(profileInput).mutation(({ ctx, input }) =>
         getHomloDirectService().invoke(ctx.supabaseAccessToken, "profile.upsert", input),
@@ -399,14 +403,12 @@ export const appRouter = router({
     }),
     applications: router({
       list: supabaseProtectedProcedure.query(({ ctx }) =>
-        getHomloDirectService().invoke(ctx.supabaseAccessToken, "application.list"),
+        getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "application.list"),
       ),
       byJob: supabaseProtectedProcedure
         .input(z.object({ jobId: z.string().min(1).max(120) }))
         .query(({ ctx, input }) =>
-          getHomloDirectService().invoke<{ application: WorkerApplicationSummary | null }>(
-            ctx.supabaseAccessToken,
-            "application.for-job",
+          getHomloDirectService().read<{ application: WorkerApplicationSummary | null }>(ctx.supabaseAccessToken, ctx.homloUser, "application.for-job",
             input,
           ),
         ),
@@ -428,7 +430,7 @@ export const appRouter = router({
     }),
     notifications: router({
       list: supabaseProtectedProcedure.query(({ ctx }) =>
-        getHomloDirectService().invoke(ctx.supabaseAccessToken, "notifications.list"),
+        getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "notifications.list"),
       ),
       markRead: supabaseProtectedProcedure
         .input(z.object({ notificationId: z.string().uuid() }))
@@ -457,7 +459,7 @@ export const appRouter = router({
         .input(z.object({ confirm: z.literal("DELETE") }))
         .mutation(({ ctx }) => getHomloDirectService().deleteAccount(ctx.supabaseAccessToken, ctx.homloUser.id)),
       get: supabaseProtectedProcedure.query(({ ctx }) =>
-        getHomloDirectService().invoke(ctx.supabaseAccessToken, "account.get"),
+        getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "account.get"),
       ),
       /** The age given right after sign-up (null until the age step is done). */
       // Served by the app server straight from Postgres (not the edge gateway),
@@ -478,7 +480,7 @@ export const appRouter = router({
           getHomloDirectService().setUserAge(ctx.homloUser.id, input.age),
         ),
       subscription: supabaseProtectedProcedure.query(({ ctx }) =>
-        getHomloDirectService().invoke<{ account: { plan: string; plan_status: string } | null }>(ctx.supabaseAccessToken, "account.get").then(
+        getHomloDirectService().read<{ account: { plan: string; plan_status: string } | null }>(ctx.supabaseAccessToken, ctx.homloUser, "account.get").then(
           (res) => res.account ?? { plan: "free" as const, plan_status: "active" as const },
         ),
       ),
@@ -656,7 +658,7 @@ export const appRouter = router({
     }),
     messaging: router({
       conversations: supabaseProtectedProcedure.query(({ ctx }) =>
-        getHomloDirectService().invoke(ctx.supabaseAccessToken, "messaging.conversations"),
+        getHomloDirectService().read(ctx.supabaseAccessToken, ctx.homloUser, "messaging.conversations"),
       ),
       conversation: supabaseProtectedProcedure
         .input(z.object({ applicationId: z.string().uuid() }))

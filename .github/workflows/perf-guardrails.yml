@@ -1,0 +1,34 @@
+# Perf guardrails (see homlo-job-marketplace-main/docs/PERF_REPORT.md):
+#  - query-budget tests (part of the vitest suite) and type check
+#  - migration linter: no write-locking indexes, column drops or type rewrites
+#  - production bundle-size limit
+name: perf-guardrails
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+defaults:
+  run:
+    working-directory: homlo-job-marketplace-main
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: homlo-job-marketplace-main/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm check:migrations
+      - run: pnpm check:bundle

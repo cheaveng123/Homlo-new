@@ -27,16 +27,16 @@
     "ios": "expo run:ios",
     "qr": "node scripts/generate_qr.mjs",
     "eval:offline": "tsx scripts/run-evaluation.ts",
-    "check:release": "node scripts/check-release.mjs"
+    "check:release": "node scripts/check-release.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "check:bundle": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
     "@expo-google-fonts/figtree": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
-    "@expo-google-fonts/manrope": "0.4.1",
     "@expo-google-fonts/noto-sans-khmer": "^0.4.3",
     "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
-    "@expo-google-fonts/space-grotesk": "0.4.1",
     "@expo/metro-runtime": "~57.0.17",
     "@maplibre/maplibre-react-native": "^10",
     "@ptomasroos/react-native-multi-slider": "^2.2.2",
@@ -49,6 +49,7 @@
     "@trpc/react-query": "11.28.2",
     "@trpc/server": "11.28.2",
     "clsx": "^2.1.1",
+    "compression": "1.8.1",
     "cookie": "^1.1.1",
     "dotenv": "^16.6.1",
     "expo": "~57.0.29",

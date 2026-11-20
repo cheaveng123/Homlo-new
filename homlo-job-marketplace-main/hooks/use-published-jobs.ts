@@ -39,6 +39,11 @@ function toJobRecord(record: PublishedRecord): JobRecord {
   };
 }
 
+/** One public job record (list or single-job endpoint) → the app's job shape. */
+export function toLiveJob(record: PublishedRecord) {
+  return normalizePublishedJob(toJobRecord(record));
+}
+
 export function usePublishedJobs() {
   const query = trpc.homlo.publicJobs.useQuery(undefined, {
     // Home mounts its queries on every tab visit; render fresh data instantly

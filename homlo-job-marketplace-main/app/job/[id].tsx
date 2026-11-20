@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, StatusBar, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { getJob, useJobStore } from "@/components/job-store";
 import { mapJobToDetails } from "@/components/job-details/map-job-to-details";
-import { usePublishedJobs } from "@/hooks/use-published-jobs";
+import { toLiveJob } from "@/hooks/use-published-jobs";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { logJobEvent } from "@/lib/event-logging";
@@ -44,21 +44,34 @@ function initialsOf(name: string): string {
 export default function JobDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const {
-    jobs: availableJobs,
-    loading: liveJobsLoading,
-    error: liveJobsError,
-    refetch: jobsRefetch,
-  } = usePublishedJobs();
-  const liveJob =
-    availableJobs.find((candidate) => candidate.id === id) ?? getJob(id);
+  const canonical = isCanonicalJobId(id);
+  // PERF: fetch just this job (was: download the whole public feed, up to 200
+  // rows, and search it — and jobs past that cap could not be opened). If the
+  // feed is already in the client cache (opened from Home/Explore), its copy
+  // renders instantly while the single-job read confirms it.
+  const utils = trpc.useUtils();
+  const cachedRecord = useMemo(
+    () => utils.homlo.publicJobs.getData()?.jobs?.find((candidate) => candidate.id === id),
+    [utils, id],
+  );
+  const jobQuery = trpc.homlo.publicJob.useQuery(
+    { id: id ?? "" },
+    { enabled: canonical, staleTime: 60_000 },
+  );
+  const liveJobsLoading = canonical && jobQuery.data === undefined && !jobQuery.isError && !cachedRecord;
+  const liveJobsError = jobQuery.error;
+  const jobsRefetch = jobQuery.refetch;
+  const liveJob = useMemo(() => {
+    // The server's answer wins once it is in (it may say the job closed).
+    const record = jobQuery.data !== undefined ? jobQuery.data.job : cachedRecord;
+    return (record ? toLiveJob(record) : undefined) ?? getJob(id);
+  }, [jobQuery.data, cachedRecord, id]);
   const { isSaved, toggleSaved } = useJobStore();
   const { user } = useAuth();
   const [reportOpen, setReportOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [mapFullScreen, setMapFullScreen] = useState(false);
 
-  const canonical = isCanonicalJobId(id);
   const applicationQuery = trpc.homlo.applications.byJob.useQuery(
     { jobId: id },
     { enabled: Boolean(user) && canonical },
