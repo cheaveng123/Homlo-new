@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation, Easing, interpolate, useAnimatedProps, useAnimatedStyle, useReducedMotion,
-  useSharedValue, withDelay, withRepeat, withSpring, withTiming,
+  useSharedValue, withDelay, withRepeat, withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Icon } from './Icon';
@@ -10,6 +10,7 @@ import { copy } from './copy';
 import { colors, fonts, radii } from './theme';
 import type { ApplicationStatus } from './types';
 
+import { smooth } from '@/src/design/motion';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 function PulseRing({ delay, color }: { delay: number; color: string }) {
@@ -89,7 +90,7 @@ function AcceptedPanel() {
   const dash = useSharedValue(reduced ? 0 : 24);
   useEffect(() => {
     if (reduced) return;
-    pop.value = withSpring(1, { damping: 9, stiffness: 140 });
+    pop.value = smooth(1);
     dash.value = withDelay(350, withTiming(0, { duration: 500 }));
   }, [reduced, pop, dash]);
   const discStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));

@@ -16,6 +16,7 @@
 //     opening an applicant to mutate their pipeline status.
 
 import { useCallback, useMemo, useState } from "react";
+import { isNewApplicant } from "@/lib/new-applicants";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -25,6 +26,8 @@ import {
   type JobApplicantRow,
 } from "@/lib/job-management";
 import type { EmployerJob, JobApplicant } from "@/backend/domain/models";
+
+export { isNewApplicant };
 
 export type ApplicationsRange = "1w" | "1m" | "6m" | "1y";
 
@@ -159,15 +162,27 @@ export function useEmployerApplications(range: ApplicationsRange = "1m"): UseEmp
 
   // All jobs, not just live ones â€” closed and draft listings still hold the
   // applicants who applied while they were open.
-  const applicantResults = trpc.useQueries((t) =>
-    jobRows.map((job) => t.homlo.employer.applications({ jobId: job.id })),
-  );
+  // PERF: one query for every job's applicants (was one query per job).
+  const applicantsQuery = trpc.homlo.employer.allApplications.useQuery(undefined, {
+    enabled: enabled && jobRows.length > 0,
+  });
+
+  const rowsByJobId = useMemo(() => {
+    const map = new Map<string, JobApplicantRow[]>();
+    const rows = (applicantsQuery.data as { applications?: (JobApplicantRow & { job_id?: string })[] } | undefined)
+      ?.applications ?? [];
+    for (const row of rows) {
+      if (!row.job_id) continue;
+      const bucket = map.get(row.job_id);
+      if (bucket) bucket.push(row);
+      else map.set(row.job_id, [row]);
+    }
+    return map;
+  }, [applicantsQuery.data]);
 
   const rowsFor = useCallback(
-    (index: number): JobApplicantRow[] =>
-      ((applicantResults[index]?.data as { applications?: JobApplicantRow[] } | undefined)
-        ?.applications ?? NO_ROWS),
-    [applicantResults],
+    (index: number): JobApplicantRow[] => rowsByJobId.get(jobRows[index]?.id ?? "") ?? NO_ROWS,
+    [rowsByJobId, jobRows],
   );
 
   const jobs = useMemo(
@@ -229,7 +244,7 @@ export function useEmployerApplications(range: ApplicationsRange = "1m"): UseEmp
     () =>
       applications
         .map(withViewedState)
-        .filter((application) => application.isNew)
+        .filter(isNewApplicant)
         .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime()),
     [applications, withViewedState],
   );
@@ -240,7 +255,7 @@ export function useEmployerApplications(range: ApplicationsRange = "1m"): UseEmp
 
     let jobsWithNew = 0;
     for (const bucket of applicationsByJob.values()) {
-      if (bucket.some((application) => application.isNew)) jobsWithNew += 1;
+      if (bucket.some(isNewApplicant)) jobsWithNew += 1;
     }
 
     return {
@@ -262,7 +277,7 @@ export function useEmployerApplications(range: ApplicationsRange = "1m"): UseEmp
             jobId: job.id,
             jobTitle: job.title || "Untitled job",
             total: bucket.length,
-            unread: bucket.filter((application) => application.isNew).length,
+            unread: bucket.filter(isNewApplicant).length,
           };
         })
         .filter((entry) => entry.total > 0)
@@ -285,8 +300,11 @@ export function useEmployerApplications(range: ApplicationsRange = "1m"): UseEmp
       setPendingViewed((previous) => ({ ...previous, [applicationId]: stamp }));
       try {
         await markViewedMutation.mutateAsync({ applicationId });
-        // Every fan-out entry shares this path, so one invalidate refetches them all.
-        await utils.homlo.employer.applications.invalidate();
+        // Refresh both the dashboard's single list and any per-job views.
+        await Promise.all([
+          utils.homlo.employer.allApplications.invalidate(),
+          utils.homlo.employer.applications.invalidate(),
+        ]);
       } catch {
         // Roll back the optimistic receipt so the row returns to unread.
         setPendingViewed((previous) => {
@@ -299,15 +317,15 @@ export function useEmployerApplications(range: ApplicationsRange = "1m"): UseEmp
     [markViewedMutation, pendingViewed, utils],
   );
 
-  const isLoading = jobsQuery.isLoading || applicantResults.some((result) => result.isLoading);
-  const isError = jobsQuery.isError || applicantResults.some((result) => result.isError);
+  const isLoading = jobsQuery.isLoading || applicantsQuery.isLoading;
+  const isError = jobsQuery.isError || applicantsQuery.isError;
 
   const refetch = useCallback(async () => {
     await Promise.all([
       jobsQuery.refetch(),
-      ...applicantResults.map((result) => result.refetch()),
+      ...(jobRows.length > 0 ? [applicantsQuery.refetch()] : []),
     ]);
-  }, [applicantResults, jobsQuery]);
+  }, [applicantsQuery, jobsQuery, jobRows.length]);
 
   return {
     jobs,

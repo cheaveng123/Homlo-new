@@ -1,12 +1,12 @@
 // Stylised fallback map for platforms without the native map SDK (web).
 // Native builds resolve `JobsMap.native.tsx`, which shows the real device
 // location and real job coordinates. Both share `JobsMapProps`.
-import React, { useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { J, S } from '@/lib/jobsTheme';
 import { F } from '@/lib/profileTheme';
 import { useUserLocation } from '@/lib/use-user-location';
-import type { JobsMapJob, JobsMapProps } from './JobsMap.types';
+import type { JobsMapHandle, JobsMapJob, JobsMapProps } from './JobsMap.types';
 
 const K = 34; // px per km in the stylised map
 const ANGLES = [-2.3, -0.6, 0.9, 2.2, -1.4, 0.2, 1.8, -0.2, 2.7, 1.2];
@@ -22,13 +22,15 @@ function validPair(job: JobsMapJob): job is JobsMapJob & { latitude: number; lon
   );
 }
 
-export function JobsMap({ radiusKm, jobs, height = 400, center, onPressJob }: JobsMapProps) {
+export const JobsMap = forwardRef<JobsMapHandle, JobsMapProps>(function JobsMap({ radiusKm, jobs, height = 400, center, onPressJob, fill }, ref) {
+  // The stylised map has no camera; keep the handle so callers stay platform-agnostic.
+  useImperativeHandle(ref, () => ({ centerOn: () => {}, recenter: () => {} }), []);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const { location: userLocation } = useUserLocation({ requestOnMount: true });
   const origin = userLocation ?? center;
   const cx = box.w / 2, cy = box.h * 0.58, r = radiusKm * K;
   return (
-    <View style={[m.map, { height }]} onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+    <View style={[m.map, fill ? { flex: 1 } : { height }]} onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
       <View style={[m.park, { left: -20, top: 90, width: 150, height: 100 }]} />
       <View style={[m.park, { right: -30, bottom: 70, width: 160, height: 120 }]} />
       <View style={[m.water, { right: -70, top: -70, width: 220, height: 220 }]} />
@@ -61,7 +63,7 @@ export function JobsMap({ radiusKm, jobs, height = 400, center, onPressJob }: Jo
       </>)}
     </View>
   );
-}
+});
 
 const m = StyleSheet.create({
   map: { backgroundColor: '#E4EFEE', overflow: 'hidden' },

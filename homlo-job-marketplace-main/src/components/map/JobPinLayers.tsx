@@ -23,13 +23,6 @@ const pinStyle: SymbolLayerStyle = {
   iconIgnorePlacement: true,
 };
 
-const selectedPinStyle: SymbolLayerStyle = {
-  iconImage: ["get", "icon"] as const,
-  iconSize: 1.2,
-  iconAllowOverlap: true,
-  iconIgnorePlacement: true,
-};
-
 const clusterStyle: CircleLayerStyle = {
   circleColor: COLORS.primary,
   circleRadius: [
@@ -60,11 +53,6 @@ export function JobPinLayers({ jobs, selectedId, onPinPress }: JobPinLayersProps
   if (!MapLibre) return null;
 
   const { Images, SymbolLayer, CircleLayer } = MapLibre;
-
-  const jobsWithIcon = jobs.map((job) => ({
-    ...job,
-    icon: "job-suitcase",
-  }));
 
   return (
     <>

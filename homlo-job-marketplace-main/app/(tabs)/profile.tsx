@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
@@ -7,14 +7,18 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/ui/AppIcon";
-import { Button, Group, GroupLabel, RoundButton, Row, Sheet, Tag } from "@/components/profile/ProfileUI";
-import { ScreenContainer } from "@/components/screen-container";
+import { Button, Sheet } from "@/components/profile/ProfileUI";
+import { PlanFeatureCard, PrivacyGlyph, RowTag, SettingsGroup, SettingsRow, TermsGlyph } from "@/components/profile/SettingsParts";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { palette, durations } from "@/src/design/tokens";
+import { SMOOTH } from "@/src/design/motion";
+import { F as FT } from "@/components/vista/category/tokens";
 import { useAuth } from "@/hooks/use-auth";
 import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
 import { ProfileSkeleton } from "@/src/new/components/NewSkeletons";
 import { trpc } from "@/lib/trpc";
 import { haptic } from "@/lib/haptics";
-import { C, F, shadow } from "@/lib/profileTheme";
+import { C } from "@/lib/profileTheme";
 import { getProfilePhotoUrl, pickerImageToJpegDataUrl, uploadProfilePhotoBytes } from "@/lib/profile-photo";
 
 type GatewayProfile = { user_id: string; role: "worker" | "employer" | "both"; full_name: string; phone: string | null; bio: string | null; location_text: string | null; profile_photo_key: string | null; banner_image: string | null; verified: boolean | null; latitude: number | null; longitude: number | null };
@@ -33,10 +37,16 @@ type MergePatch = {
 
 const PLAN_LABEL: Record<string, string> = { free: "Free", pro: "Pro", enterprise: "Enterprise" };
 
+/** Standard entrance: rise 20pt, 600ms, SMOOTH, 70ms stagger. */
+const enter = (i: number) =>
+  FadeInDown.delay(i * 70).duration(durations.enter).easing(SMOOTH).withInitialValues({ opacity: 0, transform: [{ translateY: 20 }] });
+
 const BANNERS: [string, string, string][] = [
-  ['#073B42', '#0E7C86', '#3CB4BE'], ['#9A3412', '#D97706', '#F59E0B'], ['#0C4A6E', '#0284C7', '#0EA5E9'],
+  ['#14324A', '#0891B2', '#3CB4BE'], ['#9A3412', '#D97706', '#F59E0B'], ['#0C4A6E', '#0284C7', '#0EA5E9'],
   ['#4C1D95', '#7C3AED', '#A78BFA'], ['#1F2937', '#4B5563', '#6B7280'],
 ];
+
+const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim() || "";
 
 function looksLikeImage(value: string | null | undefined): value is string {
   return typeof value === "string" && value.length > 0 && (/^https?:\/\//i.test(value) || /^data:/i.test(value) || /^file:/i.test(value));
@@ -58,9 +68,10 @@ export default function ProfileScreen() {
   const accountQuery = trpc.homlo.account.get.useQuery(undefined, { enabled: Boolean(user) });
   const saveProfile = trpc.homlo.profile.upsert.useMutation({
     onSuccess: () => {
-      void profileQuery.refetch();
-      void accountQuery.refetch();
+      // PERF: one targeted refresh each (refetch() + invalidate() on the
+      // same query cancelled and re-sent the request).
       void utils.homlo.profile.get.invalidate();
+      void utils.homlo.account.get.invalidate();
     },
   });
 
@@ -101,10 +112,45 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!user || isLoading || authLoading) return;
-      setStatusBarStyle("light");
+      setStatusBarStyle("dark");
       return () => setStatusBarStyle("auto");
     }, [authLoading, isLoading, user]),
   );
+
+  // App Store 5.1.1(v): accounts can be deleted from inside the app.
+  const deleteAccountMutation = trpc.homlo.account.delete.useMutation();
+  const trustStatus = trpc.trust.status.useQuery(undefined, { enabled: Boolean(user) });
+  const [deleting, setDeleting] = useState(false);
+  const confirmDeleteAccount = () => {
+    if (deleting) return;
+    Alert.alert(
+      "Delete your account?",
+      "This permanently deletes your Homlo account: your profile, photos and job listings are removed and you can't sign in again. Messages you sent stay with the people you sent them to, shown as \"Deleted user\".\n\nIf you have an App Store subscription, cancel it in Settings → your name → Subscriptions — deleting the account doesn't stop App Store billing.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: () => {
+            setDeleting(true);
+            deleteAccountMutation
+              .mutateAsync({ confirm: "DELETE" })
+              .then(async () => {
+                await logout();
+                router.replace("/login");
+              })
+              .catch((error: unknown) => {
+                setDeleting(false);
+                Alert.alert(
+                  "Couldn't delete your account",
+                  error instanceof Error && error.message ? error.message : "Please check your connection and try again.",
+                );
+              });
+          },
+        },
+      ],
+    );
+  };
 
   const signOut = async () => {
     if (signingOut) return;
@@ -135,7 +181,8 @@ export default function ProfileScreen() {
     });
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
-    kind === 'banner' ? setBannerUri(asset.uri) : setAvatarUri(asset.uri);
+    if (kind === 'banner') setBannerUri(asset.uri);
+      else setAvatarUri(asset.uri);
     setSheet(null);
     if (uploading) return;
     haptic.light();
@@ -162,7 +209,8 @@ export default function ProfileScreen() {
     setUploading(kind);
     try {
       await mergeAndSave(kind === 'banner' ? { bannerImage: null } : { profilePhotoKey: null });
-      kind === 'banner' ? setBannerUri(null) : setAvatarUri(null);
+      if (kind === 'banner') setBannerUri(null);
+      else setAvatarUri(null);
       if (kind === 'banner') setBannerIdx(0);
       haptic.success();
     } catch {
@@ -175,7 +223,6 @@ export default function ProfileScreen() {
   if (showSkeleton) {
     return (
       <View style={s.page}>
-        <LinearGradient colors={['#CFEAEA', '#E6F4F4', C.bg]} style={s.wash} pointerEvents="none" />
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
           <ScrollView contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
             <ProfileSkeleton />
@@ -186,7 +233,21 @@ export default function ProfileScreen() {
   }
 
   if (!user) {
-    return <ScreenContainer className="flex-1" containerClassName="bg-[#F4F8F8]"><View style={s.loading}><AppIcon name="user" size={28} color="#0E7C86" /><Text style={s.loadingTitle}>Sign in to view your profile</Text><Pressable onPress={() => router.replace("/login" as never)} style={s.signInButton}><Text style={s.signInText}>Sign in</Text></Pressable></View></ScreenContainer>;
+    // BUGFIX: plain styles here — the className-based container collapsed this
+    // view so only the button showed (no icon, no title, not centred).
+    return (
+      <View style={s.signedOutRoot}>
+        <SafeAreaView edges={["top", "left", "right"]} style={s.signedOutSafe}>
+          <View style={s.loading}>
+            <AppIcon name="user" size={28} color="#0891B2" />
+            <Text style={s.loadingTitle}>Sign in to view your profile</Text>
+            <Pressable accessibilityRole="button" onPress={() => router.replace("/login" as never)} style={s.signInButton}>
+              <Text style={s.signInText}>Sign in</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
   }
 
   const shownBanner = bannerUri ?? cloudBannerUri;
@@ -194,7 +255,15 @@ export default function ProfileScreen() {
 
   return (
     <View style={s.page}>
-      <LinearGradient colors={['#CFEAEA', '#E6F4F4', C.bg]} style={s.wash} pointerEvents="none" />
+      {/* Soft header wash: the profile banner (or its gradient), faded into the page. */}
+      <View style={s.wash} pointerEvents="none">
+        {shownBanner ? (
+          <Image source={{ uri: shownBanner }} style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} resizeMode="cover" />
+        ) : (
+          <LinearGradient colors={BANNERS[bannerIdx]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }} style={[StyleSheet.absoluteFill, { opacity: 0.28 }]} />
+        )}
+        <LinearGradient colors={['rgba(243,246,245,0)', 'rgba(243,246,245,0.7)', palette.page]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+      </View>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView
           contentContainerStyle={s.body}
@@ -206,93 +275,88 @@ export default function ProfileScreen() {
                 setRefreshing(true);
                 Promise.allSettled([profileQuery.refetch(), accountQuery.refetch()]).finally(() => setRefreshing(false));
               }}
-              tintColor="#0E7C86"
-              colors={["#0E7C86"]}
+              tintColor={palette.cyan}
+              colors={[palette.cyan]}
             />
           }
         >
+          {/* Top bar: banner camera · title · settings */}
           <View style={s.top}>
-            <Text style={s.h1}>Profile</Text>
-            <RoundButton icon="gear" onPress={() => go('security')} />
+            <Pressable onPress={() => setSheet('banner')} accessibilityRole="button" accessibilityLabel="Change banner" style={({ pressed }) => [s.roundBtn, pressed && { opacity: 0.7 }]}>
+              <AppIcon name="image" size={20} color={palette.navy} />
+            </Pressable>
+            <Text style={s.topTitle} accessibilityRole="header">Profile</Text>
+            <Pressable onPress={() => go('security')} accessibilityRole="button" accessibilityLabel="Settings" style={({ pressed }) => [s.roundBtn, pressed && { opacity: 0.7 }]}>
+              <AppIcon name="gear" size={20} color={palette.navy} />
+            </Pressable>
           </View>
 
-          {/* Profile card: banner behind the avatar */}
-          <View style={s.card}>
-            <View style={s.banner}>
-              {shownBanner ? (
-                <Image source={{ uri: shownBanner }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-              ) : (
-                <>
-                  <LinearGradient colors={BANNERS[bannerIdx]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }} style={StyleSheet.absoluteFill} />
-                  <View style={[s.glow, { right: -30, top: -50, width: 150, height: 150, opacity: 0.16 }]} />
-                  <View style={[s.glow, { left: -40, bottom: -70, width: 160, height: 160, opacity: 0.12 }]} />
-                </>
-              )}
-              <RoundButton icon="cam" size={36} onPress={() => setSheet('banner')} style={s.bannerCam} />
-            </View>
-
+          {/* Identity */}
+          <Animated.View entering={enter(0)} style={s.identity}>
             <View style={s.avatarRing}>
               <View style={s.avatarClip}>
                 {shownAvatar ? (
                   <Image source={{ uri: shownAvatar }} style={StyleSheet.absoluteFill} />
                 ) : (
-                  <LinearGradient colors={[C.mint, C.forest]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatarFill}>
+                  <LinearGradient colors={[palette.cyan, palette.navy]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatarFill}>
                     <Text style={s.initials}>{initials || "H"}</Text>
                   </LinearGradient>
                 )}
               </View>
-              <Pressable onPress={() => setSheet('avatar')} hitSlop={8} style={s.avatarCam}>
-                <AppIcon name="cam" size={14} color={C.primary} />
+              <Pressable onPress={() => setSheet('avatar')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Change profile photo" style={s.avatarCam}>
+                <AppIcon name="cam" size={14} color={palette.navy} />
               </Pressable>
             </View>
-
             <Text style={s.name}>{displayName}</Text>
-            <Text style={s.subtitle}>{roleHeadline}</Text>
+            <Text style={s.subtitle}>{user?.email ?? roleHeadline}</Text>
             <View style={s.meta}>
-              <AppIcon name="pin" size={14} color={C.primary} />
+              <AppIcon name="pin" size={13} color={palette.muted} />
               <Text style={s.metaT}>{profile?.location_text || (virtualLocation ? "Virtual" : "Location to be confirmed")}</Text>
             </View>
+          </Animated.View>
 
-            <Button label="Edit Profile" icon="edit" shine onPress={() => go('edit')} style={{ marginTop: 16, alignSelf: 'center' }} />
+          <Animated.View entering={enter(1)}>
+            <PlanFeatureCard planId={account?.plan ?? 'free'} planLabel={planLabel} onPress={() => router.push('/account-plans' as never)} />
+          </Animated.View>
 
-            <View style={s.ready}>
-              <Text style={s.readyT}>{completion}% ready</Text>
-              <View style={s.bar}><View style={[s.barFill, { width: `${completion}%` }]} /></View>
-            </View>
-          </View>
+          <Animated.View entering={enter(2)} style={s.groupGap}>
+            <SettingsGroup>
+              <SettingsRow icon="edit" label="Edit profile" right={<RowTag>{`${completion}% complete`}</RowTag>} onPress={() => go('edit')} />
+              <SettingsRow icon="user" label="About you" onPress={() => go('about')} />
+              <SettingsRow icon="pin" label="Location" onPress={() => go('location')} />
+            </SettingsGroup>
+          </Animated.View>
 
-          <GroupLabel>Personal details</GroupLabel>
-          <Group>
-            <Row icon="user" label="About you" onPress={() => go('about')} />
-            <Row icon="pin" label="Location" onPress={() => go('location')} />
-            <Row icon="call" label="Contact number" onPress={() => go('contact')} />
-          </Group>
+          <Animated.View entering={enter(3)} style={s.groupGap}>
+            <SettingsGroup>
+              <SettingsRow icon="lang" label="Language" onPress={() => go('language')} />
+              <SettingsRow icon="sec" label="Application security" onPress={() => go('security')} />
+              <SettingsRow icon="pw" label="Change password" onPress={() => go('password')} />
+            </SettingsGroup>
+          </Animated.View>
 
-          <GroupLabel>Account</GroupLabel>
-          <Group>
-            <Row icon="brief" label="Employer workspace" onPress={() => go('employer')} />
-            <Row icon="clock" label="My applications" onPress={() => go('applications')} />
-            <Row icon="crown" label="Account plan" onPress={() => router.push('/account-plans' as never)} right={<Tag>{planLabel}</Tag>} />
-          </Group>
+          <Animated.View entering={enter(4)} style={s.groupGap}>
+            <SettingsGroup>
+              <SettingsRow icon="sec" label="Verify email & phone" onPress={() => router.push('/account/verify' as never)} />
+              <SettingsRow icon="sec" label="Privacy, data & subscription" onPress={() => router.push('/account/settings' as never)} />
+              {trustStatus.data?.isAdmin ? (
+                <SettingsRow icon="sec" label="Moderation dashboard" onPress={() => router.push('/admin' as never)} />
+              ) : null}
+              <SettingsRow icon={<PrivacyGlyph />} label="Privacy policy" onPress={() => router.push('/privacy' as never)} />
+              <SettingsRow icon={<TermsGlyph />} label="Terms of service" onPress={() => router.push('/terms' as never)} />
+              {/* App Store: users need a way to contact the developer from inside the app. */}
+              {!!SUPPORT_EMAIL && (
+                <SettingsRow icon="mail" label="Contact support" onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Homlo Jobs support")}`)} />
+              )}
+            </SettingsGroup>
+          </Animated.View>
 
-          <GroupLabel>Preferences</GroupLabel>
-          <Group>
-            <Row icon="lang" label="Language" onPress={() => go('language')} />
-            <Row icon="cur" label="Currencies" onPress={() => go('currencies')} />
-          </Group>
-
-          <GroupLabel>Security</GroupLabel>
-          <Group>
-            <Row icon="sec" label="Application Security" onPress={() => go('security')} />
-            <Row icon="dev" label="Manage Devices" onPress={() => go('devices')} />
-            <Row icon="pw" label="Change Password" onPress={() => go('password')} />
-          </Group>
-
-          <View style={{ marginTop: 18 }}>
-            <Group>
-              <Row icon="logout" label="Log out" danger onPress={() => void signOut()} />
-            </Group>
-          </View>
+          <Animated.View entering={enter(5)} style={s.groupGap}>
+            <SettingsGroup>
+              <SettingsRow icon="logout" label={signingOut ? "Logging out…" : "Log out"} danger onPress={() => void signOut()} />
+              <SettingsRow icon="trash" label={deleting ? "Deleting account…" : "Delete account"} danger onPress={confirmDeleteAccount} />
+            </SettingsGroup>
+          </Animated.View>
         </ScrollView>
       </SafeAreaView>
 
@@ -320,33 +384,39 @@ export default function ProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  page: { flex: 1, backgroundColor: C.bg },
-  wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 320 },
-  body: { paddingHorizontal: 20, paddingBottom: 28 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 18 },
-  h1: { fontFamily: F.h800, fontSize: 26, color: C.fg },
-  card: { backgroundColor: '#fff', borderRadius: 28, overflow: 'hidden', paddingBottom: 18, alignItems: 'center', ...shadow },
-  banner: { height: 116, alignSelf: 'stretch', overflow: 'hidden' },
-  glow: { position: 'absolute', borderRadius: 999, backgroundColor: '#fff' },
-  bannerCam: { position: 'absolute', right: 12, top: 12, backgroundColor: 'rgba(255,255,255,0.92)' },
-  avatarRing: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#fff', padding: 4, marginTop: -48, marginBottom: 10 },
+  page: { flex: 1, backgroundColor: palette.page },
+  wash: { position: 'absolute', top: 0, left: 0, right: 0, height: 300, overflow: 'hidden' },
+  body: { paddingHorizontal: 16, paddingBottom: 32 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+  topTitle: { fontFamily: FT.h, fontSize: 17, color: palette.navy },
+  roundBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.9)', borderWidth: 1, borderColor: '#E3E9EC',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  identity: { alignItems: 'center', marginTop: 10, marginBottom: 22 },
+  avatarRing: {
+    width: 96, height: 96, borderRadius: 48, backgroundColor: palette.surface, padding: 4,
+    shadowColor: '#06425A', shadowOpacity: 0.14, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 4,
+  },
   avatarClip: { flex: 1, borderRadius: 44, overflow: 'hidden' },
   avatarFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  initials: { fontFamily: F.h800, fontSize: 28, color: '#fff' },
-  avatarCam: { position: 'absolute', right: -2, bottom: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadow },
-  name: { fontFamily: F.h700, fontSize: 18, color: C.fg },
-  subtitle: { fontFamily: F.b400, fontSize: 13.5, color: C.muted, marginTop: 3 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 },
-  metaT: { fontFamily: F.b400, fontSize: 12.5, color: '#8A968E' },
-  ready: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, alignSelf: 'stretch', paddingHorizontal: 18 },
-  readyT: { fontFamily: F.b600, fontSize: 12.5, color: C.primary },
-  bar: { flex: 1, height: 6, borderRadius: 9, backgroundColor: C.mint100, overflow: 'hidden' },
-  barFill: { height: '100%', backgroundColor: C.mint },
+  initials: { fontFamily: FT.h, fontSize: 28, color: '#fff' },
+  avatarCam: {
+    position: 'absolute', right: -2, bottom: 2, width: 30, height: 30, borderRadius: 15, backgroundColor: palette.surface,
+    borderWidth: 1, borderColor: '#E3E9EC', alignItems: 'center', justifyContent: 'center',
+  },
+  name: { marginTop: 12, fontFamily: FT.h, fontSize: 22, color: palette.navy },
+  subtitle: { marginTop: 2, fontFamily: FT.m, fontSize: 13.5, color: palette.muted },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  metaT: { fontFamily: FT.m, fontSize: 12.5, color: palette.muted },
+  groupGap: { marginTop: 14 },
   swatches: { flexDirection: 'row', gap: 10, marginBottom: 8 },
   swatch: { width: 48, height: 48, borderRadius: 14 },
+  signedOutRoot: { backgroundColor: '#F3F6F5', flex: 1 },
+  signedOutSafe: { flex: 1 },
   loading: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 24 },
-  loadingTitle: { color: '#14272B', fontSize: 17, fontWeight: '800', marginTop: 6 },
-  loadingText: { color: '#58696B', fontSize: 14, fontWeight: '600' },
-  signInButton: { alignItems: 'center', backgroundColor: '#0E7C86', borderRadius: 12, justifyContent: 'center', marginTop: 18, minHeight: 48, paddingHorizontal: 22 },
+  loadingTitle: { color: '#12303C', fontSize: 17, fontWeight: '800', marginTop: 6 },
+  loadingText: { color: '#6A7C84', fontSize: 14, fontWeight: '600' },
+  signInButton: { alignItems: 'center', backgroundColor: '#0891B2', borderRadius: 12, justifyContent: 'center', marginTop: 18, minHeight: 48, paddingHorizontal: 22 },
   signInText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 });

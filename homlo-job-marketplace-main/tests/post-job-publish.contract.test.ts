@@ -12,7 +12,7 @@ describe("post-job banner publishing", () => {
     const draft = source.indexOf("toSaveInput(d, 'draft', { bannerImage: '' })");
     const convert = source.indexOf("pickerImageToJpegDataUrl({ uri: d.photoUri })");
     const upload = source.indexOf("uploadJobImage(draftId, image)");
-    const open = source.indexOf("toSaveInput(d, 'open', { bannerImage, jobId: draftId })");
+    const open = source.indexOf("toSaveInput(d, 'open', { bannerImage, jobId: draftId, trust })");
 
     expect(draft).toBeGreaterThan(-1);
     expect(convert).toBeGreaterThan(draft);
@@ -33,7 +33,7 @@ describe("post-job banner publishing", () => {
   it("publishes without the banner and alerts when the upload fails", () => {
     expect(source).toContain("bannerUploadFailed = true");
     expect(source).toContain("bannerImage = ''");
-    expect(source).toContain("toSaveInput(d, 'open', { bannerImage, jobId: draftId })");
+    expect(source).toContain("toSaveInput(d, 'open', { bannerImage, jobId: draftId, trust })");
     expect(source).toContain("Published without a photo");
   });
 

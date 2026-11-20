@@ -1,34 +1,28 @@
 import React from "react";
-import { Image, StyleSheet } from "react-native";
 import { MapLibre } from "../../native-support";
 import type { Coordinate } from "../../types";
-
-const SUITCASE = require("./assets/job-suitcase.png");
+import { JobMapPin } from "./JobMapPin";
 
 export type JobMarkerProps = {
   coordinate: Coordinate;
+  /** Job category / field; picks the pin glyph. */
+  category?: string | null;
   anchor?: { x: number; y: number };
 };
 
-export function JobMarker({ coordinate, anchor = { x: 0.5, y: 1 } }: JobMarkerProps) {
+/** Single job destination pin (job detail map). Live view, so it animates in. */
+export function JobMarker({ coordinate, category, anchor = { x: 0.5, y: 1 } }: JobMarkerProps) {
   if (!MapLibre) return null;
 
-  const { PointAnnotation } = MapLibre;
+  const { MarkerView } = MapLibre;
 
   return (
-    <PointAnnotation
-      id="job-detail-marker"
+    <MarkerView
       coordinate={[coordinate.longitude, coordinate.latitude]}
       anchor={anchor}
+      allowOverlap
     >
-      <Image source={SUITCASE} style={styles.markerImage} />
-    </PointAnnotation>
+      <JobMapPin category={category} selected />
+    </MarkerView>
   );
 }
-
-const styles = StyleSheet.create({
-  markerImage: {
-    width: 32,
-    height: 32,
-  },
-});

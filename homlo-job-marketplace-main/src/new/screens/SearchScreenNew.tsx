@@ -1,10 +1,9 @@
-import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 import { AppIconNameNew, AppIconNew } from '../icons/AppIconNew';
 import { TextNew } from '../components/TextNew';
-import { ChipNew, IconDiscNew, PressableScaleNew, RoundButtonNew, SectionTitleNew } from '../components/PrimitivesNew';
+import { ChipNew, IconDiscNew, PressableScaleNew, SectionTitleNew } from '../components/PrimitivesNew';
 import { SearchPillNew } from '../components/SearchPillNew';
 import { colorsNew } from '../theme/tokensNew';
 import { useCopyNew } from '../theme/copyNew';
@@ -60,14 +59,14 @@ export function SearchScreenNew(p: Props) {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
         {p.recent.length > 0 && (
           <Animated.View entering={enter(1)}>
-            <SectionTitleNew title={copy.search.recent} icon="hist" actionLabel={p.onClearRecent ? copy.common.clear : undefined} onAction={p.onClearRecent} />
+            <SectionTitleNew title={copy.search.recent} glyph="recent" actionLabel={p.onClearRecent ? copy.common.clear : undefined} onAction={p.onClearRecent} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16 }}>
               {p.recent.map((r) => <ChipNew key={r} size="lg" icon="hist" label={r} onPress={() => p.onPressRecent(r)} onLongPress={p.onRemoveRecent ? () => p.onRemoveRecent?.(r) : undefined} />)}
             </View>
           </Animated.View>
         )}
         <Animated.View entering={enter(2)}>
-          <SectionTitleNew title={copy.search.suggestions} icon="search" />
+          <SectionTitleNew title={copy.search.suggestions} glyph="suggestions" />
           {p.suggestions.map((s) => (
             <PressableScaleNew key={s.id} onPress={() => p.onPressSuggestion(s)} style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 }}>
               <IconDiscNew icon={KIND_ICON[s.kind]} size={36} />
@@ -77,7 +76,7 @@ export function SearchScreenNew(p: Props) {
           ))}
         </Animated.View>
         <Animated.View entering={enter(3)}>
-          <SectionTitleNew title={copy.search.trending} icon="trend" />
+          <SectionTitleNew title={copy.search.trending} glyph="trending" />
           {p.trending.map((t) => (
             <PressableScaleNew key={t.id} onPress={() => p.onPressTrending(t)} style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 }}>
               <IconDiscNew icon="trend" size={36} />

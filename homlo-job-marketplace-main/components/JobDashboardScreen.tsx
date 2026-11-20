@@ -343,7 +343,7 @@ export default function JobDashboardScreen() {
       const now = Date.now();
       if (now < lockUntilRef.current) return;
       lockUntilRef.current = now + 400;
-      haptic.light();
+      // Haptic feedback is played by BottomTabBar itself.
       router.push(target);
     },
     [pathname, router],

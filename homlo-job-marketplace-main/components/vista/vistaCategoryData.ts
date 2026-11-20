@@ -14,6 +14,7 @@ export type VistaJob = {
   // Optional display fields (Category detail redesign). All may be missing.
   area?: string; // raw location text; the page maps it onto a Phnom Penh area
   postedAt?: string; // ISO timestamp, for "2h ago" and the "New" chip
+  postedText?: string; // ready-made label ("Posted 3 days ago") when no timestamp is available
   schedule?: string; // e.g. "Mon–Sat · 8h"; falls back to a label by job type
   logoUrl?: string | null; // employer photo or logo URL
   payUnit?: '/hr' | '/day' | '/mo'; // pay suffix; falls back to the job kind

@@ -51,7 +51,7 @@ export function toCoordinate(
 }
 
 export function normalizeJobPin(
-  job: Pick<JobPin, "id" | "title"> & {
+  job: Pick<JobPin, "id" | "title" | "category" | "label" | "subtitle"> & {
     latitude: unknown;
     longitude: unknown;
   },
@@ -70,6 +70,9 @@ export function normalizeJobPin(
     title: job.title,
     latitude: coordinate.latitude,
     longitude: coordinate.longitude,
+    category: job.category ?? null,
+    label: job.label ?? null,
+    subtitle: job.subtitle ?? null,
   };
 }
 
@@ -143,7 +146,7 @@ export function lineFeature(
 }
 
 export function jobsFeatureCollection(
-  jobs: Array<JobPin & { distanceKm: number }>,
+  jobs: (JobPin & { distanceKm: number })[],
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",

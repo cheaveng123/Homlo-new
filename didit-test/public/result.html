@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verification result</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <p><a href="/">← New verification</a></p>
+    <h1>Verification result</h1>
+    <p class="muted">Session <code id="sid"></code></p>
+    <p id="status" class="badge">Loading…</p>
+    <div id="out"></div>
+  </main>
+  <script>
+    const sessionId = location.pathname.split('/').pop();
+    document.getElementById('sid').textContent = sessionId;
+    const esc = (v) => String(v ?? '—').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const yn = (v) => v == null ? '—' : v ? 'Yes' : 'No';
+    const rows = (pairs) => '<table>' + pairs.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('') + '</table>';
+
+    function render(d) {
+      const st = document.getElementById('status');
+      st.textContent = d.status + (d.final ? '' : ' (waiting for Didit…)');
+      st.dataset.s = d.status;
+      const s = d.summary;
+      if (!s) { document.getElementById('out').innerHTML = '<p class="muted">No decision yet.</p>'; return; }
+      const doc = s.document || {};
+      let html = '';
+      if (s.environment === 'sandbox') html += '<p class="muted">Sandbox: data below is mocked by Didit, not read from your document.</p>';
+      if (s.reasons.length) html += '<h2>Reasons</h2><ul>' + s.reasons.map(r => `<li>${esc(r)}</li>`).join('') + '</ul>';
+      html += '<h2>Document</h2>' + rows([
+        ['Name', doc.fullName], ['Date of birth', doc.dateOfBirth], ['Document type', doc.documentType],
+        ['Document number', doc.documentNumber], ['Expiry', doc.expirationDate],
+        ['Nationality', doc.nationality], ['Issuing state', doc.issuingState],
+      ]);
+      html += '<h2>Age</h2>' + rows([
+        ['Age (from DOB)', s.age.fromDob], ['18+', yn(s.age.isAdult)], ['Age reported by Didit', s.age.diditAge],
+        ['Estimated from selfie', s.age.estimatedFromSelfie],
+      ]);
+      html += '<h2>Biometrics</h2>' + rows([
+        ['Liveness', s.liveness && `${s.liveness.status} (${s.liveness.method ?? '?'}, score ${s.liveness.score ?? '—'})`],
+        ['Face match', s.faceMatch && `${s.faceMatch.status} (score ${s.faceMatch.score ?? '—'})`],
+        ...(s.ipAnalysis ? [['IP analysis', `${s.ipAnalysis.status}, ${s.ipAnalysis.country ?? '?'}, VPN/Tor ${yn(s.ipAnalysis.vpnOrTor)}`]] : []),
+      ]);
+      html += '<h2>Warnings</h2>' + (s.warnings.length
+        ? '<ul>' + s.warnings.map(w => `<li><b>${esc(w.risk)}</b> <span class="muted">[${esc(w.feature)}, ${esc(w.level)}]</span> ${esc(w.message)}</li>`).join('') + '</ul>'
+        : '<p class="muted">None</p>');
+      document.getElementById('out').innerHTML = html;
+    }
+
+    async function load() {
+      const r = await fetch('/api/result/' + encodeURIComponent(sessionId));
+      const d = await r.json();
+      if (!r.ok) { document.getElementById('status').textContent = 'Error: ' + d.error; return; }
+      render(d);
+      if (!d.final) setTimeout(load, 4000);
+    }
+    load();
+  </script>
+</body>
+</html>

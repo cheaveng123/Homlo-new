@@ -1,4 +1,5 @@
 import { createClient, type User } from "@supabase/supabase-js";
+import { getSharedSql } from "./shared-pool";
 import postgres from "postgres";
 
 import type { DatabaseAdapter, QueryResult, SqlParameter } from "./DatabaseAdapter";
@@ -65,14 +66,8 @@ export class SupabaseAdapter implements DatabaseAdapter {
     this.storageClient = createClient(config.url, config.serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    this.sql = config.databaseUrl
-      ? postgres(config.databaseUrl, {
-          idle_timeout: 20,
-          max: 10,
-          prepare: true,
-          ssl: "require",
-        })
-      : null;
+    // One shared pool per process (see shared-pool.ts for why).
+    this.sql = config.databaseUrl ? getSharedSql(config.databaseUrl) : null;
   }
 
   async query<Row extends Record<string, unknown> = Record<string, unknown>>(
@@ -103,10 +98,31 @@ export class SupabaseAdapter implements DatabaseAdapter {
     if (error) throw new Error(`Unable to delete storage object: ${error.message}`);
   }
 
+  /** Deletes the Supabase auth user (account deletion). Missing users are fine. */
+  async deleteAuthUser(authUserId: string): Promise<void> {
+    const { error } = await this.client.auth.admin.deleteUser(authUserId);
+    if (error && (error as { status?: number }).status !== 404) {
+      throw new Error(`Unable to delete the sign-in account: ${error.message}`);
+    }
+  }
+
   async verifySupabaseToken(token: string): Promise<User | null> {
     const getUser = this.client.auth.getUser(token);
-    const { data, error } = await promiseWithTimeout(getUser, RPC_TIMEOUT_MS);
-    if (error) return null;
+    let result: Awaited<typeof getUser>;
+    try {
+      result = await promiseWithTimeout(getUser, RPC_TIMEOUT_MS);
+    } catch (cause) {
+      // Timeout / transport failure: the token may be fine.
+      throw Object.assign(new Error(cause instanceof Error ? cause.message : "Auth check timed out"), { authUnavailable: true });
+    }
+    const { data, error } = result;
+    if (error) {
+      // BUGFIX: only a real rejection means "invalid token". A network error or
+      // Supabase 5xx used to look identical, so an outage signed users out.
+      const status = (error as { status?: number }).status;
+      if (typeof status === "number" && status >= 400 && status < 500) return null;
+      throw Object.assign(new Error(this.describeAuthError(error)), { authUnavailable: true });
+    }
     return data.user ?? null;
   }
 
@@ -140,6 +156,38 @@ export class SupabaseAdapter implements DatabaseAdapter {
     return { user: data.user ?? null, session: mapIssuedSession(data.session) };
   }
 
+  /**
+   * Creates the account already email-confirmed (service-role admin API) and
+   * immediately signs it in, so a new member is logged in on account creation
+   * regardless of the project's "Confirm email" setting.
+   *
+   * Throws when the account cannot be created (including when the address is
+   * already registered — the route answers that with the same generic error as
+   * any other failure, so sign-up never reveals which emails have accounts).
+   * If the account is created but the follow-up sign-in fails, returns
+   * `session: null` so the caller can ask the person to log in normally.
+   */
+  async createConfirmedUserAndSignIn(
+    email: string,
+    password: string,
+    fullName?: string,
+  ): Promise<{ user: User | null; session: SupabaseIssuedSession | null }> {
+    const { data: created, error: createError } = await this.client.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: fullName ? { full_name: fullName } : undefined,
+    });
+    if (createError) throw new Error(this.describeAuthError(createError));
+
+    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.error("[SupabaseAdapter] account created but auto sign-in failed", this.describeAuthError(error));
+      return { user: created.user ?? null, session: null };
+    }
+    return { user: data.user ?? created.user ?? null, session: mapIssuedSession(data.session) };
+  }
+
   async signInWithEmailPassword(email: string, password: string): Promise<{ user: User | null; session: SupabaseIssuedSession | null }> {
     const { data, error } = await this.client.auth.signInWithPassword({ email, password });
     if (error) throw new Error(this.describeAuthError(error));
@@ -163,15 +211,24 @@ export class SupabaseAdapter implements DatabaseAdapter {
   }
 
   async invokeAuthenticatedFunction<T>(functionName: string, accessToken: string, body: Record<string, unknown>): Promise<T> {
-    const response = await fetchWithTimeout(`${this.url}/functions/v1/${functionName}`, {
-      method: "POST",
-      headers: {
-        apikey: this.serviceRoleKey,
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }, RPC_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(`${this.url}/functions/v1/${functionName}`, {
+        method: "POST",
+        headers: {
+          apikey: this.serviceRoleKey,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }, RPC_TIMEOUT_MS);
+    } catch (cause) {
+      // Timeout / network: a temporary outage, not a bad session.
+      throw Object.assign(new Error(cause instanceof Error ? cause.message : "Supabase service request failed"), {
+        authUnavailable: true,
+        status: 503,
+      });
+    }
     const data = await response.json().catch(() => ({ error: "Supabase service request failed" }));
     if (!response.ok) {
       console.error("[supabase:gateway] authenticated function failed", {
@@ -180,7 +237,13 @@ export class SupabaseAdapter implements DatabaseAdapter {
         statusText: response.statusText,
         response: data,
       });
-      throw new Error(typeof data?.error === "string" ? data.error : "Supabase service request failed");
+      // BUGFIX: carry the status so callers can tell a rejected session (4xx)
+      // from an edge-function outage/cold-start failure (5xx), which used to
+      // be reported as "not authenticated" and sign the user out.
+      throw Object.assign(new Error(typeof data?.error === "string" ? data.error : "Supabase service request failed"), {
+        status: response.status,
+        authUnavailable: response.status >= 500,
+      });
     }
     return data as T;
   }
@@ -249,6 +312,21 @@ async function queryWith<Row extends Record<string, unknown>>(
   statement: string,
   parameters: readonly SqlParameter[],
 ): Promise<QueryResult<Row>> {
+  const startedAt = Date.now();
   const rows = (await executor.unsafe(statement, [...parameters])) as Row[];
+  logIfSlow(statement, Date.now() - startedAt, rows.length);
   return { rows, rowCount: rows.length };
+}
+
+/**
+ * PERF guardrail: logs any query slower than SLOW_QUERY_MS (default 200ms).
+ * Only the SQL text (with $n placeholders) is logged — never the parameter
+ * values, so no emails, tokens or user ids reach the logs.
+ */
+const SLOW_QUERY_MS = Number(process.env.SLOW_QUERY_MS) > 0 ? Number(process.env.SLOW_QUERY_MS) : 200;
+
+export function logIfSlow(statement: string, durationMs: number, rowCount: number): void {
+  if (durationMs < SLOW_QUERY_MS) return;
+  const sql = statement.replace(/\s+/g, " ").trim().slice(0, 200);
+  console.warn(`[db] slow query ${durationMs}ms rows=${rowCount}: ${sql}`);
 }

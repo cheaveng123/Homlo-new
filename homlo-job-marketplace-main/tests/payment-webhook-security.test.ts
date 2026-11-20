@@ -1,11 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { boostPaymentWebhookHandler, errorResponse } from "../server/hlPlanBoostHandlers";
 import { PlanBoostError } from "../server/hlPlanBoostService";
 import type { PlanBoostDb } from "../server/hlPlanBoostService";
 
 function makeDb(boostRows: any[], jobRows: any[]): PlanBoostDb {
   return {
-    query: async <T = any>(text: string, params?: unknown[]) => {
+    query: async (text: string, params?: unknown[]) => {
       const rows: any[] = [];
       if (text.includes("job_boosts") && text.includes("where id = $1")) {
         rows.push(...boostRows.filter((b) => b.id === params?.[0]));
@@ -145,21 +145,34 @@ describe("boostPaymentWebhookHandler security", () => {
 });
 
 describe("payment fail-closed integration", () => {
+  const originalEnv = { APP_ENV: process.env.APP_ENV, MODE: process.env.HOMLO_PAYMENT_VERIFICATION_MODE };
+  afterEach(() => {
+    // Don't leak production settings into other tests.
+    if (originalEnv.APP_ENV === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = originalEnv.APP_ENV;
+    if (originalEnv.MODE === undefined) delete process.env.HOMLO_PAYMENT_VERIFICATION_MODE;
+    else process.env.HOMLO_PAYMENT_VERIFICATION_MODE = originalEnv.MODE;
+    vi.resetModules();
+  });
+
   it("rejects payment when verifyPaymentResult returns failed", async () => {
     // Simulates the gateway's boost.verify-payment path: the client supplies
     // simulateResult=completed but production mode ignores it.
-    const { verifyPaymentResult } = await import("../lib/paymentSession");
+    // lib/paymentSession reads env at import time: set it first, then load a fresh copy.
     process.env.APP_ENV = "production";
     process.env.HOMLO_PAYMENT_VERIFICATION_MODE = "simulated";
+    vi.resetModules();
+    const { verifyPaymentResult } = await import("../lib/paymentSession");
 
     expect(verifyPaymentResult({ simulateResult: "completed" })).toBe("failed");
     expect(verifyPaymentResult({ provider: "aba_payway", providerEventId: "evt-1" })).toBe("failed");
   });
 
   it("rejects payment in webhook mode (real verification not implemented)", async () => {
-    const { verifyPaymentResult } = await import("../lib/paymentSession");
     process.env.APP_ENV = "production";
     process.env.HOMLO_PAYMENT_VERIFICATION_MODE = "webhook";
+    vi.resetModules();
+    const { verifyPaymentResult } = await import("../lib/paymentSession");
 
     expect(verifyPaymentResult({ simulateResult: "completed" })).toBe("failed");
     expect(verifyPaymentResult({ provider: "aba_payway", providerEventId: "evt-1" })).toBe("failed");

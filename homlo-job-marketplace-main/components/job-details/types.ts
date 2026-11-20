@@ -18,6 +18,12 @@ export type JobDetails = {
   spotsRemaining?: number; // drives position urgency; not displayed as "left"
   description: string;
   requirements: string[];
+  /** Work days label, e.g. "Mon–Fri"; null = not set by the employer. */
+  workDays?: string | null;
+  /** Clock-in to clock-out, e.g. "8:00 AM – 5:00 PM"; null = not set. */
+  workHours?: string | null;
+  /** Work days as keys ('mon'..'sun'). */
+  workDayKeys?: string[];
   employerVerified: boolean;
   employerSubtitle: string; // e.g. "Posts jobs often · Replies within a day"
   /**

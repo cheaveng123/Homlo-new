@@ -2,6 +2,20 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import http from "http";
 import { type AddressInfo } from "node:net";
 
+// Trust & safety steps around sign-up talk to Postgres; stub them here.
+vi.mock("../server/plan-boost-db", () => ({ getPlanBoostDb: () => ({ query: async () => ({ rows: [] }) }) }));
+vi.mock("../server/trust/accounts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/trust/accounts")>()),
+  isBlockedFromSignup: async () => false,
+  ipMatchesBannedAccount: async () => false,
+  recordDevice: async () => undefined,
+  sendEmailVerification: async () => undefined,
+}));
+vi.mock("../server/trust/consent", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../server/trust/consent")>()),
+  recordConsent: async () => ({ id: "consent-id", createdAt: new Date(0).toISOString() }),
+}));
+
 import { createApp } from "../server/_core/index";
 import {
   getHomloDirectService,
@@ -119,12 +133,14 @@ describe("Supabase auth HTTP routes (real server, no credentials needed)", () =>
     const existing = await request("POST", "/api/supabase-auth/sign-up", {
       email: "existing@example.com",
       password: "password123",
+      acceptTerms: true,
     });
 
     signUp.mockRejectedValueOnce(new Error("database unavailable"));
     const otherFailure = await request("POST", "/api/supabase-auth/sign-up", {
       email: "new@example.com",
       password: "password123",
+      acceptTerms: true,
     });
 
     expect(existing.status).toBe(400);
@@ -132,6 +148,20 @@ describe("Supabase auth HTTP routes (real server, no credentials needed)", () =>
     expect(JSON.parse(existing.body)).toEqual({ error: "Unable to create account" });
     expect(existing.body).not.toContain("already registered");
     expect(log).toHaveBeenCalledWith("[supabase-auth] sign-up failed", expect.any(Error));
+  });
+
+  it("refuses sign-up without the 18+ / Terms consent, before creating any account", async () => {
+    const signUp = vi.spyOn(getHomloDirectService(), "signUp");
+    for (const acceptTerms of [undefined, false]) {
+      const result = await request("POST", "/api/supabase-auth/sign-up", {
+        email: "new@example.com",
+        password: "password123",
+        acceptTerms,
+      });
+      expect(result.status).toBe(400);
+      expect(JSON.parse(result.body).error).toMatch(/18 or older/);
+    }
+    expect(signUp).not.toHaveBeenCalled();
   });
 
   it("returns 429 from sign-up when Supabase reports an email rate limit", async () => {
@@ -143,6 +173,7 @@ describe("Supabase auth HTTP routes (real server, no credentials needed)", () =>
     const result = await request("POST", "/api/supabase-auth/sign-up", {
       email: "new@example.com",
       password: "password123",
+      acceptTerms: true,
     });
 
     expect(result.status).toBe(429);

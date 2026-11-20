@@ -1,26 +1,6 @@
 /* eslint-disable-next-line import/no-unresolved -- jsr: specifiers are resolved by the Deno edge runtime, not the Node resolver */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-type AuthUser = { id: string; email?: string | null; user_metadata?: { full_name?: string | null; name?: string | null } };
-
-type WorkerApplicationRow = {
-  id: string;
-  job_id: string;
-  status: string;
-  message: string | null;
-  created_at: string;
-  updated_at: string;
-  job_title: string;
-  job_location_text: string | null;
-  employer_id: string;
-  employer_name: string | null;
-  banner_image: string | null;
-  pay_amount: number | string | null;
-  pay_currency: string | null;
-  pay_type: string | null;
-  work_arrangement: string | null;
-};
-
 // Payment verification is normally performed by a provider webhook that the
 // server confirms against a shared secret. This gateway has no live merchant
 // credentials, so verification in this deployment is "simulated": it still
@@ -47,6 +27,26 @@ import {
   type PaymentOwnershipRow,
   type SubscriptionPlan,
 } from "../_shared/paymentRules.ts";
+
+type AuthUser = { id: string; email?: string | null; user_metadata?: { full_name?: string | null; name?: string | null } };
+
+type WorkerApplicationRow = {
+  id: string;
+  job_id: string;
+  status: string;
+  message: string | null;
+  created_at: string;
+  updated_at: string;
+  job_title: string;
+  job_location_text: string | null;
+  employer_id: string;
+  employer_name: string | null;
+  banner_image: string | null;
+  pay_amount: number | string | null;
+  pay_currency: string | null;
+  pay_type: string | null;
+  work_arrangement: string | null;
+};
 
 const WORK_ARRANGEMENTS: readonly string[] = ["On-site", "Hybrid", "Remote"];
 
@@ -134,6 +134,14 @@ async function getVerifiedUser(request: Request): Promise<AuthUser | null> {
   return (await response.json()) as AuthUser;
 }
 
+// Database functions that return void (mark-read, block, hide…) reply with an
+// empty body, which response.json() rejects with "Unexpected end of JSON
+// input". Treat an empty body as a successful null result instead.
+async function readJsonBody<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  return (text.trim() ? JSON.parse(text) : null) as T;
+}
+
 async function rpc<T>(name: string, input: Record<string, unknown>): Promise<T> {
   const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
@@ -154,7 +162,7 @@ async function rpc<T>(name: string, input: Record<string, unknown>): Promise<T> 
     });
     throw dbError(error, "Supabase service request failed");
   }
-  return (await response.json()) as T;
+  return readJsonBody<T>(response);
 }
 
 async function rest<T>(path: string, opts: { method?: string; body?: unknown; query?: Record<string, string> } = {}): Promise<T> {
@@ -179,7 +187,7 @@ async function rest<T>(path: string, opts: { method?: string; body?: unknown; qu
     });
     throw dbError(error, `Supabase REST request failed (${response.status})`);
   }
-  return (await response.json()) as T;
+  return readJsonBody<T>(response);
 }
 
 async function createSubscriptionPayment(
@@ -190,7 +198,7 @@ async function createSubscriptionPayment(
   const amount = serverSubscriptionAmount(plan, payload.amount);
   const currency = PAYMENT_CURRENCY;
   const provider = PAYMENT_PROVIDER;
-  const created = await rpc<Array<{ id: string; status: string }>>("homlo_create_subscription_payment", {
+  const created = await rpc<{ id: string; status: string }[]>("homlo_create_subscription_payment", {
     p_user_id: accountId,
     p_plan: plan,
     p_amount: amount,
@@ -204,7 +212,7 @@ async function createSubscriptionPayment(
     typeof payload.providerEventId === "string" && payload.providerEventId.length > 0
       ? payload.providerEventId
       : `plan-${paymentRow.id}`;
-  const verification = await rpc<Array<{ id: string; status: string }>>("homlo_record_payment_webhook", {
+  const verification = await rpc<{ id: string; status: string }[]>("homlo_record_payment_webhook", {
     p_provider: provider,
     p_provider_event_id: providerEventId,
     p_provider_transaction_id:
@@ -224,7 +232,7 @@ Deno.serve(async (request) => {
   try {
     const { action, payload = {} } = await request.json() as { action?: string; payload?: Record<string, unknown> };
     const session = async () => {
-      const account = await rpc<Array<{ user_id: string; user_status: string; profile_complete: boolean; profile_role: string | null; profile_full_name: string | null }>>(
+      const account = await rpc<{ user_id: string; user_status: string; profile_complete: boolean; profile_role: string | null; profile_full_name: string | null }[]>(
         "homlo_resolve_authenticated_user",
         { p_provider: "supabase", p_provider_user_id: user.id },
       );
@@ -246,14 +254,14 @@ Deno.serve(async (request) => {
     if (account.status !== "active") return fail("This Homlo account is unavailable", 403);
 
     if (action === "account.get") {
-      const accountInfo = await rpc<Array<{ user_id: string; role: string; full_name: string; phone: string | null; bio: string | null; location_text: string | null; latitude: number | null; longitude: number | null; profile_photo_key: string | null; verified: boolean; plan: string; plan_status: string }>>(
+      const accountInfo = await rpc<{ user_id: string; role: string; full_name: string; phone: string | null; bio: string | null; location_text: string | null; latitude: number | null; longitude: number | null; profile_photo_key: string | null; verified: boolean; plan: string; plan_status: string }[]>(
         "homlo_get_account",
         { p_user_id: account.id },
       );
       const resolvedAccount = accountInfo[0] ?? null;
       let recentActivity: { application_count: number; posted_job_count: number } | null = null;
       if (resolvedAccount) {
-        const activity = await rpc<Array<{ application_count: number; posted_job_count: number }>>("homlo_get_recent_activity", { p_user_id: account.id });
+        const activity = await rpc<{ application_count: number; posted_job_count: number }[]>("homlo_get_recent_activity", { p_user_id: account.id });
         recentActivity = activity[0] ?? null;
       }
       return json({ account: resolvedAccount, recentActivity });
@@ -308,6 +316,28 @@ Deno.serve(async (request) => {
     if (action === "profile.get") {
       const profile = await rpc("homlo_get_profile", { p_user_id: account.id });
       return json({ profile });
+    }
+
+    if (action === "age.get") {
+      const rows = await rpc<{ age: number | null; age_recorded_at: string | null }[]>(
+        "homlo_get_user_age",
+        { p_user_id: account.id },
+      );
+      const row = rows[0];
+      return json({ age: row?.age ?? null, recordedAt: row?.age_recorded_at ?? null });
+    }
+
+    if (action === "age.set") {
+      const age = payload.age;
+      if (typeof age !== "number" || !Number.isInteger(age) || age < 16 || age > 80) {
+        return fail("Age must be a whole number between 16 and 80", 400);
+      }
+      const rows = await rpc<{ age: number; age_recorded_at: string }[]>(
+        "homlo_set_user_age",
+        { p_user_id: account.id, p_age: age },
+      );
+      const row = rows[0];
+      return json({ age: row?.age ?? age, recordedAt: row?.age_recorded_at ?? null });
     }
 
     if (action === "application.submit") {
@@ -486,7 +516,7 @@ Deno.serve(async (request) => {
     }
 
     if (action === "messaging.unread-count") {
-      const result = await rpc<Array<{ count: string }>>("homlo_get_unread_count", { p_user_id: account.id });
+      const result = await rpc<{ count: string }[]>("homlo_get_unread_count", { p_user_id: account.id });
       return json({ count: result[0]?.count ?? "0" });
     }
 
@@ -570,7 +600,7 @@ Deno.serve(async (request) => {
         rest<BoostPackageRow[]>("boost_packages", {
           query: { select: "id,price_cents,pro_price_cents,active", id: `eq.${packageId}`, limit: "1" },
         }),
-        rest<Array<{ plan: string; status: string }>>("subscriptions", {
+        rest<{ plan: string; status: string }[]>("subscriptions", {
           query: { select: "plan,status", user_id: `eq.${account.id}`, limit: "1" },
         }),
       ]);
@@ -578,13 +608,13 @@ Deno.serve(async (request) => {
       assertBoostCreateOwner(jobRows[0], account.id);
       const isPro = subscriptionRows[0]?.plan === "pro" && subscriptionRows[0]?.status === "active";
       const amountCents = serverBoostAmountCents(packageRows[0], isPro, payload.amount);
-      const created = await rpc<Array<{
+      const created = await rpc<{
         boost_id: string;
         payment_id: string;
         payment_status: string;
         amount: number | string;
         currency: string;
-      }>>("homlo_create_boost", {
+      }[]>("homlo_create_boost", {
         p_employer_id: account.id,
         p_job_id: jobId,
         p_package: packageId,
@@ -600,7 +630,7 @@ Deno.serve(async (request) => {
       const paymentId = typeof payload.paymentId === "string" ? payload.paymentId : null;
       if (!paymentId) return fail("A payment id is required", 400);
 
-      const paymentRows = await rest<Array<PaymentOwnershipRow & { status?: string; boost_id?: string | null; provider?: string | null }>>(
+      const paymentRows = await rest<(PaymentOwnershipRow & { status?: string; boost_id?: string | null; provider?: string | null })[]>(
         "payments",
         { query: { select: "id,user_id,status,boost_id,provider", id: `eq.${paymentId}`, user_id: `eq.${account.id}`, limit: "1" } },
       );
@@ -611,7 +641,7 @@ Deno.serve(async (request) => {
         typeof payload.providerEventId === "string" && payload.providerEventId.length > 0
           ? payload.providerEventId
           : `boost-${paymentId}`;
-      const verification = await rpc<Array<{ id: string; status: string; boost_id: string | null }>>(
+      const verification = await rpc<{ id: string; status: string; boost_id: string | null }[]>(
         "homlo_record_payment_webhook",
         {
           p_provider: typeof paymentRow.provider === "string" ? paymentRow.provider : "aba_payway",

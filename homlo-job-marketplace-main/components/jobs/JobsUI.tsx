@@ -130,7 +130,8 @@ export function JobCard({ lead, title, subtitle, chips, extra, right, saved, onT
         ) : null}
         {extra ? <View style={{ marginRight: 40 }}>{extra}</View> : null}
       </View>
-      {right}
+      {/* The save button floats bottom-right; keep the right column clear of it. */}
+      {right ? <View style={onToggleSave ? { paddingBottom: 44 } : null}>{right}</View> : null}
       {onToggleSave ? <SaveButton saved={!!saved} onPress={onToggleSave} /> : null}
     </Pressable>
   );
@@ -171,9 +172,11 @@ export const DateBlock = ({ day, time, tint = 0 }: { day: string; time: string; 
 
 /* Right-column helpers */
 export const ClayTag = ({ children }: { children: string }) => <View style={u.clay}><Text style={u.clayT}>{children}</Text></View>;
+/** "0.4 km", "2.9 km", "12 km": one decimal under 10 km, whole numbers above. */
+const kmText = (km: number) => (km < 10 ? `${(Math.round(km * 10) / 10).toFixed(1)} km` : `${Math.round(km)} km`);
 export const DistanceBadge = ({ km, note }: { km: number; note: string }) => (
   <View style={{ alignItems: 'flex-end' }}>
-    <View style={u.dist}><AppIcon name="pin" size={14} color={J.deep} /><Text style={u.distT}>{km} km</Text></View>
+    <View style={u.dist}><AppIcon name="pin" size={14} color={J.deep} /><Text style={u.distT}>{kmText(km)}</Text></View>
     <Text style={[u.cardS, { fontSize: TS.caption, marginTop: S.xs }]}>{note}</Text>
   </View>
 );
@@ -185,7 +188,7 @@ export function Segmented({ items, index, onChange, style }: {
   const [w, setW] = useState(0);
   const x = useSharedValue(0);
   const segW = Math.max(0, (w - 8) / items.length);
-  useEffect(() => { x.value = withTiming(index * segW, { duration: 300 }); }, [index, segW]);
+  useEffect(() => { x.value = withTiming(index * segW, { duration: 300 }); }, [index, segW, x]);
   const ind = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
     <View style={[u.seg, style]} onLayout={(e) => setW(e.nativeEvent.layout.width)}>

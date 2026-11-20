@@ -43,7 +43,7 @@ export default function ApplyRoute() {
   const [cv, setCv] = useState<CvFileNew>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [, setApplicationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,9 +79,9 @@ export default function ApplyRoute() {
         cvName={cv?.name}
         onViewApplications={() => {
           void utils.homlo.applications.list.invalidate();
-          router.replace({ pathname: "/inbox", params: { tab: "applications" } } as never);
+          router.dismissTo({ pathname: "/inbox", params: { tab: "applications" } } as never);
         }}
-        onBackToJobs={() => router.replace("/" as never)}
+        onBackToJobs={() => router.dismissTo("/" as never)}
       />
     );
   }

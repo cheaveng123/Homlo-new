@@ -73,14 +73,6 @@ function makePhase6(overrides: Partial<Phase6Candidate> = {}): Phase6Candidate {
   } as unknown as Phase6Candidate;
 }
 
-function withFinalScore(candidate: Phase6Candidate, score: number): Phase6Candidate {
-  return {
-    ...candidate,
-    finalRankingScore: score,
-    rankingSnapshot: { ...candidate.rankingSnapshot, finalPreAssemblyScore: score },
-  } as unknown as Phase6Candidate;
-}
-
 function withMMR(candidate: Phase6Candidate, score: number, selectedRank: number): Phase6Candidate {
   return {
     ...candidate,

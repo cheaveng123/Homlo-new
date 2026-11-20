@@ -1,13 +1,12 @@
-import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from './AppIcon';
 import { categoryStyle } from './categories';
 import {
-  Card, LogoTile, Parallax, Pill, Press, Reveal, ResultBar, RoundButton, ScreenScroll, Txt, ts,
+  Card,LogoTile,Parallax,Pill,Press,Reveal,ResultBar,RoundButton,ScreenScroll,Txt,ts,
 } from './ui';
-import { accents, colors, font, radius } from './theme';
+import { accents, colors, radius } from './theme';
 
 export type CategoryJob = {
   id: string; title: string; company: string; pay: string; type: string; distance?: string; initials: string; color: string;

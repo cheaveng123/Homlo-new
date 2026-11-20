@@ -80,7 +80,8 @@ export function categoryRouteForTitle(title: string | undefined | null): string 
 }
 
 export const hourlyEq = (j: Job) => (j.monthly ? j.monthly / 170 : parseFloat(j.pay.slice(1)));
-export const payText = (j: Job) => `${j.pay}${j.unit}`;
+// Published records carry the unit inside `pay` ("$3 / hour") and no `unit`, so never print a missing one.
+export const payText = (j: Job) => `${j.pay ?? ''}${j.unit ?? ''}`.trim();
 export const typeLabel = (j: Job) => (j.type === 'PT' ? 'Part-time' : 'Full-time');
 export const travelText = (km: number) => (km <= 1.5 ? `${Math.round(km * 12)} min walk` : `${Math.round(km * 4)} min ride`);
 

@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   barFlex: { flex: 1 },
   filterButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 16, borderWidth: 1, justifyContent: "center", position: "relative", width: 48, height: 48 },
-  filterBadge: { alignItems: "center", backgroundColor: "#16803C", borderColor: "#FFFFFF", borderRadius: 8, borderWidth: 1.5, height: 16, justifyContent: "center", minWidth: 16, paddingHorizontal: 3, position: "absolute", right: -3, top: -4 },
+  filterBadge: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 8, borderWidth: 1.5, height: 16, justifyContent: "center", minWidth: 16, paddingHorizontal: 3, position: "absolute", right: -3, top: -4 },
   filterBadgeText: { color: "#FFFFFF", fontSize: 8, fontWeight: "800" },
   searchText: { color: "#94A098", flex: 1, fontSize: 15, fontWeight: "400" },
   searchTextActive: { color: "#17201A", fontWeight: "500" },

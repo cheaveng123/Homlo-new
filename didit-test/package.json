@@ -1,0 +1,16 @@
+{
+  "name": "didit-test",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal test app for Didit ID + liveness + face match verification",
+  "type": "module",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node server.js",
+    "create-workflow": "node scripts/create-workflow.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

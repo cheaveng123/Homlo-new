@@ -62,13 +62,51 @@ export function regionFactor(distanceKm: number | null, cfg: FeedConfig): number
   return 1 - t * (1 - floorFactor);
 }
 
+/**
+ * Location term L(d) (docs/FEED_RANKING.md): regionFactor(d) * (1 + bonus / (1 + d / scaleKm)).
+ * d = null (viewer location unknown, remote job, or job without coordinates) => exactly 1, so the
+ * term drops out cleanly instead of guessing.
+ */
+export function locationFactor(distanceKm: number | null, cfg: FeedConfig): number {
+  if (distanceKm === null || !Number.isFinite(distanceKm)) return 1;
+  const d = Math.max(0, distanceKm);
+  const { proximityBonus, proximityScaleKm } = cfg.location;
+  return regionFactor(d, cfg) * (1 + proximityBonus / (1 + d / proximityScaleKm));
+}
+
+/**
+ * What one event adds to a job's engagement E (or impressions I) for a window, after time decay.
+ * Reference implementation of the SQL in refresh_job_stats (migration 043/058): events older than
+ * the window count 0, otherwise weight x 0.5^(age / halfLife). Impressions have weight 1.
+ */
+export function eventContribution(
+  type: 'impression' | keyof FeedConfig['eventWeights'],
+  ageInDays: number,
+  period: Period,
+  cfg: FeedConfig,
+): number {
+  const { windowDays, halfLifeDays } = cfg.periods[period];
+  const age = Math.max(0, ageInDays);
+  if (age > windowDays) return 0;
+  const weight = type === 'impression' ? 1 : cfg.eventWeights[type];
+  return weight * decay(age, halfLifeDays);
+}
+
+/** Cold-start check: young and under-exposed in the ranking window. */
+export function isNewcomer(job: JobCandidate, period: Period, now: Date, cfg: FeedConfig): boolean {
+  return (
+    ageDays(job.createdAt, now) <= cfg.newcomer.maxAgeDays &&
+    job.agg[period].impressions < cfg.newcomer.maxImpressions
+  );
+}
+
 export function proximityScore(distanceKm: number, cfg: FeedConfig): number {
   return 1 / (1 + Math.max(0, distanceKm) / cfg.near.proximityScaleKm);
 }
 
 /**
- * Popularity score for one job in one period:
- *   smoothed rate x confidence x quality x freshness (x region)
+ * Organic score for one job in one period (docs/FEED_RANKING.md):
+ *   S = R (smoothed decayed engagement rate) x C (confidence) x Q (quality) x F (freshness) x L (location)
  * With zero data everywhere every job gets the same rate, so the order falls back to freshness + quality.
  */
 export function popularityScore(
@@ -87,7 +125,7 @@ export function popularityScore(
     confidenceFactor(agg.impressions, cfg) *
     qualityFactor(job.employerQuality, cfg) *
     freshnessFactor(ageDays(job.createdAt, now), cfg);
-  if (opts.applyRegion) score *= regionFactor(job.distanceKm, cfg);
+  if (opts.applyRegion) score *= locationFactor(job.distanceKm, cfg);
   return score;
 }
 
@@ -289,7 +327,7 @@ export function computeFitPercent(
   cfg: FeedConfig,
 ): number | null {
   if (!prefs) return null;
-  const parts: Array<[number, number]> = [];
+  const parts: [number, number][] = [];
   const jt = jobTypeFit(job, prefs);
   if (jt !== null) parts.push([cfg.fit.weights.jobType, jt]);
   const pay = payFit(job, prefs, cfg);

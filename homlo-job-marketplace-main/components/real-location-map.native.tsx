@@ -1,12 +1,10 @@
-import { StyleSheet, View, Pressable } from "react-native";
+import { StyleSheet, View } from "react-native";
 import MapView, { Marker, Circle, UrlTile, type MapPressEvent } from "react-native-maps";
 
 import { MAP_MAX_TILE_ZOOM, MAP_TILE_URL } from "@/lib/map-config";
 import { MapAttribution } from "@/components/maps/map-attribution";
 import { useUserLocation } from "@/lib/use-user-location";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
-import { AppIcon } from "@/components/ui/AppIcon";
-import { useState } from "react";
 
 type RealLocationMapProps = {
   coordinate: MapCoordinate;

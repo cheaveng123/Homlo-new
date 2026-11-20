@@ -17,6 +17,7 @@
 //     curated jobs for the requested employer are returned instead.
 
 import { trpcDirect } from "@/lib/trpc";
+import { DEMO_CONTENT_ENABLED } from "@/lib/demo-content";
 import { formatPostedAt, type JobRecord } from "@/lib/job-record";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { hasBannerImage, resolveJobImage } from "@/lib/job-banner";
@@ -198,7 +199,8 @@ async function loadRealProfile(name?: string | null): Promise<RealEmployerProfil
 export async function getEmployerById(employerId: string): Promise<Employer | null> {
   const normalizedId = normalizeEmployerId(employerId);
   const publicJobs = await loadPublicJobs();
-  const curated = MOCK_EMPLOYERS[normalizedId];
+  // Sample employers (with sample ratings/reviews) are demo-only.
+  const curated = DEMO_CONTENT_ENABLED ? MOCK_EMPLOYERS[normalizedId] : undefined;
 
   if (curated) {
     const matched = publicJobs.filter((r) => employerMatches(r.employer_name, companyAliases(normalizedId)));
@@ -256,12 +258,16 @@ export async function getEmployerById(employerId: string): Promise<Employer | nu
         ? (realProfile.about?.trim() || "No about added yet.")
         : "This employer posts jobs on Homlo Jobs — reach out through the listing for day-to-day updates.",
       industry: first.category ?? "Other",
-      responseTime: "Within a day",
+      // Not measured yet: never show an invented response time.
+      responseTime: "",
     };
   }
 
-  // No live record and no curated entry (demo/removed employer): synthesize a
-  // profile so the visitor view still renders instead of hanging on a spinner.
+  // No live record and no curated entry (removed employer): outside demo mode
+  // there is nothing real to show — the screen renders its "not found" state.
+  if (!DEMO_CONTENT_ENABLED) return null;
+
+  // Demo mode: synthesize a profile so sample employers still render.
   const label = slug.replace(/[-_]+/g, " ").trim();
   const name = label ? label.charAt(0).toUpperCase() + label.slice(1) : "Homlo employer";
   const realProfile = await loadRealProfile(name);
@@ -289,7 +295,7 @@ export async function getEmployerJobs(employerId: string): Promise<JobListing[]>
   const normalizedId = normalizeEmployerId(employerId);
   const [publicJobs, curated] = await Promise.all([
     loadPublicJobs(),
-    Promise.resolve(MOCK_JOBS.filter((j) => j.employerId === normalizedId).map(curatedToJobListing)),
+    Promise.resolve(DEMO_CONTENT_ENABLED ? MOCK_JOBS.filter((j) => j.employerId === normalizedId).map(curatedToJobListing) : []),
   ]);
 
   const aliases = companyAliases(normalizedId);
@@ -314,7 +320,7 @@ export async function getEmployerJobs(employerId: string): Promise<JobListing[]>
 
   // Demo employers (Explore "Top employers") have no database record: fall back
   // to the matching placeholder listings so the profile has content.
-  return demoListingsFor(slug, normalizedId);
+  return DEMO_CONTENT_ENABLED ? demoListingsFor(slug, normalizedId) : [];
 }
 
 /** Short preview (2-3) for the Employer Profile screen's inline list */
@@ -327,6 +333,8 @@ export async function getEmployerJobsPreview(
 }
 
 export async function getEmployerReviews(employerId: string): Promise<Review[]> {
+  // There is no real review system yet; sample reviews are demo-only.
+  if (!DEMO_CONTENT_ENABLED) return [];
   const curated = MOCK_EMPLOYERS[normalizeEmployerId(employerId)];
   if (!curated) return [];
   return curated.reviews.items.map((item) => ({

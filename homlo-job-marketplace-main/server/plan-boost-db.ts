@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import type { PlanBoostDb, Queryable } from "./hlPlanBoostService";
+import { getSharedSql } from "../backend/infrastructure/database/shared-pool";
 
 type PostgresSql = ReturnType<typeof postgres>;
 
@@ -30,7 +31,8 @@ export function getPlanBoostDb(env: NodeJS.ProcessEnv = process.env): PlanBoostD
   const url = env.SUPABASE_DB_URL ?? env.DATABASE_URL;
   if (!url) throw new Error("SUPABASE_DB_URL or DATABASE_URL is required for plan and boost storage");
   if (cached?.key === url) return cached.db;
-  const sql = postgres(url, { max: 5 });
+  // Shares the server's single DB pool (the Supabase pooler allows 15 clients in total).
+  const sql = getSharedSql(url);
   const db = createPlanBoostDb(sql);
   cached = { key: url, db };
   return db;

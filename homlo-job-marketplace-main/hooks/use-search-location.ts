@@ -20,10 +20,18 @@ type UseSearchLocationOptions = {
  * Backed by the shared `useUserLocation`/`locationService` so permission
  * requests and GPS watches are not duplicated per screen.
  */
+const labelMemo = new Map<string, string>();
+
 export function useSearchLocation(options: UseSearchLocationOptions = {}) {
   const { requestOnMount = true } = options;
   const { location, permissionStatus } = useUserLocation({ requestOnMount });
-  const [resolvedLabel, setResolvedLabel] = useState<ResolvedLabel | null>(null);
+  // PERF: every screen using this hook re-ran the reverse geocode on mount
+  // (an OpenStreetMap request each time). Labels are now memoized per spot.
+  const [resolvedLabel, setResolvedLabel] = useState<ResolvedLabel | null>(() => {
+    const k = location ? `${location.latitude},${location.longitude}` : null;
+    const cached = k ? labelMemo.get(k) : undefined;
+    return k && cached ? { key: k, label: cached } : null;
+  });
 
   const latitude = location?.latitude;
   const longitude = location?.longitude;
@@ -31,16 +39,20 @@ export function useSearchLocation(options: UseSearchLocationOptions = {}) {
 
   useEffect(() => {
     if (latitude == null || longitude == null) return;
+    const memoKey = `${latitude},${longitude}`;
+    const memo = labelMemo.get(memoKey);
+    if (memo) {
+      setResolvedLabel((current) => (current?.key === memoKey ? current : { key: memoKey, label: memo }));
+      return;
+    }
 
     let active = true;
     reverseOpenStreetMapPlace({ latitude, longitude })
       .then((place) => {
-        if (active) {
-          setResolvedLabel({
-            key: `${latitude},${longitude}`,
-            label: place.city || place.label || "Current location",
-          });
-        }
+        const label = place.city || place.label || "Current location";
+        labelMemo.set(memoKey, label);
+        if (labelMemo.size > 50) labelMemo.delete(labelMemo.keys().next().value as string);
+        if (active) setResolvedLabel({ key: memoKey, label });
       })
       .catch(() => {
         if (active) {

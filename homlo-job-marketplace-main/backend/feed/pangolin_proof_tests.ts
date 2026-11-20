@@ -64,7 +64,7 @@ function bigGlobals(): GlobalRates {
 }
 
 function memoryStore(jobs: JobCandidate[], globals: GlobalRates = bigGlobals()) {
-  const events: Array<{ sessionId: string; events: EventInput[] }> = [];
+  const events: { sessionId: string; events: EventInput[] }[] = [];
   const store: FeedStore = {
     async getCandidates(q: CandidateQuery) {
       const hasLoc = q.viewer.lat !== null && q.viewer.lng !== null;
@@ -273,7 +273,7 @@ test('fitPercent: pay periods are normalised (hourly vs monthly) and remote matc
 // feeds (in-memory store)
 // ======================================================================
 
-function noNaN(items: Array<{ score: number }>) {
+function noNaN(items: { score: number }[]) {
   for (const i of items) assert.ok(Number.isFinite(i.score), 'score must be finite');
 }
 
@@ -518,7 +518,7 @@ test('router: happy paths', async () => {
 
 test('router: rejects bad input with 400 and never 500', async () => {
   const { handle } = routerWith();
-  const bad: Array<Record<string, string>> = [
+  const bad: Record<string, string>[] = [
     { lat: '11.5' },
     { lng: '104.9' },
     { lat: '91', lng: '0' },
@@ -630,7 +630,7 @@ const tick = () => new Promise((r) => setImmediate(r));
 
 test('recorder: batches on the timer, dedupes impressions/views per session, keeps one session id', async () => {
   const clock = fakeClock();
-  const sent: Array<{ sessionId: string; events: EventInput[] }> = [];
+  const sent: { sessionId: string; events: EventInput[] }[] = [];
   const rec = new JobEventRecorder({ send: async (b) => void sent.push(b), ...clock });
   rec.impression('j1');
   rec.impression('j1');
@@ -738,7 +738,7 @@ test('viewability helper only records viewable items', () => {
 // ======================================================================
 
 test('client: builds correct URLs, encodes values, omits empties, maps errors', async () => {
-  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const calls: { url: string; init: RequestInit }[] = [];
   const fakeFetch = (async (url: string, init: RequestInit) => {
     calls.push({ url, init });
     return { ok: true, status: 200, text: async () => JSON.stringify({ items: [], nextCursor: null, status: 'ok' }) } as Response;

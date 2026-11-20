@@ -2,7 +2,6 @@ import { StyleSheet } from "react-native";
 import MapView, { Circle, Marker, UrlTile } from "react-native-maps";
 
 import { MAP_MAX_TILE_ZOOM, MAP_TILE_URL } from "@/lib/map-config";
-import { MapAttribution } from "@/components/maps/map-attribution";
 import { defaultSearchCenter } from "@/lib/job-geography";
 import { useUserLocation } from "@/lib/use-user-location";
 

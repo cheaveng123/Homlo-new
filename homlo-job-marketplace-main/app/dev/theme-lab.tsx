@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Redirect } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { ScreenContainer } from "@/components/screen-container";
@@ -24,7 +25,16 @@ function ColorSwatch({ name, value }: { name: PaletteName; value: string }) {
   );
 }
 
-export default function ThemeLabScreen() {
+/**
+ * App Store 2.3.1 (no hidden features): this developer tool exists only in
+ * development builds. Release builds redirect anyone who deep-links here.
+ */
+export default function ThemeLabRoute() {
+  if (!__DEV__) return <Redirect href="/" />;
+  return <ThemeLabScreen />;
+}
+
+function ThemeLabScreen() {
   const [pressCount, setPressCount] = useState(0);
   const [lastAction, setLastAction] = useState<string>("None yet");
   const { colorScheme, setColorScheme } = useThemeContext();

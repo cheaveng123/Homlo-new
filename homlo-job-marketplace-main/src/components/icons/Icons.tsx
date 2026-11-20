@@ -1,5 +1,4 @@
-import React from "react";
-import Svg, { Path, PathProps } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import type { StyleProp, ViewStyle } from "react-native";
 
 type IconProps = {

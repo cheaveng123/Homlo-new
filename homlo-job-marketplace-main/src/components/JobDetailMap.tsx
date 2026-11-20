@@ -60,8 +60,9 @@ export function JobDetailMap({ job, height, style }: JobDetailMapProps) {
   const fallbackDistance =
     routeOrigin && destination ? haversineKm(routeOrigin, destination) : null;
 
+  const routeGeometry = route?.geometry;
   const fitCoordinates = useMemo(() => {
-    const points = route?.geometry ? [...route.geometry] : [];
+    const points = routeGeometry ? [...routeGeometry] : [];
 
     if (routeOrigin) points.push(routeOrigin);
     if (destination) points.push(destination);
@@ -69,7 +70,7 @@ export function JobDetailMap({ job, height, style }: JobDetailMapProps) {
     if (points.length > 0) return points;
 
     return destination ? [destination] : [];
-  }, [destination, route?.geometry, routeOrigin]);
+  }, [destination, routeGeometry, routeOrigin]);
 
   const fallbackCoordinates = useMemo(
     () => (routeOrigin && destination ? [routeOrigin, destination] : null),
@@ -105,9 +106,12 @@ export function JobDetailMap({ job, height, style }: JobDetailMapProps) {
         permissionDenied={permissionDenied}
         locationError={locationError}
         onRequestPermission={requestPermission}
+        // BUGFIX: the route/notice card covers the bottom edge, which hid the
+        // (required) OpenStreetMap attribution button. Keep it top-left.
+        attributionPosition={{ top: 8, left: 8 }}
       >
         {destination ? (
-          <JobMarker coordinate={destination} />
+          <JobMarker coordinate={destination} category={job.category} />
         ) : null}
 
         <RouteLayer shape={routeShape} fallback={fallbackCoordinates} />

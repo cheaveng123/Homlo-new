@@ -1,16 +1,15 @@
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { View, FlatList } from "react-native";
+import { useCallback, useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useHomeFeed } from "@/hooks/use-home-feed";
 import { usePopularJobs } from "@/hooks/use-popular-jobs";
 import { useSearchLocation } from "@/hooks/use-search-location";
-import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
+import { sectionLoadState } from "@/lib/useFirstLoadSkeletonFlag";
 import { trpc } from "@/lib/trpc";
 import { computePositionsLeft } from "@/lib/positions";
 import { useJobStore, type Job } from "@/components/job-store";
-import { JOB_TYPE_IMAGES } from "@/components/shared/jobTypeImage";
+import { HOME_JOB_TYPES } from "@/lib/job-types";
 import { haptic } from "@/lib/haptics";
 import { logJobEvent } from "@/lib/event-logging";
 import { JOB_FIELDS } from "@/lib/job-fields";
@@ -18,7 +17,7 @@ import { JobFieldArtwork } from "@/components/shared/JobFieldArtwork";
 import { vistaKeyForField } from "@/components/vista/vistaCategoryData";
 import { HomeScreenNew, type JobFieldNew, type JobTypeNew } from "@/src/new/screens/HomeScreenNew";
 import { JobSummaryNew } from "@/src/new/types/jobNew";
-import { getEventRecorder, makeImpressionHandler, shouldRecordEvents, recordJobSave, recordJobImpression, impressionViewabilityConfig } from "@/lib/event-recorder";
+import { makeImpressionHandler, shouldRecordEvents, recordJobSave, impressionViewabilityConfig } from "@/lib/event-recorder";
 
 // Every field maps to one of the five category pages. Kept in lockstep with the
 // route adapter so a tile can never fall through to the legacy listing.
@@ -77,45 +76,36 @@ export default function HomeScreenNewAdapter() {
   const { user } = useAuth();
   const { isSaved, toggleSaved, savedIds } = useJobStore();
   const { coordinates, locationLabel } = useSearchLocation({ requestOnMount: false });
-  const { nearby, recommended, more, loading: homeFeedLoading } = useHomeFeed({
+  const { nearby, recommended, more, ready: feedReady } = useHomeFeed({
     latitude: coordinates.latitude,
     longitude: coordinates.longitude,
     radiusKm: 50,
   });
-  const { jobs: popular, loading: popularLoading } = usePopularJobs();
+  const { jobs: popular, loading: popularLoading, error: popularError } = usePopularJobs();
   // The feed returns job ids first and the cards need the public job records.
-  // Read the same query here so it loads alongside the feed and the skeletons
-  // stay up until the cards can actually render.
-  const { isLoading: jobRecordsLoading } = trpc.homlo.publicJobs.useQuery();
-  const feedPending = homeFeedLoading || jobRecordsLoading;
+  // Subscribe here too so the records start loading alongside the feed.
+  trpc.homlo.publicJobs.useQuery();
 
-  const recommendedSkeleton = useFirstLoadSkeletonFlag({
-    loading: feedPending,
-    data: recommended.length ? recommended : undefined,
-  });
-  const nearbySkeleton = useFirstLoadSkeletonFlag({
-    loading: feedPending,
-    data: nearby.length ? nearby : undefined,
-  });
-  const popularSkeleton = useFirstLoadSkeletonFlag({
-    loading: popularLoading,
-    data: popular.length ? popular : undefined,
-  });
-  const exploreSkeleton = useFirstLoadSkeletonFlag({
-    loading: feedPending,
-    data: more.length ? more : undefined,
-  });
+  // Each section: cards when it has jobs, a skeleton until its data has truly
+  // settled (feed + job records in), and hidden only when settled with none.
+  // These used to key off `isLoading`, which is false while the job records
+  // are re-requested after sign-in clears the cache; the sections then looked
+  // "loaded but empty" and vanished.
+  const recommendedState = sectionLoadState({ settled: feedReady, count: recommended.length });
+  const nearbyState = sectionLoadState({ settled: feedReady, count: nearby.length });
+  const popularState = sectionLoadState({ settled: !popularLoading && !popularError, count: popular.length });
 
   // Initialize event recorder
-  const recorder = getEventRecorder();
   const shouldRecord = shouldRecordEvents(user?.role);
-  const impressionHandlerRef = useRef(makeImpressionHandler((item: any) => item.id));
+  // Created once; a stable function for the list's viewability callback.
+  const [impressionHandler] = useState(() => makeImpressionHandler((item: any) => item.id));
 
   // Explore draws the feed's long tail, minus anything already shown above.
   const explore = useMemo(() => {
     const shown = new Set([...recommended, ...nearby, ...popular].map((j) => j.id));
     return more.filter((j) => !shown.has(j.id));
   }, [more, recommended, nearby, popular]);
+  const exploreState = sectionLoadState({ settled: feedReady, count: explore.length });
 
   const jobFields = useMemo<JobFieldNew[]>(
     () =>
@@ -128,7 +118,7 @@ export default function HomeScreenNewAdapter() {
   );
 
   const jobTypes = useMemo<JobTypeNew[]>(
-    () => JOB_TYPE_IMAGES.map((entry) => ({ id: entry.key, label: entry.label })),
+    () => HOME_JOB_TYPES.map((entry) => ({ id: entry.key, label: entry.label })),
     [],
   );
 
@@ -210,20 +200,21 @@ export default function HomeScreenNewAdapter() {
       jobTypes={jobTypes}
       onSelectJobType={(key) => router.push({ pathname: "/jobs/ways-to-work", params: { tab: key } } as never)}
       recommended={recommendedSummaries}
-      recommendedLoading={recommendedSkeleton}
+      recommendedState={recommendedState}
       onSeeAllRecommended={() => router.push("/jobs/recommended" as never)}
       nearby={nearbySummaries}
-      nearbyLoading={nearbySkeleton}
+      nearbyState={nearbyState}
       popularJobs={popularSummaries}
-      popularLoading={popularSkeleton}
+      popularState={popularState}
       onSeePopular={() => router.push("/jobs/popular" as never)}
       exploreJobs={exploreSummaries}
-      exploreLoading={exploreSkeleton}
-      onSeeExplore={() => router.push({ pathname: "/category-listing", params: { title: "Explore jobs" } } as never)}
-      onPostJob={() => router.push("/employer" as never)}
+      exploreState={exploreState}
+      // No "See all" for Explore: its detail page was removed. The section's
+      // job cards still open each job.
+      onPostJob={() => router.navigate("/post" as never)}
       onPressJob={openJob}
       onToggleLike={toggleLike}
-      onViewableItemsChanged={impressionHandlerRef.current}
+      onViewableItemsChanged={impressionHandler}
       viewabilityConfig={impressionViewabilityConfig}
     />
   );

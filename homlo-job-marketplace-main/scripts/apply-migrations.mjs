@@ -78,7 +78,7 @@ for (const file of targets) {
   try {
     await sql.begin(async (tx) => {
       for (let k = 0; k < stmts.length; k++) {
-        // eslint-disable-next-line no-console
+         
         process.stdout.write(`   [${k + 1}/${stmts.length}] ${stmts[k].split('\n')[0].replace(/\s+/g, ' ').slice(0, 90)}\n`);
         await tx.unsafe(stmts[k]);
       }

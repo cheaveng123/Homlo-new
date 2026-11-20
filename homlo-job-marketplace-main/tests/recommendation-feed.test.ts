@@ -236,13 +236,6 @@ class InMemoryFeedDatabase implements DatabaseAdapter {
   }
 }
 
-type FeedCall = {
-  userId?: string | null;
-  userLocation?: { latitude: number; longitude: number } | null;
-  pageSize?: number;
-  cursor?: string | null;
-};
-
 function serviceFor(database: DatabaseAdapter): RecommendationFeedService {
   return new RecommendationFeedService(database);
 }
@@ -366,7 +359,6 @@ describe("RecommendationFeedService — pagination", () => {
   });
 
   it("keeps the query count constant regardless of page size (no per-page N+1)", async () => {
-    const database = catalog();
     const counts = await Promise.all([1, 3, 6, undefined].map(async (pageSize) => {
       const perCall = new InMemoryFeedDatabase({ jobs: jobs(6) });
       await serviceFor(perCall).getFeed({ ...base, pageSize });

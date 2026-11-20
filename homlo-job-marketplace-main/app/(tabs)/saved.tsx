@@ -10,6 +10,7 @@ import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
 import { computePositionsLeft } from "@/lib/positions";
 import { JobResultListSkeleton } from "@/src/new/components/NewSkeletons";
 import { mockJobFor } from "@/lib/mock-job";
+import { DEMO_CONTENT_ENABLED } from "@/lib/demo-content";
 import { haptic } from "@/lib/haptics";
 import { EmptyStateNew, RoundButtonNew } from "@/src/new/components/PrimitivesNew";
 import { JobResultCardNew } from "@/src/new/components/JobPartsNew";
@@ -60,7 +61,8 @@ export default function SavedJobsScreen() {
     const known = savedIds
       .map((id) => allJobs.find((job) => job.id === id))
       .filter((job): job is Job => Boolean(job));
-    const missing = loading
+    // Saved jobs that no longer exist are dropped; sample jobs only in demo mode.
+    const missing = loading || !DEMO_CONTENT_ENABLED
       ? []
       : savedIds
           .filter((id) => !allJobs.some((job) => job.id === id))

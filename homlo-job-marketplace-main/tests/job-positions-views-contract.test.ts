@@ -112,8 +112,10 @@ describe("job positions and views contract", () => {
   });
 
   it("does not invent a position when popular or detail data is missing", () => {
+    // The Popular page now uses the shared listing cards, which show no
+    // position count at all, so it must not invent one either.
     expect(popularJobs).not.toContain("positionsAvailable ?? j.positionsTotal ?? 1");
-    expect(popularJobs).toContain("computePositionsLeft(j.positionsTotal, j.positionsFilled)");
+    expect(popularJobs).not.toMatch(/positions(Available|Total|Left)/);
     expect(jobDetail).toContain("computePositionsLeft(d.positionsTotal, d.positionsFilled)");
   });
 });

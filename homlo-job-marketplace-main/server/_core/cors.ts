@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 
 const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const ALLOWED_HEADERS =
-  "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Homlo-Client";
+  "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Homlo-Client, X-Homlo-Device-Id";
 
 export interface CorsOptions {
   /** Defaults to process.env.NODE_ENV. */

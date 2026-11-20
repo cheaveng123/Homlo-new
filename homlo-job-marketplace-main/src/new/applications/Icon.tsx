@@ -5,7 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 // If the project's AppIcon already has these, swap ONLY this file's internals.
 export type IconName =
   | 'back' | 'chevron' | 'check' | 'eye' | 'file' | 'chat' | 'search'
-  | 'briefcase' | 'pin' | 'alert' | 'inbox' | 'sunrise';
+  | 'briefcase' | 'pin' | 'alert' | 'inbox' | 'sunrise' | 'close';
 
 const D: Record<IconName, string[]> = {
   back: ['M15 5l-7 7 7 7'],
@@ -19,6 +19,7 @@ const D: Record<IconName, string[]> = {
   pin: ['M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z', 'M14.5 10a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z'],
   alert: ['M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'M12 8v5M12 16.5v.01'],
   inbox: ['M3 13l3-8h12l3 8v6a1 1 0 01-1 1H4a1 1 0 01-1-1z', 'M3 13h5l1 3h6l1-3h5'],
+  close: ['M7 7l10 10M17 7L7 17'],
   sunrise: ['M3 18h18M6.5 18a5.5 5.5 0 0111 0M12 6v2M4.8 10.8l1.4 1.4M19.2 10.8l-1.4 1.4'],
 };
 

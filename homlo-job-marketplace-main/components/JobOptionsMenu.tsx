@@ -107,7 +107,8 @@ export default function JobOptionsMenu({ job, onJobUpdated }: JobOptionsMenuProp
         animationType="fade"
         onRequestClose={() => setOpen(false)}
       >
-        <Pressable className="flex-1 bg-black/20" onPress={() => setOpen(false)}>
+        {/* BUGFIX: className is disabled on Pressable app-wide, so the backdrop had no size: no dim and no tap-outside-to-close. */}
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.2)" }} onPress={() => setOpen(false)}>
           <View className="absolute top-16 right-4 w-56 rounded-2xl border border-border bg-surface overflow-hidden shadow-lg">
             <TouchableOpacity
               onPress={goEdit}

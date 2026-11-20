@@ -1,13 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Alert, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import Animated, { ZoomIn, FadeInDown, FadeOut, LinearTransition, useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withRepeat, withTiming, withDelay, interpolate, Extrapolation, useReducedMotion } from 'react-native-reanimated';
-import { c, f, sh } from './NewTheme';
-import { Icon, Circ, Btn, Pill, Sec, Reveal, Tabs, Boundary, Press } from './NewUI';
+import Animated, { FadeInDown, FadeOut, LinearTransition, useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, useAnimatedReaction, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
+import { c, f } from './NewTheme';
+import { AP, cardShadow, liftShadow } from '@/components/employer-job/applicants/tokens';
+import { ApplicantItem, BoostSpotlight, HiringProgress, JobHero, NoApplicants, StatsStrip, StatusSwitch } from '@/components/employer-job/manager/JobManagerParts';
+import { Icon, Circ, Btn, Reveal, Boundary, Press } from './NewUI';
 import { R, go } from './NewRoutes';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/hooks/use-auth';
+import { isNewApplicant } from '@/hooks/use-employer-applications';
 import { normalizeEmployerJob, normalizeJobApplicant, buildJobSavePayload, editableFieldsFromJob, type EmployerJobRow } from '@/lib/job-management';
 import { ticketStatus, type Applicant, type ApplicantStatus } from '@/components/employer-job/ApplicantTicketCard';
 import { formatRelativeAgo } from '@/lib/format';
@@ -18,22 +22,6 @@ import { EmployerBoostPanel } from '@/components/boost/EmployerBoostPanel';
 
 const suffix = (t: string) => (t === 'Hourly' ? '/hr' : t === 'Daily' ? '/day' : '/mo');
 const TABS = ['All', 'Pending', 'Accepted', 'Rejected'];
-
-function Seat({ on, i }: { on: boolean; i: number }) {
-  const p = useSharedValue(0); const rm = useReducedMotion();
-  useEffect(() => { if (!rm) p.value = withDelay(900 + i * 150, withRepeat(withTiming(1, { duration: 1400 }), -1, true)) }, []);
-  const a = useAnimatedStyle(() => ({ transform: [{ scale: 1 + p.value * (on ? 0.04 : 0.06) }], borderColor: on ? '#fff' : `rgba(245,181,43,${0.25 + p.value * 0.6})` }));
-  return <Animated.View entering={ZoomIn.delay(100 + i * 130)}><Animated.View style={[{ width: 44, height: 52, borderRadius: 14, borderWidth: 2, borderStyle: on ? 'solid' : 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: on ? '#fff' : 'transparent' }, a]}><Icon n="user" color={on ? c.teal : 'rgba(255,255,255,0.5)'} /></Animated.View></Animated.View>;
-}
-function Bar({ i, hot }: { i: number; hot: boolean }) {
-  const h = useSharedValue(0); useEffect(() => { h.value = withDelay(300 + i * 100, withTiming(1, { duration: 500 })) }, []);
-  const a = useAnimatedStyle(() => ({ height: 20 * h.value * (hot ? 1 : 0.1) }));
-  return <Animated.View style={[{ flex: 1, borderRadius: 3, backgroundColor: hot ? c.teal : c.track }, a]} />;
-}
-const Bars = ({ hot }: { hot?: boolean }) => <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 20, marginTop: 8 }}>{[0, 1, 2, 3].map(i => <Bar key={i} i={i} hot={!!hot && i === 3} />)}</View>;
-function Tile({ label, children, bg = '#fff', bd = c.line, lc = c.mu }: { label: string; children: React.ReactNode; bg?: string; bd?: string; lc?: string }) {
-  return <View style={{ flex: 1, borderRadius: 20, padding: 14, backgroundColor: bg, borderWidth: 1, borderColor: bd }}><Text style={{ fontFamily: f.m, fontSize: 12, color: lc }}>{label}</Text>{children}</View>;
-}
 
 function Screen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>(); const ins = useSafeAreaInsets();
@@ -46,6 +34,8 @@ function Screen() {
 
   const jobsQuery = trpc.homlo.employer.jobs.useQuery(undefined, { enabled: Boolean(user) });
   const saveJob = trpc.homlo.employer.saveJob.useMutation();
+  const cancelBoost = trpc.homlo.boost.cancel.useMutation();
+  const [boostEndedFor, setBoostEndedFor] = useState<string | null>(null);
   const changeStatus = trpc.homlo.applications.changeStatus.useMutation();
   const utils = trpc.useUtils();
 
@@ -77,7 +67,7 @@ function Screen() {
       note: a.message ?? '',
       location: a.locationLabel ?? 'Location not provided',
       status: ticketStatus(a.status),
-      isNew: a.isNew,
+      isNew: isNewApplicant(a),
     })),
     [dbApplicants],
   );
@@ -86,8 +76,9 @@ function Screen() {
   if (prevRemote !== remoteApplicants) { setPrevRemote(remoteApplicants); setApps(remoteApplicants); }
 
   const filled = job ? job.rolesFilled : apps.filter((a) => a.status === 'accepted').length;
-  const unreadCount = apps.filter((a) => a.isNew).length;
-  const shown = apps.filter((a) => tab === 'All' || a.status === tab);
+  // Decided applicants (accepted / rejected) never count as new, even if unread.
+  const unreadCount = apps.filter((a) => a.isNew && a.status === 'pending').length;
+  const shown = apps.filter((a) => tab === 'All' || a.status === tab.toLowerCase());
 
   function openMessage(applicant: Applicant) {
     go(R.thread(applicant.id, applicant.name, dbStatusById.get(applicant.id) ?? 'applied'));
@@ -95,7 +86,7 @@ function Screen() {
 
   const setStatus = (status: ApplicantStatus, applicant: Applicant) => {
     const mappedStatus: 'hired' | 'declined' = status === 'accepted' ? 'hired' : 'declined';
-    setApps((p) => p.map((a) => (a.id === applicant.id ? { ...a, status } : a)));
+    setApps((p) => p.map((a) => (a.id === applicant.id ? { ...a, status, isNew: false } : a)));
     changeStatus
       .mutateAsync({ applicationId: applicant.id, status: mappedStatus })
       .then(() => { haptic.success(); void applicationsQuery.refetch(); void jobsQuery.refetch(); })
@@ -115,6 +106,33 @@ function Screen() {
     ]);
   };
   const handleBoost = () => { if (job) go(R.boost(job.id)); };
+  const handleCancelBoost = () => {
+    if (!job || cancelBoost.isPending) return;
+    Alert.alert(
+      'Cancel this boost?',
+      'Your job goes back to standard visibility right away. Any boosts queued after this one are cancelled too. Store purchases are not refunded.',
+      [
+        { text: 'Keep boost', style: 'cancel' },
+        {
+          text: 'Cancel boost',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancelBoost.mutateAsync({ jobId: job.id });
+              haptic.success();
+              void jobsQuery.refetch();
+              void utils.homlo.publicJobs.invalidate();
+              void utils.homlo.searchJobs.invalidate();
+              void utils.homlo.homeFeed.invalidate();
+            } catch (err) {
+              haptic.selection();
+              Alert.alert("Couldn't cancel the boost", err instanceof Error ? err.message : 'Try again in a moment.');
+            }
+          },
+        },
+      ],
+    );
+  };
   const handleClose = () => {
     if (!job) return;
     Alert.alert('Close this job?', 'The listing will stop accepting new applications.', [
@@ -145,11 +163,15 @@ function Screen() {
     ]);
   };
 
-  const big = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [0, 70], [1, 0], Extrapolation.CLAMP) }));
-  const small = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [60, 100], [0, 1], Extrapolation.CLAMP) }));
-  const tabsShift = useAnimatedStyle(() => { const dy = y.value - tabsY.value; return { transform: [{ translateY: dy > 0 ? dy : 0 }] }; });
-  const glow = useSharedValue(0); const rm = useReducedMotion(); useEffect(() => { if (!rm) glow.value = withRepeat(withTiming(1, { duration: 1200 }), -1, true) }, []);
-  const bolt = useAnimatedStyle(() => ({ shadowColor: c.sun, shadowOpacity: 0.3 + glow.value * 0.5, shadowRadius: 4 + glow.value * 8, shadowOffset: { width: 0, height: 0 }, elevation: 2 }));
+  /* scroll: hero parallax, a white bar fades in, and the status switch pins under it */
+  const HERO_H = ins.top + 280;
+  const BAR_H = ins.top + 60;
+  const barFx = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [HERO_H - BAR_H - 130, HERO_H - BAR_H - 50], [0, 1], Extrapolation.CLAMP) }));
+  const [barOn, setBarOn] = useState(false);
+  useAnimatedReaction(() => y.value > HERO_H - BAR_H - 90, (now, prev) => { if (now !== prev) runOnJS(setBarOn)(now); }, [HERO_H, BAR_H]);
+  const pinFx = useAnimatedStyle(() => ({ opacity: tabsY.value > 0 && y.value >= tabsY.value - BAR_H ? 1 : 0 }));
+  const [pinned, setPinned] = useState(false);
+  useAnimatedReaction(() => tabsY.value > 0 && y.value >= tabsY.value - BAR_H, (now, prev) => { if (now !== prev) runOnJS(setPinned)(now); }, [BAR_H]);
 
   if (jobsSkeleton) {
     return (
@@ -184,86 +206,87 @@ function Screen() {
     total: job.rolesTotal,
     unread: unreadCount,
   };
-  const statusLabel = (s: Applicant['status']) => (s === 'accepted' ? 'Accepted' : s === 'rejected' ? 'Rejected' : 'Pending');
+  // Only a running or queued boost can be cancelled; once the panel's
+  // countdown reports it has ended, the regular "Boost job" card returns.
+  const boostLive = Boolean(
+    job.boost && (job.boost.status === 'active' || job.boost.status === 'scheduled') && boostEndedFor !== job.boost.endsAt,
+  );
+  const counts = TABS.map((t) => (t === 'All' ? apps.length : apps.filter((a) => a.status === t.toLowerCase()).length));
+  const switcher = <StatusSwitch keys={TABS} counts={counts} value={tab} onChange={setTab} />;
 
   return <View style={{ flex: 1, backgroundColor: '#fff' }}>
-    <View style={{ paddingTop: ins.top + 8, paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff' }}>
-      <Circ n="back" label="Back" onPress={() => router.back()} />
-      <Animated.Text numberOfLines={1} style={[{ flex: 1, textAlign: 'center', fontFamily: f.hb, fontSize: 16, color: c.deep, marginHorizontal: 8 }, small]}>{JOB.title}</Animated.Text>
-      <Circ n="more" label="More" onPress={() => setMenu(true)} />
-    </View>
-    <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: ins.bottom + 24 }}>
-      <Animated.View style={[{ paddingHorizontal: 16 }, big]}><Text style={{ fontFamily: f.h, fontSize: 24, color: c.deep }}>{JOB.title}</Text>
-        <Text style={{ fontFamily: f.b, fontSize: 13, color: c.mu, marginTop: 4 }}>{apps.length}{apps.length === 1 ? ' applicant' : ' applicants'} · {JOB.unread} unread · {JOB.place}</Text></Animated.View>
-      <Reveal i={1} style={{ margin: 16, gap: 8 }}>
-        {JOB.total > 0 && (
-          <View style={[{ borderRadius: 20, padding: 14, backgroundColor: c.deep, flexDirection: 'row', alignItems: 'center' }, sh]}>
-            <View><Text style={{ fontFamily: f.m, fontSize: 12, color: c.tint2 }}>Filled</Text><Text style={{ fontFamily: f.h, fontSize: 28, color: '#fff' }}>{JOB.filled} of {JOB.total}</Text></View>
-            <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto' }}>{Array.from({ length: Math.max(1, JOB.total) }, (_, i) => <Seat key={i} i={i} on={i < JOB.filled && JOB.total > 0} />)}</View></View>
-        )}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Tile label="Views"><Text style={{ fontFamily: f.h, fontSize: 22, color: c.deep }}>{JOB.views}</Text><Bars /></Tile>
-          <Tile label="Applicants"><Text style={{ fontFamily: f.h, fontSize: 22, color: c.deep }}>{apps.length}</Text><Bars hot /></Tile>
-          <Tile label="Pay" bg={c.cream} bd={c.cream2} lc={c.ink}><Text style={{ fontFamily: f.h, fontSize: 22, color: c.clay }}>{JOB.pay}<Text style={{ fontSize: 12 }}>{JOB.unit}</Text></Text></Tile></View>
-      </Reveal>
-      <Reveal i={2} style={{ marginHorizontal: 16, borderRadius: 20, backgroundColor: c.cream, overflow: 'hidden' }}>
-        {job.boost ? (
-          <View style={{ padding: 16 }}>
-            <EmployerBoostPanel boost={job.boost} onExpire={() => void jobsQuery.refetch()} />
+    <StatusBar style={barOn ? 'dark' : 'light'} />
+    <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: ins.bottom + 32 }}>
+      <JobHero y={y} height={HERO_H} topInset={ins.top} title={JOB.title} place={JOB.place} pay={JOB.pay} unit={JOB.unit} imageUrl={job.imageUrl} boosted={boostLive} />
+      <Reveal i={0}><StatsStrip views={JOB.views} applicants={apps.length} unread={JOB.unread} /></Reveal>
+      {JOB.total > 0 && <Reveal i={1} style={{ marginHorizontal: 16, marginTop: 14 }}><HiringProgress filled={JOB.filled} total={JOB.total} /></Reveal>}
+      <Reveal i={2} style={{ marginHorizontal: 16, marginTop: 14 }}>
+        {boostLive && job.boost ? (
+          <View style={[{ borderRadius: 22, backgroundColor: '#FFF7EA', borderWidth: 1, borderColor: '#FBE3B5' }, cardShadow]}>
+            <View style={{ padding: 16 }}>
+              <EmployerBoostPanel boost={job.boost} onExpire={() => { setBoostEndedFor(job.boost?.endsAt ?? null); void jobsQuery.refetch(); }} />
+            </View>
+            <View style={{ height: 1, backgroundColor: '#FBE3B5', marginHorizontal: 16 }} />
+            <View style={{ padding: 16 }}>
+              <Press
+                label="Cancel boost"
+                onPress={handleCancelBoost}
+                style={{ height: 48, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F3C9C0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 24, opacity: cancelBoost.isPending ? 0.6 : 1 }}
+              >
+                {cancelBoost.isPending ? <ActivityIndicator color={AP.danger} /> : <Icon n="minus" s={20} color={AP.danger} />}
+                <Text style={{ fontFamily: f.hb, fontSize: 15, color: AP.danger }}>{cancelBoost.isPending ? 'Cancelling…' : 'Cancel boost'}</Text>
+              </Press>
+            </View>
           </View>
         ) : (
-          <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 }}><Animated.View style={[{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }, bolt]}><Icon n="bolt" color={c.ink} /></Animated.View>
-            <View><Text style={{ fontFamily: f.hb, fontSize: 16, color: c.ink }}>Boost job</Text><Text style={{ fontFamily: f.b, fontSize: 13, color: c.ink }}>Wider candidate exposure</Text></View></View>
-            <View style={{ borderTopWidth: 2, borderStyle: 'dashed', borderColor: c.cream2, marginHorizontal: 16 }} />
-            <View style={{ padding: 16 }}><Btn shim t="Boost job" onPress={handleBoost} /></View>
-          </>
+          <BoostSpotlight onBoost={handleBoost} />
         )}
       </Reveal>
-      <Reveal i={3} style={{ marginHorizontal: 16, marginTop: 12, marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, backgroundColor: c.bg }}>
-        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.tint, alignItems: 'center', justifyContent: 'center' }}><Icon n="pin" color={c.deep} /></View>
-        <View><Text style={{ fontFamily: f.b, fontSize: 12, color: c.mu }}>Location</Text><Text style={{ fontFamily: f.m, fontSize: 14, color: c.tx }}>{JOB.place}</Text></View></Reveal>
-      <Animated.View onLayout={(e) => { tabsY.value = e.nativeEvent.layout.y; }} style={[{ backgroundColor: '#fff', zIndex: 4, elevation: 4 }, tabsShift]}>
-        <Tabs keys={TABS} v={tab} on={setTab} />
-      </Animated.View>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 28, marginBottom: 12 }}>
+        <Text style={{ fontFamily: f.h, fontSize: 20, color: AP.navy }}>Applicants</Text>
+        <Text style={{ fontFamily: f.m, fontSize: 13, color: AP.muted }}>{JOB.unread > 0 ? `${JOB.unread} unread` : `${apps.length} total`}</Text>
+      </View>
+      <View onLayout={(e) => { tabsY.value = e.nativeEvent.layout.y; }} style={{ paddingHorizontal: 16, opacity: pinned ? 0 : 1 }}>
+        {switcher}
+      </View>
       <View style={{ padding: 16, gap: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}><Sec t="Applications" /><View style={{ marginLeft: 'auto' }}><Pill t={String(shown.length)} /></View></View>
         {applicationsSkeleton ? (
           <View style={{ marginHorizontal: -16 }}>
             <ApplicantTicketsSkeleton />
           </View>
         ) : (
           <>
-            {shown.map((a, i) => <Animated.View key={a.id} entering={FadeInDown.delay(i * 80).duration(400)} exiting={FadeOut.duration(120)} layout={LinearTransition} style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={{ width: 16, alignItems: 'center', paddingTop: 20 }}><View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: c.sun, borderWidth: 4, borderColor: c.cream }} /><View style={{ flex: 1, width: 2, backgroundColor: c.track, marginTop: 6 }} /></View>
-          <View style={[{ flex: 1, borderWidth: 1, borderColor: c.line, borderRadius: 20, padding: 16, backgroundColor: '#fff' }, sh]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.tint, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontFamily: f.h, fontSize: 17, color: c.deep }}>{(a.name || '?')[0]}</Text></View>
-              <View style={{ flex: 1 }}><Text style={{ fontFamily: f.s, fontSize: 15, color: c.tx }}>{a.name}</Text><Text style={{ fontFamily: f.b, fontSize: 13, color: c.mu }}>Applied {a.appliedAt}</Text></View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>{a.isNew ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.sun }} /> : null}<Pill t={statusLabel(a.status)} /></View>
-            </View>
-            {a.note ? (<View style={{ backgroundColor: c.bg, borderRadius: 14, padding: 12, marginVertical: 12 }}><Text style={{ fontFamily: f.b, fontSize: 14, color: c.tx }}>{'"'}{a.note}{'"'}</Text></View>) : null}
-            <Text style={{ fontFamily: f.b, fontSize: 13, color: c.mu, marginBottom: 12 }}>{a.location}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ flex: 1 }}><Btn o icon="msg" t="Message" onPress={() => openMessage(a)} /></View>
-              {a.status === 'pending' ? (<>
-                <Press label="Accept application" onPress={() => onAccept(a)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg, borderWidth: 1, borderColor: c.line }}><Icon n="chk" s={20} color={c.teal} /></Press>
-                <Press label="Reject application" onPress={() => onReject(a)} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg, borderWidth: 1, borderColor: c.line }}><Text style={{ fontSize: 18, fontWeight: '700', color: c.clay }}>✕</Text></Press>
-              </>) : null}
-            </View>
-          </View></Animated.View>)}
-            {apps.length === 0 ? <View style={{ alignItems: 'center', padding: 48, gap: 12 }}><View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: c.tint, alignItems: 'center', justifyContent: 'center' }}><Icon n="bag" color={c.deep} /></View><Text style={{ fontFamily: f.m, fontSize: 14, color: c.mu }}>No applications yet.</Text></View> : null}
-            {apps.length > 0 && shown.length === 0 ? <View style={{ alignItems: 'center', padding: 48, gap: 12 }}><Text style={{ fontFamily: f.m, fontSize: 14, color: c.mu }}>No applicants with this status.</Text></View> : null}
+            {shown.map((a, i) => (
+              <Animated.View key={a.id} entering={FadeInDown.delay(i * 80).duration(400)} exiting={FadeOut.duration(120)} layout={LinearTransition}>
+                <ApplicantItem a={a} onMessage={() => openMessage(a)} onAccept={() => onAccept(a)} onReject={() => onReject(a)} />
+              </Animated.View>
+            ))}
+            {apps.length === 0 ? <NoApplicants hint={boostLive ? 'Your boost is running. New applicants will show up here.' : 'New applicants will show up here. Boosting puts this job in front of more people.'} /> : null}
+            {apps.length > 0 && shown.length === 0 ? <View style={{ alignItems: 'center', padding: 40 }}><Text style={{ fontFamily: f.m, fontSize: 14, color: AP.muted }}>No applicants with this status.</Text></View> : null}
           </>
         )}
       </View>
     </Animated.ScrollView>
+
+    {/* white bar that fades in once the hero has scrolled away */}
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, left: 0, right: 0, height: BAR_H, backgroundColor: '#fff', shadowColor: '#12303C', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }, barFx]} />
+    <View style={{ position: 'absolute', top: ins.top + 8, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Circ n="back" label="Back" onPress={() => router.back()} />
+      <Animated.Text numberOfLines={1} style={[{ flex: 1, textAlign: 'center', fontFamily: f.h, fontSize: 16, color: AP.navy, marginHorizontal: 8 }, barFx]}>{JOB.title}</Animated.Text>
+      <Circ n="more" label="More" onPress={() => setMenu(true)} />
+    </View>
+    {/* pinned copy of the status switch; only touchable while shown */}
+    <Animated.View pointerEvents={pinned ? 'auto' : 'none'} style={[{ position: 'absolute', top: BAR_H, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: 10, backgroundColor: '#fff', shadowColor: '#12303C', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }, pinFx]}>
+      {switcher}
+    </Animated.View>
+
     {menu ? (
       <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}>
-        <Press style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }} onPress={() => setMenu(false)}><View style={{ flex: 1 }} /></Press>
-        <View style={{ position: 'absolute', right: 16, top: ins.top + 56, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: c.line, minWidth: 190, paddingVertical: 4, ...sh }}>
-          <Press onPress={() => { setMenu(false); go(R.editJob(job.id)); }} style={{ height: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 }}><Icon n="bag" color={c.deep} /><Text style={{ fontFamily: f.s, fontSize: 14, color: c.tx }}>Edit job</Text></Press>
-          <Press onPress={() => { setMenu(false); handleClose(); }} style={{ height: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 }}><Icon n="minus" color={c.clay} /><Text style={{ fontFamily: f.s, fontSize: 14, color: c.clay }}>Close job</Text></Press>
+        <Press style={{ flex: 1, backgroundColor: 'rgba(11,27,38,0.24)' }} onPress={() => setMenu(false)}><View style={{ flex: 1 }} /></Press>
+        <View style={[{ position: 'absolute', right: 16, top: ins.top + 60, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: AP.line, minWidth: 200, paddingVertical: 4 }, liftShadow]}>
+          <Press onPress={() => { setMenu(false); go(R.editJob(job.id)); }} style={{ height: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 }}><Icon n="bag" color={AP.navy} /><Text style={{ fontFamily: f.hb, fontSize: 14, color: AP.navy }}>Edit job</Text></Press>
+          <View style={{ height: 1, backgroundColor: AP.line, marginHorizontal: 12 }} />
+          <Press onPress={() => { setMenu(false); handleClose(); }} style={{ height: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 }}><Icon n="minus" color={AP.danger} /><Text style={{ fontFamily: f.hb, fontSize: 14, color: AP.danger }}>Close job</Text></Press>
         </View>
       </View>
     ) : null}

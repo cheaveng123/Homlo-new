@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DEMO_CONTENT_ENABLED } from "@/lib/demo-content";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { MOCK_EMPLOYERS, MOCK_JOBS } from "@/lib/mock/employerMockData";
@@ -39,6 +40,12 @@ export type Job = {
   boosted?: boolean;
   /** Job-seeker safe ad flag; never carries price, plan, or end time. */
   boost?: { isSponsored: true } | null;
+  /** Work days label, e.g. "Mon–Fri" (059_job_work_time); null/absent = not set. */
+  workDaysLabel?: string | null;
+  /** The same days as keys ('mon'..'sun'), for day chips. */
+  workDays?: string[];
+  /** Clock-in to clock-out, e.g. "8:00 AM – 5:00 PM"; null/absent = not set. */
+  workHoursLabel?: string | null;
 };
 
 function listing(job: Job): Job {
@@ -126,11 +133,13 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   useEffect(() => { AsyncStorage.getItem(storageKey).then((saved) => { const { ids, corrupted } = parseSavedJobIds(saved); if (corrupted) console.warn("[JobStore] Ignoring corrupt saved-job storage for", storageKey); setSavedIds(ids); }).catch(() => undefined); }, []);
   const toggleSaved = useCallback((id: string) => { setSavedIds((current) => { const next = current.includes(id) ? current.filter((savedId) => savedId !== id) : [...current, id]; void AsyncStorage.setItem(storageKey, JSON.stringify(next)); return next; }); }, []);
-  const value = useMemo(() => ({ savedIds, isSaved: (id: string) => savedIds.includes(id), toggleSaved }), [savedIds, toggleSaved]);
+  // PERF: Set lookup — isSaved() runs once per job card on every list render.
+  const value = useMemo(() => { const set = new Set(savedIds); return { savedIds, isSaved: (id: string) => set.has(id), toggleSaved }; }, [savedIds, toggleSaved]);
   return <JobStoreContext.Provider value={value}>{children}</JobStoreContext.Provider>;
 }
 
 export function useJobStore() { const context = useContext(JobStoreContext); if (!context) throw new Error("useJobStore must be used within JobProvider"); return context; }
 export function getJob(id: string) {
-  return jobs.find((job) => job.id === id) ?? mockStoreJobs.find((job) => job.id === id);
+  // Sample listings are only resolvable in demo mode (see lib/demo-content.ts).
+  return jobs.find((job) => job.id === id) ?? (DEMO_CONTENT_ENABLED ? mockStoreJobs.find((job) => job.id === id) : undefined);
 }

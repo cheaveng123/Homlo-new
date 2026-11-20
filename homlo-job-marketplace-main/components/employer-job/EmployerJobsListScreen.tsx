@@ -165,7 +165,7 @@ function Header({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.pageBg },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -181,14 +181,16 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.cardBg,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E3E9EC',
   },
   headerText: { flex: 1 },
   headerTitle: {
     fontFamily: fontFamily.extraBold,
     fontSize: 24,
     lineHeight: 30,
-    color: colors.ink,
+    color: '#14324A',
     letterSpacing: -0.4,
   },
   headerSubtitle: {

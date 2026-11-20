@@ -189,7 +189,7 @@ function Shine({ width }: { width: number }) {
         withTiming(1, { duration: 3100 }),
       ), -1,
     );
-  }, [reduce, width]);
+  }, [reduce, t, width]);
   const style = useAnimatedStyle(() => ({
     transform: [{ translateX: interpolate(t.value, [0, 1], [-width * 0.6, width * 1.3]) }, { skewX: '-20deg' }],
   }));

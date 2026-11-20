@@ -8,7 +8,7 @@ import type { PayPeriod, Period } from './finch_shared_shapes';
 export const PERIODS: readonly Period[] = ['today', 'week', 'month'];
 
 export const feedConfig = {
-  version: 1,
+  version: 2,
 
   /** How much each kind of event is worth. Impressions are the denominator, not a "reward". */
   eventWeights: { view: 1, dwell_15s: 2, save: 4, apply: 8 },
@@ -46,6 +46,21 @@ export const feedConfig = {
 
   /** Used by Recommended / Popular / Explore: on-site jobs far from the viewer are damped, never removed. */
   region: { fullScoreWithinKm: 60, falloffKm: 60, floorFactor: 0.25 },
+
+  /**
+   * Location term L(d) for Recommended / Popular (see docs/FEED_RANKING.md):
+   *   L(d) = regionFactor(d) * (1 + bonus / (1 + d / scaleKm)),   L(null) = 1.
+   * Closer jobs get up to +bonus; unknown distance (no viewer location, remote job, job without
+   * coordinates) is exactly neutral, so the term drops out when location is missing.
+   */
+  location: { proximityBonus: 0.2, proximityScaleKm: 10 },
+
+  /**
+   * Cold-start safeguard for Recommended / Popular: every `everyN`th slot goes to the best-scoring
+   * "newcomer" (younger than maxAgeDays AND fewer than maxImpressions decayed impressions in the
+   * ranking window) that is not already placed higher. 0 disables it.
+   */
+  newcomer: { everyN: 5, maxAgeDays: 7, maxImpressions: 20 },
 
   recommended: { period: 'month' as Period },
 

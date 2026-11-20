@@ -9,7 +9,7 @@ export function useStaggerIn(index: number) {
     const delay = Math.min(index, 8) * 40;
     opacity.value = withDelay(delay, withTiming(1, { duration: 220 }));
     translateY.value = withDelay(delay, withSpring(0, { damping: 16, stiffness: 200 }));
-  }, []);
+  }, [index, opacity, translateY]);
 
   return useAnimatedStyle(() => ({
     opacity: opacity.value,

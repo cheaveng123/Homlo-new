@@ -28,6 +28,7 @@ const G = {
   clock: (a) => (<><Circle cx="12" cy="12" r="8.5" /><Path d="M12 7.5V12l3 2" />{dot(12, 12, 1.3, a)}</>),
   file: () => (<><Path d="M14 3H7.5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7.5Z" /><Path d="M14 3v4.5h4.5M9 12.5h6M9 16h4" /></>),
   x: () => <Path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />,
+  flag: () => (<><Path d="M5.5 21V4" /><Path d="M5.5 4.5h11l-2.2 4 2.2 4h-11" /></>),
   send: () => (<><Path d="M20.5 3.5 3.9 10.1a.6.6 0 0 0 0 1.1l6.3 2.6 2.6 6.3a.6.6 0 0 0 1.1 0Z" /><Path d="M10.2 13.8 20.5 3.5" /></>),
   cal: (a) => (<><Rect x="3.5" y="5" width="17" height="15.5" rx="3" /><Path d="M8 3v4M16 3v4M3.5 10h17" /><Rect x="13.5" y="13.5" width="3.2" height="3.2" rx="0.9" fill={a} stroke="none" /></>),
   mon: () => (<><Rect x="3" y="4" width="18" height="12.5" rx="2.5" /><Path d="M9 20.5h6M12 16.5v4" /></>),

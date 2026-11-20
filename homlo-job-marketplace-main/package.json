@@ -26,7 +26,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "qr": "node scripts/generate_qr.mjs",
-    "eval:offline": "tsx scripts/run-evaluation.ts"
+    "eval:offline": "tsx scripts/run-evaluation.ts",
+    "check:release": "node scripts/check-release.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
@@ -124,6 +125,12 @@
   "expo": {
     "install": {
       "exclude": []
+    }
+  },
+  "reanimated": {
+    "staticFeatureFlags": {
+      "ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS": true,
+      "IOS_SYNCHRONOUSLY_UPDATE_UI_PROPS": true
     }
   }
 }

@@ -3,12 +3,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat,
-  withSpring, withTiming,
+  Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withTiming,
 } from 'react-native-reanimated';
 import { Icon, Job, PressableScale, SegmentedSwitch, ViewMode } from './ExploreUI';
 import { c, fonts, r, shadow, sp, type } from './tokens';
 
+import { smooth } from '@/src/design/motion';
 /* Custom marker for the free map (MapLibre / OpenStreetMap). Use it as the marker's child view.
    Style the map itself to the palette: water #8BD3E3, parks #DCF1F6, land #E6F3F1, roads #FFFFFF, labels #6A7C84.
    Draw the radius as a map circle layer: stroke #0891B2 dashed 1.5, fill rgba(14,124,134,0.07). */
@@ -17,7 +17,7 @@ export function PricePin({ pay, selected, index = 0 }: { pay: string; selected?:
   const pop = useSharedValue(reduce ? 1 : 0);
   const ring = useSharedValue(0);
   useEffect(() => {
-    if (!reduce) pop.value = withDelay(index * 90, withSpring(1, { damping: 9, stiffness: 180 }));
+    if (!reduce) pop.value = withDelay(index * 90, smooth(1));
   }, [index, reduce, pop]);
   useEffect(() => {
     if (reduce || !selected) return;

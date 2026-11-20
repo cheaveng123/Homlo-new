@@ -13,7 +13,7 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { employerIdForCompany } from "@/lib/mock/employerMockData";
 import { goBack } from "@/lib/navigation";
 import { computePositionsLeft } from "@/lib/positions";
-import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
+import { isAwaitingData, useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
 
 const THUMB_BG = ["#155743", "#C97A16", "#2FAE79", "#0E3B2E", "#F5A623"];
 const EMPLOYER_BG = ["#0E3B2E", "#F5A623"];
@@ -89,10 +89,13 @@ export default function CategoryListingRoute() {
   const { location } = useUserLocation();
   const center = location ?? defaultSearchCenter;
 
-  const { data, isLoading } = trpc.homlo.searchJobs.useQuery(
+  const searchQuery = trpc.homlo.searchJobs.useQuery(
     { ...(category ? { category } : {}), limit: 40, sort: "recommended" },
     { staleTime: 30_000 }
   );
+  const { data } = searchQuery;
+  // Not `isLoading` (false for a pending query that isn't fetching yet).
+  const isLoading = isAwaitingData(searchQuery);
 
   const jobs = useMemo(
     () => (data?.jobs ?? []).map((record) => jobToListing(record, center)),

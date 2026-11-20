@@ -14,7 +14,7 @@ export function ProgressRingNew({ progress, size = 96, stroke = 11, children }: 
   const reduced = useReducedMotion();
   useEffect(() => {
     p.value = reduced ? progress : withDelay(200, withTiming(progress, { duration: 1400, easing: Easing.out(Easing.cubic) }));
-  }, [progress, reduced]);
+  }, [p, progress, reduced]);
   const props = useAnimatedProps(() => ({ strokeDashoffset: c * (1 - p.value) }));
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>

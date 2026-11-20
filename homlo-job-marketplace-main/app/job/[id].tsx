@@ -6,7 +6,7 @@ import { getJob, useJobStore } from "@/components/job-store";
 import { mapJobToDetails } from "@/components/job-details/map-job-to-details";
 import { usePublishedJobs } from "@/hooks/use-published-jobs";
 import { useAuth } from "@/hooks/use-auth";
-import { trpc, trpcDirect } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc";
 import { logJobEvent } from "@/lib/event-logging";
 import { isCanonicalJobId, jobDetailDecision } from "@/lib/job-detail-decision";
 import {
@@ -21,6 +21,7 @@ import { jobCoordinate } from "@/lib/job-geography";
 import { computePositionsLeft } from "@/lib/positions";
 import { JobDetailMap } from "@/src/components/JobDetailMap";
 import { AppIcon } from "@/components/ui/AppIcon";
+import { ReportSheet } from "@/components/legal/ReportSheet";
 import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
 import { JobDetailSkeleton } from "@/src/new/components/NewSkeletons";
 import { EmptyStateNew } from "@/src/new/components/PrimitivesNew";
@@ -53,6 +54,7 @@ export default function JobDetailScreen() {
     availableJobs.find((candidate) => candidate.id === id) ?? getJob(id);
   const { isSaved, toggleSaved } = useJobStore();
   const { user } = useAuth();
+  const [reportOpen, setReportOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [mapFullScreen, setMapFullScreen] = useState(false);
 
@@ -62,11 +64,6 @@ export default function JobDetailScreen() {
     { enabled: Boolean(user) && canonical },
   );
   const dwellStopRef = useRef<(() => void) | null>(null);
-  const [employerAbout, setEmployerAbout] = useState<{
-    name: string;
-    about: string | null;
-  } | null>(null);
-
   useEffect(() => {
     if (!canonical) return;
     const shouldRecord = shouldRecordEvents(user?.role);
@@ -85,32 +82,13 @@ export default function JobDetailScreen() {
 
   const employerName = liveJob?.company?.trim() ?? null;
 
-  const employerAboutText =
-    employerAbout && employerAbout.name === employerName
-      ? employerAbout.about
-      : null;
-
-  useEffect(() => {
-    if (!employerName) return;
-    let active = true;
-    (async () => {
-      try {
-        const profile = await trpcDirect.homlo.employerProfile.query({
-          name: employerName,
-        });
-        if (active)
-          setEmployerAbout({
-            name: employerName,
-            about: profile?.about?.trim() || null,
-          });
-      } catch {
-        if (active) setEmployerAbout({ name: employerName, about: null });
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [employerName]);
+  // PERF: was a trpcDirect call in an effect, re-sent on every visit to any
+  // job. A cached query reuses the about text for the same employer.
+  const employerProfileQuery = trpc.homlo.employerProfile.useQuery(
+    { name: employerName ?? "" },
+    { enabled: Boolean(employerName), staleTime: 10 * 60_000, retry: false },
+  );
+  const employerAboutText = employerProfileQuery.data?.about?.trim() || null;
 
   const showSkeleton = useFirstLoadSkeletonFlag({
     loading: liveJobsLoading,
@@ -169,6 +147,9 @@ export default function JobDetailScreen() {
     toggleSaved(job.id);
   };
 
+  // Report button on every listing (scam, underage user, discrimination, illegal, other).
+  const reportListing = (_jobId: string) => setReportOpen(true);
+
   const d = mapJobToDetails(job);
   const filled = d.jobStatus === "filled";
   const apply = applyActionState(
@@ -181,6 +162,7 @@ export default function JobDetailScreen() {
     ? {
         id: job.id,
         title: job.title,
+        category: job.category,
         latitude: coordinate.latitude,
         longitude: coordinate.longitude,
       }
@@ -200,8 +182,10 @@ export default function JobDetailScreen() {
       d.positionsAvailable ??
       computePositionsLeft(d.positionsTotal, d.positionsFilled),
     positionsTotal: d.positionsTotal ?? 0,
-    description: d.description,
     requirements: d.requirements,
+    workDays: d.workDays ?? null,
+    workHours: d.workHours ?? null,
+    workDayKeys: d.workDayKeys ?? [],
     liked: saved,
     employerAbout: employerAboutText,
   };
@@ -265,7 +249,11 @@ export default function JobDetailScreen() {
           jobsRefetch().finally(() => setRefreshing(false));
         }}
         refreshing={refreshing}
+        onReport={isCanonicalJobId(job.id) ? () => reportListing(job.id) : undefined}
       />
+      {isCanonicalJobId(job.id) ? (
+        <ReportSheet visible={reportOpen} onClose={() => setReportOpen(false)} targetType="job" targetId={job.id} targetLabel={job.title} />
+      ) : null}
       {mapFullScreen && mapJob && (
         <Modal
           transparent

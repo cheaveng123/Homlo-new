@@ -189,7 +189,7 @@ export const impressionViewabilityConfig = {
  * for the same reason as above.
  */
 export function makeOnViewableItemsChanged<T>(recorder: JobEventRecorder, getJobId: (item: T) => string | undefined) {
-  return (info: { viewableItems: Array<{ item?: T; isViewable?: boolean }> }): void => {
+  return (info: { viewableItems: { item?: T; isViewable?: boolean }[] }): void => {
     for (const v of info.viewableItems) {
       if (v.isViewable && v.item !== undefined) {
         const id = getJobId(v.item);

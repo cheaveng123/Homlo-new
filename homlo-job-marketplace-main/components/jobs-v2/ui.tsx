@@ -1,4 +1,4 @@
-import React, { ReactNode, createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { ReactNode, createContext, useContext, useEffect, useState } from 'react';
 import {
   Animated as RNAnimated,
   Easing as RNEasing,
@@ -347,13 +347,17 @@ export function BottomSheet({
   visible, onClose, children,
 }: { visible: boolean; onClose: () => void; children: ReactNode }) {
   const [mounted, setMounted] = useState(visible);
-  const prog = useRef(new RNAnimated.Value(0)).current;
+  // Stable animated value, created once (no ref read during render).
+  const [prog] = useState(() => new RNAnimated.Value(0));
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
 
+  // Mount as soon as it becomes visible (during render, not in the effect);
+  // unmounting waits for the closing animation below.
+  if (visible && !mounted) setMounted(true);
+
   useEffect(() => {
     if (visible) {
-      setMounted(true);
       RNAnimated.timing(prog, { toValue: 1, duration: 260, easing: RNEasing.out(RNEasing.cubic), useNativeDriver: true }).start();
     } else if (mounted) {
       RNAnimated.timing(prog, { toValue: 0, duration: 200, useNativeDriver: true }).start(({ finished }) => {

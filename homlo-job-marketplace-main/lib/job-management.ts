@@ -151,7 +151,11 @@ function normalizeJobStatus(status: string | null | undefined): JobStatus {
     case "expired":
     case "cancelled":
       return status;
+    // Removed by moderators: never editable back to live from here.
+    case "removed":
+      return "closed";
     default:
+      // Includes "pending_review": the database keeps it in review whatever the editor sends.
       return "open";
   }
 }
@@ -165,9 +169,6 @@ function normalizePayType(payType: string | null | undefined): PayType {
  * URLs or data URIs). Both render through ImageBackground `source={{uri}}`
  * without further processing.
  */
-function getJobImageUrl(value: string): string {
-  return value;
-}
 
 /** Derives the editable fields the Edit screen mutates from a job snapshot. */
 export function editableFieldsFromJob(job: EmployerJob): EditableJobFields {

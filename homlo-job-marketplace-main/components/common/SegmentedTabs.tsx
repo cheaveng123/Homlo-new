@@ -17,11 +17,11 @@ import Animated, {
   SharedValue,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
 } from 'react-native-reanimated';
 
 import { colors, radius, type } from '../../theme/tokens';
 
+import { smooth } from '@/src/design/motion';
 type Props = {
   tabs: string[];
   activeTab: string;
@@ -50,12 +50,7 @@ export default function SegmentedTabs({ tabs, activeTab, onChange }: Props) {
   useEffect(() => {
     // A spring rather than a timing curve: the pill should arrive with a little
     // weight, and it must never overshoot past the track edges at index 0 or n-1.
-    progress.value = withSpring(activeIndex, {
-      damping: 20,
-      stiffness: 220,
-      mass: 0.7,
-      overshootClamping: true,
-    });
+    progress.value = smooth(activeIndex);
   }, [activeIndex, progress]);
 
   const inner = trackWidth - PILL_INSET * 2;

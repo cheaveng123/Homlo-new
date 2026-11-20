@@ -3,7 +3,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 
-import { SearchResultsScreenNew, type ResultFilterNew } from "@/src/new/screens/SearchResultsScreenNew";
+import { type ResultFilterNew } from "@/src/new/screens/SearchResultsScreenNew";
+import { SearchResultsPage } from "@/components/search/SearchResultsPage";
 import { JobSummaryNew, ScreenStateNew } from "@/src/new/types/jobNew";
 import type { JobCardData, WorkArrangement } from "@/components/jobs/jobCardTypes";
 import { logoColorFor } from "@/components/jobs/toJobCardData";
@@ -111,6 +112,7 @@ function toSummary(d: JobCardData, liked: boolean): JobSummaryNew {
     positionsLeft: d.positionsLeft ?? 0,
     positionsTotal: d.positionsTotal ?? 0,
     employerInitials: initialsOf(d.employerName),
+    employerName: d.employerName,
     imageUri: d.imageUrl ?? undefined,
     typeLabel: d.workArrangement === "remote" ? "Remote" : undefined,
     liked,
@@ -339,7 +341,7 @@ export default function SearchResultsScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <SearchResultsScreenNew
+      <SearchResultsPage
         state={state}
         query={query}
         onBack={() => router.back()}

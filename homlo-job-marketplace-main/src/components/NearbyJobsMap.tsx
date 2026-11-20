@@ -1,189 +1,131 @@
+// Full-screen jobs map (/jobs-map). Ride-hailing layout: the map fills the
+// screen; a floating search pill sits on top (fixed NEARBY_RADIUS_KM radius); a locate button
+// rides above a draggable bottom sheet listing the nearest jobs. Tapping a pin
+// (or a row) selects that job, centres it, and opens its card in the sheet.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
-import type {
-  CameraRef,
-  OnPressEvent,
-  ShapeSourceRef,
-} from "../native-support";
+import { StyleSheet, View, type ScrollView, type StyleProp, type ViewStyle } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { CameraRef } from "../native-support";
 
-import {
-  DEFAULT_NEARBY_RADIUS_KM,
-  MAX_NEARBY_PINS,
-  MAX_NEARBY_RADIUS_KM,
-} from "../config";
+import { MAX_NEARBY_PINS, COLORS } from "../config";
 import { MAP_THEME } from "../theme/mapTheme";
-import { COLORS } from "../config";
 import { useLocation } from "../context/LocationContext";
 import { MapLibre } from "../native-support";
 import type { Coordinate, JobPin, JobWithDistance } from "../types";
-import {
-  circlePolygon,
-  formatDistanceKm,
-  haversineKm,
-  jobsFeatureCollection,
-  normalizeJobPin,
-} from "../utils/geo";
+import { circlePolygon, formatDistanceKm, haversineKm, normalizeJobPin } from "../utils/geo";
 import { AppMap } from "./AppMap";
 import { MapUnavailable } from "./MapUnavailable";
-import { JobPinLayers } from "./map/JobPinLayers";
+import { JobPinMarkers } from "./map/JobPinMarkers";
+import {
+  MapJobRow,
+  MapLocateButton,
+  MapSelectedJob,
+  MapSheet,
+  MapSheetHeader,
+  MapTopBar,
+  NEARBY_RADIUS_KM,
+  travelNote,
+  useSheetSnaps,
+} from "./map/MapChrome";
+import { palette } from "../design/tokens";
+import { TextNew } from "../new/components/TextNew";
 
 export type NearbyJobsMapProps = {
   jobs: JobPin[];
   onViewJob: (job: JobPin) => void;
   onBack?: () => void;
+  /** Search radius; defaults to the shared NEARBY_RADIUS_KM (10 km). */
   radiusKm?: number;
   maxPins?: number;
   height?: number;
   style?: StyleProp<ViewStyle>;
 };
 
+const TOP_BAR_H = 52;
+
+
 export function NearbyJobsMap({
   jobs,
   onViewJob,
   onBack,
-  radiusKm = DEFAULT_NEARBY_RADIUS_KM,
+  radiusKm = NEARBY_RADIUS_KM,
   maxPins = MAX_NEARBY_PINS,
   height,
   style,
 }: NearbyJobsMapProps) {
-  const {
-    location,
-    accuracy,
-    permissionDenied,
-    error: locationError,
-    loading,
-    requestPermission,
-  } = useLocation();
+  const insets = useSafeAreaInsets();
+  const { location, accuracy, permissionDenied, error: locationError, loading, requestPermission } = useLocation();
 
   const cameraRef = useRef<CameraRef | null>(null);
-  const sourceRef = useRef<ShapeSourceRef | null>(null);
-  const [selected, setSelected] = useState<JobWithDistance | null>(null);
+  const listRef = useRef<ScrollView | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [initialFit, setInitialFit] = useState<Coordinate[] | null>(null);
+  const [zoom, setZoom] = useState(12);
+  const snaps = useSheetSnaps(212 + insets.bottom, insets.top + 8 + TOP_BAR_H + 12);
+  const [sheetIndex, setSheetIndex] = useState(0);
   const fittedKeyRef = useRef("");
 
-  const effectiveRadiusKm = Math.min(
-    Math.max(radiusKm, 0.1),
-    MAX_NEARBY_RADIUS_KM,
-  );
+  const effectiveRadiusKm = Math.max(radiusKm, 0.1);
   const effectiveMaxPins = Math.min(Math.max(maxPins, 1), MAX_NEARBY_PINS);
 
   const normalizedJobs = useMemo(
-    () =>
-      jobs
-        .map((job) => normalizeJobPin(job))
-        .filter((job): job is JobPin => job !== null),
+    () => jobs.map((job) => normalizeJobPin(job)).filter((job): job is JobPin => job !== null),
     [jobs],
   );
 
   const nearbyJobs = useMemo<JobWithDistance[]>(() => {
     if (!location) return [];
-
     return normalizedJobs
-      .map((job) => {
-        const coordinate: Coordinate = {
-          latitude: job.latitude,
-          longitude: job.longitude,
-        };
-
-        return {
-          ...job,
-          distanceKm: haversineKm(location, coordinate),
-        };
-      })
+      .map((job) => ({ ...job, distanceKm: haversineKm(location, job) }))
       .filter((job) => job.distanceKm <= effectiveRadiusKm)
       .sort((a, b) => a.distanceKm - b.distanceKm)
       .slice(0, effectiveMaxPins);
   }, [effectiveMaxPins, effectiveRadiusKm, location, normalizedJobs]);
-
-  const jobsShape = useMemo(
-    () => jobsFeatureCollection(nearbyJobs),
-    [nearbyJobs],
-  );
 
   const radiusShape = useMemo(
     () => (location ? circlePolygon(location, effectiveRadiusKm * 1000) : null),
     [effectiveRadiusKm, location],
   );
 
+  // Fit the user + jobs once per result set (not on every location tick).
   useEffect(() => {
     if (!location) return;
-
     const jobsKey = nearbyJobs.map((job) => job.id).join("|");
-    const fitKey =
-      jobsKey.length > 0
-        ? jobsKey
-        : `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
-
+    const fitKey = `${effectiveRadiusKm}:${jobsKey || `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`}`;
     if (fittedKeyRef.current === fitKey) return;
     fittedKeyRef.current = fitKey;
+    setInitialFit([location, ...nearbyJobs.map((job) => ({ latitude: job.latitude, longitude: job.longitude }))]);
+  }, [effectiveRadiusKm, location, nearbyJobs]);
 
-    setInitialFit([
-      location,
-      ...nearbyJobs.map((job) => ({
-        latitude: job.latitude,
-        longitude: job.longitude,
-      })),
-    ]);
-  }, [location, nearbyJobs]);
+  // The selection only counts while that job is still listed.
+  const selected = useMemo(() => nearbyJobs.find((job) => job.id === selectedId) ?? null, [nearbyJobs, selectedId]);
+  const others = useMemo(() => nearbyJobs.filter((job) => job.id !== selected?.id), [nearbyJobs, selected]);
 
-  useEffect(() => {
-    if (!selected) return;
+  const focus = useCallback((job: JobWithDistance) => {
+    setSelectedId(job.id);
+    setSheetIndex(1);
+    listRef.current?.scrollTo({ y: 0, animated: true });
+    cameraRef.current?.setCamera({
+      centerCoordinate: [job.longitude, job.latitude],
+      zoomLevel: Math.max(zoom, 14),
+      // Keep the pin in the visible band above the half-open sheet.
+      padding: { paddingTop: 0, paddingRight: 0, paddingLeft: 0, paddingBottom: snaps[1] - 40 },
+      animationDuration: 320,
+    });
+  }, [snaps, zoom]);
 
-    const stillVisible = nearbyJobs.some((job) => job.id === selected.id);
-    if (!stillVisible) setSelected(null);
-  }, [nearbyJobs, selected]);
-
-  const handleSourcePress = useCallback(
-    async (event: OnPressEvent) => {
-      const feature = event.features?.[0];
-      if (!feature) return;
-
-      const geometry = feature.geometry;
-      if (!geometry || geometry.type !== "Point") return;
-
-      const [longitude, latitude] = geometry.coordinates as [number, number];
-
-      const properties = feature.properties ?? {};
-
-      if (properties.cluster) {
-        let zoomLevel = 14;
-
-        try {
-          zoomLevel =
-            (await sourceRef.current?.getClusterExpansionZoom(feature)) ?? 14;
-        } catch {
-          zoomLevel = 14;
-        }
-
-        cameraRef.current?.setCamera({
-          centerCoordinate: [longitude, latitude],
-          zoomLevel,
-          animationDuration: 400,
-        });
-        return;
-      }
-
-      const id = typeof properties.id === "string" ? properties.id : "";
-      const job = nearbyJobs.find((candidate) => candidate.id === id);
-
-      if (!job) return;
-
-      setSelected(job);
-      cameraRef.current?.setCamera({
-        centerCoordinate: [longitude, latitude],
-        zoomLevel: 14,
-        animationDuration: 350,
-      });
-    },
-    [nearbyJobs],
-  );
+  const handleLocate = useCallback(() => {
+    if (!location) {
+      void requestPermission();
+      return;
+    }
+    cameraRef.current?.setCamera({
+      centerCoordinate: [location.longitude, location.latitude],
+      zoomLevel: 14,
+      padding: { paddingTop: 0, paddingRight: 0, paddingLeft: 0, paddingBottom: snaps[sheetIndex] - 40 },
+      animationDuration: 320,
+    });
+  }, [location, requestPermission, sheetIndex, snaps]);
 
   if (!MapLibre) {
     return (
@@ -197,203 +139,107 @@ export function NearbyJobsMap({
   }
 
   const { FillLayer, LineLayer, ShapeSource } = MapLibre;
+  const barBottom = insets.top + 8 + TOP_BAR_H;
+  const count = nearbyJobs.length;
+
+  let sheetTitle = `${count} ${count === 1 ? "job" : "jobs"} nearby`;
+  let sheetSubtitle = `Within ${effectiveRadiusKm} km · nearest first`;
+  if (!location) {
+    sheetTitle = permissionDenied ? "Location is off" : "Finding jobs near you";
+    sheetSubtitle = permissionDenied ? "Turn on location to see jobs around you" : "Getting your position…";
+  }
 
   return (
-    <View
-      style={[styles.wrapper, height !== undefined ? { height } : null, style]}
-    >
-      {onBack ? (
-        <Pressable
-          accessibilityLabel="Back"
-          accessibilityRole="button"
-          onPress={onBack}
-          style={styles.backButton}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </Pressable>
-      ) : null}
-
+    <View style={[styles.wrapper, height !== undefined ? { height } : null, style]}>
       <AppMap
         style={StyleSheet.absoluteFill}
         initialCenter={location ?? undefined}
         initialZoom={12}
         cameraRef={cameraRef}
         fitCoordinates={initialFit ?? undefined}
-        bannerTop={56}
+        fitInsets={{ top: barBottom, bottom: snaps[0] }}
+        bannerTop={barBottom + 12}
+        attributionPosition={{ bottom: snaps[0] + 8, left: 8 }}
         userLocation={location}
         userAccuracy={accuracy}
         permissionDenied={permissionDenied}
         locationError={locationError}
         onRequestPermission={requestPermission}
+        onZoomChange={setZoom}
       >
         {radiusShape ? (
           <ShapeSource id="nearby-radius" shape={radiusShape}>
-            <FillLayer
-              id="nearby-radius-fill"
-              style={{ fillColor: `${MAP_THEME.primarySoft}CC` }}
-            />
-            <LineLayer
-              id="nearby-radius-line"
-              style={{
-                lineColor: `${MAP_THEME.primary}80`,
-                lineWidth: 1.5,
-                lineDasharray: [2, 2],
-              }}
-            />
+            <FillLayer id="nearby-radius-fill" style={{ fillColor: `${MAP_THEME.primarySoft}99` }} />
+            <LineLayer id="nearby-radius-line" style={{ lineColor: `${MAP_THEME.primary}80`, lineWidth: 1.5, lineDasharray: [2, 2] }} />
           </ShapeSource>
         ) : null}
 
-        <ShapeSource
-          id="nearby-jobs"
-          ref={sourceRef}
-          shape={jobsShape}
-          cluster
-          clusterRadius={48}
-          clusterMaxZoomLevel={14}
-          onPress={handleSourcePress}
-        />
-
-        <JobPinLayers
+        <JobPinMarkers
           jobs={nearbyJobs}
           selectedId={selected?.id ?? null}
-          onPinPress={(jobId) => {
-            const job = nearbyJobs.find((j) => j.id === jobId);
-            if (job) setSelected(job);
-          }}
+          onPinPress={focus}
+          compact={zoom < 13}
         />
       </AppMap>
 
-      {!location && loading && !permissionDenied ? (
-        <View style={styles.loadingPill}>
-          <Text style={styles.loadingText}>Locating nearby jobs…</Text>
-        </View>
-      ) : null}
-
-      {selected ? (
-        <View style={styles.card}>
-          <View style={styles.cardText}>
-            <Text numberOfLines={1} style={styles.cardTitle}>
-              {selected.title}
-            </Text>
-            <Text style={styles.cardMeta}>
-              {formatDistanceKm(selected.distanceKm)} away
-            </Text>
+      <MapTopBar
+        top={insets.top + 8}
+        title="Jobs near you"
+        subtitle={location ? `Within ${effectiveRadiusKm} km of your location` : loading ? "Locating…" : "Location unavailable"}
+        onBack={onBack}
+      />
+      <MapSheet
+        snaps={snaps}
+        index={sheetIndex}
+        onIndexChange={setSheetIndex}
+        bottomInset={insets.bottom}
+        scrollRef={listRef}
+        fab={<MapLocateButton onPress={handleLocate} active={Boolean(location)} />}
+        header={<MapSheetHeader title={sheetTitle} subtitle={sheetSubtitle} />}
+      >
+        {selected ? (
+          <MapSelectedJob
+            category={selected.category}
+            title={selected.title}
+            subtitle={selected.subtitle ?? undefined}
+            pay={selected.label}
+            distance={formatDistanceKm(selected.distanceKm)}
+            note={travelNote(selected.distanceKm)}
+            onView={() => onViewJob(selected)}
+            onClose={() => {
+              setSelectedId(null);
+              setSheetIndex(0);
+            }}
+          />
+        ) : null}
+        {selected && others.length ? (
+          <TextNew variant="meta" weight="semibold" color={palette.muted} style={styles.groupLabel}>Other jobs nearby</TextNew>
+        ) : null}
+        {others.map((job) => (
+          <MapJobRow
+            key={job.id}
+            category={job.category}
+            title={job.title}
+            subtitle={job.subtitle ?? undefined}
+            pay={job.label}
+            distance={formatDistanceKm(job.distanceKm)}
+            onPress={() => focus(job)}
+          />
+        ))}
+        {location && count === 0 ? (
+          <View style={styles.empty}>
+            <TextNew variant="body" color={palette.muted} align="center">
+              {`No jobs within ${effectiveRadiusKm} km yet. Check back soon.`}
+            </TextNew>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onViewJob(selected)}
-            style={styles.viewButton}
-          >
-            <Text style={styles.viewButtonText}>View job</Text>
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Close job card"
-            accessibilityRole="button"
-            onPress={() => setSelected(null)}
-            style={styles.closeButton}
-          >
-            <Text style={styles.closeButtonText}>×</Text>
-          </Pressable>
-        </View>
-      ) : null}
+        ) : null}
+      </MapSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    overflow: "hidden",
-    backgroundColor: COLORS.surface,
-  },
-  backButton: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    zIndex: 100,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: MAP_THEME.radii.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  backButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  loadingPill: {
-    position: "absolute",
-    top: 12,
-    alignSelf: "center",
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  loadingText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.textMuted,
-  },
-  card: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: MAP_THEME.radii.card,
-    backgroundColor: "rgba(255,255,255,0.97)",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  cardText: {
-    flex: 1,
-    gap: 2,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: COLORS.text,
-  },
-  cardMeta: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-  },
-  viewButton: {
-    borderRadius: 999,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  viewButtonText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: COLORS.onPrimary,
-  },
-  closeButton: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    backgroundColor: `${MAP_THEME.primarySoft}CC`,
-  },
-  closeButtonText: {
-    fontSize: 17,
-    lineHeight: 19,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
+  wrapper: { flex: 1, overflow: "hidden", backgroundColor: COLORS.surface },
+  groupLabel: { marginTop: 6, marginLeft: 4 },
+  empty: { paddingVertical: 24, paddingHorizontal: 16 },
 });

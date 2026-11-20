@@ -1,26 +1,26 @@
-// Page 3 of 4: Jobs near you. Map with price pins, 1 / 3 / 5 km radius circles, hill edge into the list.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, FlatList } from 'react-native';
+// Page 3 of 4: Jobs near you. Full-screen map with field pins (fixed 10 km radius), and the
+// job list in a draggable bottom sheet (ride-hailing layout, Homlo tokens).
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { JobsMap } from '@/components/jobs/JobsMap';
-import { SelectorCircle, SelectorText, SectionTitle, JobCard, LogoSquare, DistanceBadge } from '@/components/jobs/JobsUI';
-import { payText, typeLabel, travelText, useSavedJobs } from '@/lib/jobsData';
-import { J, S, TS, shadowMd } from '@/lib/jobsTheme';
-import { F } from '@/lib/profileTheme';
-import { useFeedClient } from '@/lib/feed-client';
+import { payText, useSavedJobs } from '@/lib/jobsData';
+import type { JobsMapHandle } from '@/components/jobs/JobsMap.types';
+import { NEARBY_RADIUS_KM, MapJobRow, MapLocateButton, MapSelectedJob, MapSheet, MapSheetHeader, MapTopBar, formatKm, travelNote, useSheetSnaps } from '@/src/components/map/MapChrome';
+import { palette } from '@/src/design/tokens';
+import { TextNew } from '@/src/new/components/TextNew';
+import { peekFeedRead, useFeedClient } from '@/lib/feed-client';
 import { useSearchLocation } from '@/hooks/use-search-location';
 import { haversineDistance } from '@/lib/job-geography';
 import { normalizePublishedJob } from '@/lib/job-record';
 import { trpc } from '@/lib/trpc';
-import { JobEventRecorder, impressionViewabilityConfig, makeOnViewableItemsChanged } from '@/backend/feed/otter_event_recorder';
+import { useRefetchMissingJobs } from "@/hooks/use-refetch-missing-jobs";
 import { useFirstLoadSkeletonFlag } from '@/lib/useFirstLoadSkeletonFlag';
 import { JobsUiListSkeleton } from '@/src/new/components/NewSkeletons';
 
-const RADII = [1, 3, 5];
 
 export default function NearYouScreen() {
   const router = useRouter();
@@ -29,36 +29,36 @@ export default function NearYouScreen() {
   const { coordinates, locationLabel } = useSearchLocation();
   const client = useFeedClient();
 
-  const [radius, setRadius] = useState(3);
-  const [jobs, setJobs] = useState<Array<{ jobId: string }>>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const radius = NEARBY_RADIUS_KM;
+  // PERF: seed the first render from the last result for this location, so a
+  // revisit paints the list at once while the page re-validates.
+  const firstPageArgs = { lat: coordinates.latitude, lng: coordinates.longitude, prefs: null, limit: 20 };
+  const cachedFirst = peekFeedRead<{ items: { jobId: string }[]; nextCursor: string | null; status: string }>('near', firstPageArgs);
+  const [jobs, setJobs] = useState<{ jobId: string }[]>(() => (cachedFirst?.status === 'no_location' ? [] : cachedFirst?.items ?? []));
+  const [cursor, setCursor] = useState<string | null>(() => cachedFirst?.nextCursor ?? null);
+  const [loading, setLoading] = useState(!cachedFirst);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [noLocation, setNoLocation] = useState(false);
+  const [hasMore, setHasMore] = useState(() => (cachedFirst ? !!cachedFirst.nextCursor : true));
+  const [noLocation, setNoLocation] = useState(cachedFirst?.status === 'no_location');
 
-  // Initialize event recorder
-  const recorder = useMemo(() => {
-    return new JobEventRecorder({
-      send: (batch) => client.sendEvents(batch),
-    });
-  }, [client]);
+  // Reset the list when the query changes. Done during render (React's
+  // recommended pattern) instead of synchronously inside the fetch effect.
+  const queryKey = `${coordinates.latitude}|${coordinates.longitude}|${radius}`;
+  const [prevQueryKey, setPrevQueryKey] = useState(queryKey);
+  if (prevQueryKey !== queryKey) {
+    setPrevQueryKey(queryKey);
+    setLoading(!cachedFirst);
+    setJobs(cachedFirst && cachedFirst.status !== 'no_location' ? cachedFirst.items : []);
+    setCursor(cachedFirst?.nextCursor ?? null);
+    setHasMore(cachedFirst ? !!cachedFirst.nextCursor : true);
+    setNoLocation(cachedFirst?.status === 'no_location');
+  }
 
-  // Fetch initial page when radius changes
+  // Fetch the first page when the search location changes
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setJobs([]);
-    setCursor(null);
-    setHasMore(true);
-    setNoLocation(false);
     client
-      .near({
-        lat: coordinates.latitude,
-        lng: coordinates.longitude,
-        prefs: null,
-        limit: 20,
-      })
+      .near({ lat: coordinates.latitude, lng: coordinates.longitude, prefs: null, limit: 20 })
       .then((page) => {
         if (active) {
           if (page.status === 'no_location') {
@@ -106,6 +106,7 @@ export default function NearYouScreen() {
   const { data: jobRecords } = trpc.homlo.publicJobs.useQuery(undefined, {
     enabled: jobIds.length > 0,
   });
+  useRefetchMissingJobs(jobIds, (jobRecords as any)?.jobs);
 
   const jobMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -145,99 +146,130 @@ export default function NearYouScreen() {
     data: jobs.length ? displayJobs : undefined,
   });
 
+  // The feed is sorted by distance but not capped by radius; the page promises
+  // "within N km", so jobs with a known distance beyond it are left out.
+  const radiusJobs = useMemo(
+    () => displayJobs.filter((j) => {
+      const km = distanceFor(j);
+      return km === null || km <= radius;
+    }),
+    [displayJobs, distanceFor, radius],
+  );
+
+  const mapRef = useRef<JobsMapHandle>(null);
+  const snaps = useSheetSnaps(212 + insets.bottom, insets.top + 8 + 52 + 12);
+  const [sheetIndex, setSheetIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = radiusJobs.find((j) => j.id === selectedId) ?? null;
+  const others = selected ? radiusJobs.filter((j) => j.id !== selected.id) : radiusJobs;
+  const barBottom = insets.top + 8 + 52;
+
+  const select = (id: string) => {
+    const job = radiusJobs.find((j) => j.id === id);
+    if (!job) return;
+    setSelectedId(id);
+    setSheetIndex(1);
+    const lat = Number(job.latitude);
+    const lng = Number(job.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) mapRef.current?.centerOn({ latitude: lat, longitude: lng });
+  };
+
+  const count = radiusJobs.length;
+  const area = locationLabel || 'your area';
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: palette.page }}>
       <StatusBar style="dark" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: S.xxl }}>
-        <View>
-          <JobsMap
-            radiusKm={radius}
-            jobs={displayJobs}
-            height={400}
-            center={coordinates}
-            onPressJob={openJob}
+      <JobsMap
+        ref={mapRef}
+        fill
+        radiusKm={radius}
+        jobs={radiusJobs}
+        center={coordinates}
+        selectedId={selectedId}
+        onPressJob={select}
+        insets={{ top: barBottom, bottom: selected ? snaps[1] : snaps[0] }}
+        showLocationBadge={false}
+      />
+
+      <MapTopBar top={insets.top + 8} title="Jobs near you" subtitle={`Within ${radius} km of ${area}`} onBack={() => router.back()} />
+      <MapSheet
+        snaps={snaps}
+        index={sheetIndex}
+        onIndexChange={setSheetIndex}
+        bottomInset={insets.bottom}
+        fab={<MapLocateButton onPress={() => mapRef.current?.recenter()} active={!noLocation} />}
+        header={
+          <MapSheetHeader
+            title={noLocation ? 'Location is off' : showSkeleton ? 'Finding jobs near you' : `${count} ${count === 1 ? 'job' : 'jobs'} within ${radius} km`}
+            subtitle={noLocation ? 'Turn on location to see jobs around you' : `Around ${area} · nearest first`}
           />
-
-          <View style={[n.topRow, { top: insets.top + S.sm }]}>
-            <Pressable accessibilityLabel="Back" onPress={() => router.back()} style={n.circleBtn}>
-              <AppIcon name="back" size={22} color={J.fg} />
-            </Pressable>
-            <View style={n.search}>
-              <AppIcon name="search" size={20} color={J.muted} />
-              <Text style={n.searchT}>Within <Text style={{ fontFamily: F.h700, color: J.fg }}>{radius} km</Text> of {locationLabel}</Text>
-            </View>
+        }
+      >
+        {showSkeleton ? (
+          <JobsUiListSkeleton gap={10} style={{ paddingHorizontal: 0 }} />
+        ) : noLocation ? (
+          <View style={{ alignItems: 'center', paddingVertical: 32, gap: 8 }}>
+            <AppIcon name="pin" size={40} color={palette.slate} />
+            <TextNew variant="body" color={palette.muted} align="center">
+              Allow location access in settings to see jobs near you.
+            </TextNew>
           </View>
-
-          <View style={n.radii}>
-            {RADII.map((r) => (
-              <SelectorCircle key={r} size={52} selected={radius === r} onPress={() => setRadius(r)} tint={J.tint}>
-                <SelectorText>{`${r} km`}</SelectorText>
-              </SelectorCircle>
-            ))}
-          </View>
-
-          <View style={n.hill} pointerEvents="none">
-            <Svg width="100%" height={34} viewBox="0 0 390 34" preserveAspectRatio="none"><Path d="M0 30Q195 -10 390 30V34H0z" fill="#fff" /></Svg>
-          </View>
-        </View>
-
-        <View style={{ marginTop: S.sm }}>
-          {noLocation ? (
-            <SectionTitle>Enable location to see nearby jobs</SectionTitle>
-          ) : showSkeleton ? (
-            <SectionTitle>{`Jobs within ${radius} km`}</SectionTitle>
-          ) : (
-            <SectionTitle>{`${displayJobs.length} jobs within ${radius} km`}</SectionTitle>
-          )}
-        </View>
-        <View style={{ paddingHorizontal: S.lg, gap: S.md }}>
-          {showSkeleton ? (
-            <JobsUiListSkeleton gap={S.md} style={{ paddingHorizontal: 0 }} />
-          ) : noLocation ? (
-            <View style={{ alignItems: 'center', padding: 48, gap: 12 }}>
-              <AppIcon name="pin" size={48} color={J.muted} />
-              <Text style={{ fontFamily: F.b600, fontSize: 14, color: J.muted }}>Location permission required</Text>
-              <Text style={{ fontFamily: F.b400, fontSize: 13, color: J.muted, textAlign: 'center', paddingHorizontal: 32 }}>
-                Allow location access in settings to see jobs near you.
-              </Text>
-            </View>
-          ) : (
-            <>
-              {displayJobs.map((j) => {
-                const km = distanceFor(j);
-                return (
-                  <JobCard
-                    key={j.id} lead={<LogoSquare letter={j.company[0]} tint={j.tint} />}
-                    title={j.title} subtitle={`${j.company} · ${j.location?.split(',')[0]}`} chips={[payText(j), typeLabel(j)]}
-                    right={km === null ? undefined : <DistanceBadge km={km} note={travelText(km)} />}
-                    saved={saved.has(j.id)} onToggleSave={() => toggle(j.id)}
-                    boosted={j.boosted}
-                    onPress={() => openJob(j.id)}
-                  />
-                );
-              })}
-              {loadingMore && <Text style={{ textAlign: 'center', color: J.muted }}>Loading more...</Text>}
-              {hasMore && !loadingMore && (
-                <Pressable
-                  style={{ padding: 16, alignItems: 'center' }}
-                  onPress={loadMore}
-                >
-                  <Text style={{ fontFamily: F.b600, fontSize: 14, color: J.primary }}>Load more</Text>
-                </Pressable>
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
+        ) : (
+          <>
+            {selected ? (() => {
+              const km = distanceFor(selected);
+              return (
+                <MapSelectedJob
+                  category={selected.category}
+                  title={selected.title}
+                  subtitle={`${selected.company} · ${selected.location?.split(',')[0] ?? ''}`}
+                  pay={payText(selected)}
+                  distance={km === null ? null : formatKm(km)}
+                  note={km === null ? null : travelNote(km)}
+                  saved={saved.has(selected.id)}
+                  onToggleSave={() => toggle(selected.id)}
+                  onView={() => openJob(selected.id)}
+                  onClose={() => {
+                    setSelectedId(null);
+                    setSheetIndex(0);
+                  }}
+                />
+              );
+            })() : null}
+            {selected && others.length ? (
+              <TextNew variant="meta" weight="semibold" color={palette.muted} style={{ marginTop: 6, marginLeft: 4 }}>
+                Other jobs nearby
+              </TextNew>
+            ) : null}
+            {others.map((j) => {
+              const km = distanceFor(j);
+              return (
+                <MapJobRow
+                  key={j.id}
+                  category={j.category}
+                  title={j.title}
+                  subtitle={`${j.company} · ${j.location?.split(',')[0] ?? ''}`}
+                  pay={payText(j)}
+                  distance={km === null ? null : formatKm(km)}
+                  onPress={() => select(j.id)}
+                />
+              );
+            })}
+            {count === 0 ? (
+              <TextNew variant="body" color={palette.muted} align="center" style={{ paddingVertical: 24 }}>
+                {`No jobs within ${radius} km yet. Check back soon.`}
+              </TextNew>
+            ) : null}
+            {loadingMore ? <TextNew variant="meta" color={palette.muted} align="center">Loading more…</TextNew> : null}
+            {hasMore && !loadingMore ? (
+              <Pressable style={{ padding: 16, alignItems: 'center' }} onPress={loadMore} accessibilityRole="button">
+                <TextNew variant="body" weight="semibold" color={palette.cyanDeep}>Load more</TextNew>
+              </Pressable>
+            ) : null}
+          </>
+        )}
+      </MapSheet>
     </View>
   );
 }
-
-const n = StyleSheet.create({
-  topRow: { position: 'absolute', left: S.lg, right: S.lg, flexDirection: 'row', gap: S.sm },
-  circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.14, shadowRadius: 12, elevation: 4 },
-  search: { flex: 1, height: 44, borderRadius: 22, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: S.sm, paddingHorizontal: S.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.14, shadowRadius: 12, elevation: 4 },
-  searchT: { fontFamily: F.b400, fontSize: TS.body, color: J.muted },
-  radii: { position: 'absolute', left: S.lg, bottom: 48, flexDirection: 'row', gap: S.sm, backgroundColor: 'rgba(255,255,255,0.94)', padding: 10, borderRadius: 999, ...shadowMd, shadowOpacity: 0.14 },
-  hill: { position: 'absolute', left: 0, right: 0, bottom: -1 },
-});

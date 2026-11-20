@@ -20,13 +20,12 @@ import {
   FALLBACK_MAP_CENTER,
   HAS_MAPTILER_KEY,
   MAP_STYLE_URL,
-} from "../config";
+ COLORS } from "../config";
 import { MapLibre } from "../native-support";
 import type { Coordinate } from "../types";
 import { boundsForCoordinates } from "../utils/geo";
 import { MapUnavailable } from "./MapUnavailable";
 import { UserLocationLayer } from "./UserLocationLayer";
-import { COLORS } from "../config";
 
 export type AppMapProps = {
   style?: StyleProp<ViewStyle>;
@@ -35,6 +34,8 @@ export type AppMapProps = {
   cameraRef?: RefObject<CameraRef | null>;
   fitCoordinates?: Coordinate[];
   fitPadding?: number;
+  /** Extra room on fits for floating chrome (top bar, bottom sheet). */
+  fitInsets?: { top?: number; bottom?: number };
   bannerTop?: number;
   userLocation?: Coordinate | null;
   userAccuracy?: number | null;
@@ -43,6 +44,14 @@ export type AppMapProps = {
   locationError?: string | null;
   onRequestPermission?: () => void | Promise<void>;
   onMapReady?: () => void;
+  /** Camera zoom after each pan/zoom settles (drives JS pin clustering). */
+  onZoomChange?: (zoom: number) => void;
+  /** Where the OpenStreetMap attribution button sits (default: MapLibre's bottom-right). */
+  attributionPosition?: { top?: number; bottom?: number; left?: number; right?: number };
+  /** The camera starts moving (pan, zoom or an animated setCamera). */
+  onCameraMoveStart?: (byUser: boolean) => void;
+  /** The camera settled: its centre, zoom and whether a gesture moved it. */
+  onCameraIdle?: (center: Coordinate, zoom: number, byUser: boolean) => void;
   children?: ReactNode;
 };
 
@@ -53,6 +62,7 @@ export function AppMap({
   cameraRef,
   fitCoordinates,
   fitPadding = 56,
+  fitInsets,
   bannerTop = 12,
   userLocation = null,
   userAccuracy = null,
@@ -61,6 +71,10 @@ export function AppMap({
   locationError = null,
   onRequestPermission,
   onMapReady,
+  onZoomChange,
+  attributionPosition,
+  onCameraMoveStart,
+  onCameraIdle,
   children,
 }: AppMapProps) {
   const internalCameraRef = useRef<CameraRef | null>(null);
@@ -113,14 +127,14 @@ export function AppMap({
     camera.setCamera({
       bounds,
       padding: {
-        paddingTop: fitPadding,
+        paddingTop: fitPadding + (fitInsets?.top ?? 0),
         paddingRight: fitPadding,
-        paddingBottom: fitPadding + 36,
+        paddingBottom: fitPadding + 36 + (fitInsets?.bottom ?? 0),
         paddingLeft: fitPadding,
       },
       animationDuration: 600,
     });
-  }, [activeCameraRef, fitCoordinates, fitKey, fitPadding, mapReady]);
+  }, [activeCameraRef, fitCoordinates, fitKey, fitPadding, fitInsets?.top, fitInsets?.bottom, mapReady]);
 
   const handleMapReady = () => {
     setMapReady(true);
@@ -146,9 +160,28 @@ export function AppMap({
         mapStyle={MAP_STYLE_URL}
         logoEnabled={false}
         attributionEnabled
+        attributionPosition={attributionPosition as never}
         compassEnabled={false}
         onDidFinishLoadingMap={handleMapReady}
         onDidFinishLoadingStyle={handleMapReady}
+        onRegionWillChange={
+          onCameraMoveStart
+            ? (feature) => onCameraMoveStart(Boolean(feature?.properties?.isUserInteraction))
+            : undefined
+        }
+        onRegionDidChange={
+          onZoomChange || onCameraIdle
+            ? (feature) => {
+                const zoom = feature?.properties?.zoomLevel;
+                if (typeof zoom !== "number" || !Number.isFinite(zoom)) return;
+                onZoomChange?.(zoom);
+                const [longitude, latitude] = (feature?.geometry?.coordinates ?? []) as number[];
+                if (onCameraIdle && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+                  onCameraIdle({ latitude, longitude }, zoom, Boolean(feature?.properties?.isUserInteraction));
+                }
+              }
+            : undefined
+        }
       >
         <Camera ref={activeCameraRef} defaultSettings={defaultSettings} />
 

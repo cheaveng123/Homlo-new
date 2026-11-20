@@ -31,17 +31,59 @@ import { SectionIcon, type SectionIconName } from '@/src/components/icons/Sectio
 export type JobDetailNew = {
   id: string; employerId?: string; title: string; employerName: string; employerInitials: string; imageUri?: string;
   locationLabel: string; addressNote?: string; payLabel: string; typeLabel: string;
-  positionsLeft: number; positionsTotal: number; description: string; requirements: string[]; liked?: boolean;
+  positionsLeft: number; positionsTotal: number; requirements: string[]; liked?: boolean;
+  /** Work time (059_job_work_time); null = the employer left it as N/A. */
+  workDays?: string | null; workHours?: string | null; workDayKeys?: string[];
   employerAbout?: string | null;
 };
 type Props = {
   job: JobDetailNew; mapSlot?: ReactNode; showMap?: boolean; onBack: () => void; onToggleLike: () => void; onAboutEmployer: () => void; onApply: () => void;
   onShare?: () => void; onPressLocation?: () => void; applyDisabled?: boolean; applyLabel?: string;
   onRefresh?: () => void; refreshing?: boolean;
+  /** App Store 1.2: lets anyone flag a listing for moderation. */
+  onReport?: () => void;
 };
 
 const HERO_H = 300;
 const BAR_H = 56;
+
+/* ───────── work time ───────── */
+
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LETTER = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+/** Days as a 7-chip week strip plus the clock-in/out line; "Not specified" for N/A parts. */
+function WorkTime({ days, hours, dayKeys }: { days?: string | null; hours?: string | null; dayKeys?: string[] }) {
+  const on = new Set(dayKeys ?? []);
+  return (
+    <View style={s.work} accessible accessibilityLabel={`Work time: ${days ?? 'days not specified'}, ${hours ?? 'hours not specified'}`}>
+      <View style={s.workRow}>
+        <View style={s.workHead}>
+          <SectionIcon name="recent" size={18} tone="mono" />
+          <TextNew variant="caption" color={colorsNew.muted}>Work days</TextNew>
+        </View>
+        <TextNew variant="title" heading weight="extrabold" color={days ? colorsNew.text : colorsNew.muted}>{days ?? 'Not specified'}</TextNew>
+        {on.size > 0 ? (
+          <View style={s.week}>
+            {DAY_KEYS.map((k, i) => (
+              <View key={k} style={[s.day, on.has(k) && s.dayOn]}>
+                <TextNew variant="caption" weight="semibold" color={on.has(k) ? '#fff' : colorsNew.muted}>{DAY_LETTER[i]}</TextNew>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </View>
+      <View style={s.workRule} />
+      <View style={s.workRow}>
+        <View style={s.workHead}>
+          <SectionIcon name="jobType" size={18} tone="mono" />
+          <TextNew variant="caption" color={colorsNew.muted}>Clock in – clock out</TextNew>
+        </View>
+        <TextNew variant="title" heading weight="extrabold" color={hours ? colorsNew.text : colorsNew.muted}>{hours ?? 'Not specified'}</TextNew>
+      </View>
+    </View>
+  );
+}
 
 /* ───────── facts ───────── */
 
@@ -76,9 +118,26 @@ function ScrollSection({ title, glyph, scrollY, viewportH, children }: {
       runOnJS(setSeen)(true);
     },
   );
+  // BUGFIX: the reaction above can miss the layout write, leaving a whole
+  // section (Location / Details / Employer) invisible. Reveal directly from
+  // onLayout when already in view, and fade in after 2.5s no matter what.
+  const revealNow = () => {
+    if (t.get() > 0) return;
+    t.set(withTiming(1, { duration: 550, easing: SMOOTH }));
+    setSeen(true);
+  };
+  useEffect(() => {
+    if (reduced) return;
+    const failsafe = setTimeout(revealNow, 2500);
+    return () => clearTimeout(failsafe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const st = useAnimatedStyle(() => ({ opacity: t.value, transform: [{ translateY: 16 * (1 - t.value) }] }));
   return (
-    <Animated.View style={st} onLayout={(e: LayoutChangeEvent) => { y.value = e.nativeEvent.layout.y; }}>
+    <Animated.View style={st} onLayout={(e: LayoutChangeEvent) => {
+      y.value = e.nativeEvent.layout.y;
+      if (e.nativeEvent.layout.y + 40 < scrollY.get() + viewportH.get()) revealNow();
+    }}>
       <View style={s.sectionHead} accessibilityRole="header" accessible accessibilityLabel={title}>
         <TextNew variant="section">{title}</TextNew>
         <SectionIcon key={seen ? 'on' : 'off'} name={glyph} size={20} tone="mono" delay={seen ? 150 : 100000} />
@@ -123,7 +182,7 @@ function HeaderButton({ icon, label, onPress, solid }: { icon: AppIconNameNew; l
   );
 }
 
-export function JobDetailScreenNew({ job, mapSlot, showMap = true, onBack, onToggleLike, onAboutEmployer, onApply, onShare, onPressLocation, applyDisabled, applyLabel, onRefresh, refreshing }: Props) {
+export function JobDetailScreenNew({ job, mapSlot, showMap = true, onBack, onToggleLike, onAboutEmployer, onApply, onShare, onPressLocation, applyDisabled, applyLabel, onRefresh, refreshing, onReport }: Props) {
   const copy = useCopyNew();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -259,7 +318,7 @@ export function JobDetailScreenNew({ job, mapSlot, showMap = true, onBack, onTog
         </ScrollSection>
 
         <ScrollSection title={copy.job.details} glyph="details" scrollY={scrollY} viewportH={viewportH}>
-          <AccordionNew title={copy.job.description}><TextNew variant="body" color={colorsNew.muted}>{job.description}</TextNew></AccordionNew>
+          <WorkTime days={job.workDays} hours={job.workHours} dayKeys={job.workDayKeys} />
           <AccordionNew title={copy.job.requirements}>
             {job.requirements.map((r, i) => (
               <View key={i} style={s.reqRow}>
@@ -276,6 +335,18 @@ export function JobDetailScreenNew({ job, mapSlot, showMap = true, onBack, onTog
               <TextNew variant="body" color={colorsNew.muted}>{job.employerAbout}</TextNew>
             </View>
           </ScrollSection>
+        )}
+
+        {!!onReport && (
+          <PressableScaleNew
+            onPress={onReport}
+            accessibilityRole="button"
+            accessibilityLabel="Report this listing"
+            style={s.reportRow}
+          >
+            <AppIconNew name="flag" size={16} color={colorsNew.muted} />
+            <TextNew variant="meta" color={colorsNew.muted}>Report this listing</TextNew>
+          </PressableScaleNew>
         )}
       </Animated.ScrollView>
 
@@ -303,6 +374,7 @@ export function JobDetailScreenNew({ job, mapSlot, showMap = true, onBack, onTog
 }
 
 const s = StyleSheet.create({
+  reportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 18, marginTop: 8 },
   root: { flex: 1, backgroundColor: colorsNew.white },
   flex: { flex: 1 },
   hero: { height: HERO_H, overflow: 'hidden', backgroundColor: '#D2E1E6' },
@@ -324,6 +396,13 @@ const s = StyleSheet.create({
   mapDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: palette.navy, borderWidth: 3, borderColor: colorsNew.white },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, marginTop: 12, minHeight: 48 },
   reqRow: { flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'flex-start' },
+  work: { marginHorizontal: 16, marginBottom: 12, paddingVertical: 4 },
+  workRow: { paddingVertical: 10, gap: 4 },
+  workHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  workRule: { height: StyleSheet.hairlineWidth, backgroundColor: palette.line },
+  week: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  day: { width: 30, height: 30, borderRadius: 15, backgroundColor: palette.pillIdle, alignItems: 'center', justifyContent: 'center' },
+  dayOn: { backgroundColor: palette.cyan },
   reqDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7, backgroundColor: palette.cyan },
   about: { paddingHorizontal: 16, marginBottom: 12 },
   header: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, zIndex: 20 },

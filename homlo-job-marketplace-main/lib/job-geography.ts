@@ -42,15 +42,6 @@ const seeds: Record<string, Seed> = {
   "site-engineer": { lat: 11.5870, lng: 104.9370, name: "Chroy Changvar" },
 };
 
-function hashString(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(index);
-    hash |= 0;
-  }
-  return Math.abs(hash);
-}
-
 type JobCoordinateSource = {
   id: string;
   location?: string;

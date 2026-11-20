@@ -11,15 +11,9 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
 } from "@expo-google-fonts/plus-jakarta-sans";
-import {
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_600SemiBold,
-} from "@expo-google-fonts/space-grotesk";
-import {
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-} from "@expo-google-fonts/manrope";
+// PERF: Space Grotesk and Manrope are no longer referenced by any screen
+// (components/job-details/typography.ts moved off them), so they are not
+// loaded at startup any more: 5 fewer font files (464 KB) before first paint.
 import {
   Figtree_400Regular,
   Figtree_500Medium,
@@ -46,11 +40,6 @@ export const fontAssets = {
   "PlusJakartaSans-SemiBold": PlusJakartaSans_600SemiBold,
   "PlusJakartaSans-Bold": PlusJakartaSans_700Bold,
   "PlusJakartaSans-ExtraBold": PlusJakartaSans_800ExtraBold,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_600SemiBold,
-  Manrope_400Regular,
-  Manrope_500Medium,
-  Manrope_600SemiBold,
   // Figtree is used only inside job containers — see
   // components/jobs/jobCardTokens.ts. Not part of fonts.heading/body below,
   // so nothing outside the job card changes typeface.

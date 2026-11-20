@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
+import { PublishDeclarationSheet, type ListingTrustFields } from '@/components/legal/PublishDeclarationSheet';
 import {
   View,
-  Text,
-  Pressable,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { AppIcon } from "@/components/ui/AppIcon";
+import { ErrorStateIcon, SuccessIcon } from '@/src/components/icons';
+import { PressableScale, Reveal } from '@/src/design/motion';
+import { Skeleton } from '@/src/design/primitives';
+import { palette, radii, shadows } from '@/src/design/tokens';
+import { TextNew } from '@/src/new/components/TextNew';
 
 import PostJobFlow, {
   type JobDraft,
@@ -18,7 +21,6 @@ import PostJobFlow, {
   type Arrangement,
   type SalaryPeriod,
 } from '@/components/jobs-v2/PostJobFlow';
-import { JobLocationPicker } from '@/components/JobLocationPicker';
 import {
   buildJobSaveInput,
   defaultJobPosting,
@@ -28,10 +30,14 @@ import {
   type WorkArrangement,
 } from '@/lib/job-posting';
 import { useAuth } from '@/hooks/use-auth';
+import type { WeekDay } from '@/lib/work-time';
 import { trpc } from '@/lib/trpc';
 import { categorySlug, CATEGORY_NAMES } from '@/components/jobs-v2/categories';
+import { JOB_FIELDS, resolveJobField } from '@/lib/job-fields';
+import { JobFieldGlyph } from '@/components/shared/JobFieldGlyphs';
 import { uploadJobImage } from '@/lib/job-management';
 import { pickerImageToJpegDataUrl } from '@/lib/profile-photo';
+import { PublishingProgress, type PublishStep } from '@/components/jobs-v2/PublishingProgress';
 
 /**
  * Route for the employer "post a job" wizard.
@@ -49,6 +55,10 @@ import { pickerImageToJpegDataUrl } from '@/lib/profile-photo';
 const EMPLOYMENT_TYPE: Record<JobType, EmploymentType> = {
   'part-time': 'Part-time',
   'full-time': 'Full-time',
+  // No "Volunteer" employment type exists in the save format; like Weekends it
+  // is stored as Part-time. (Volunteer listings are recognised by their wording
+  // or a $0 pay, see VOLUNTEER_PATTERN in lib/job-types.ts.)
+  volunteer: 'Part-time',
   weekends: 'Part-time',
 };
 
@@ -66,7 +76,29 @@ const SALARY_PERIOD: Record<SalaryPeriod, JobPostingDraft['salaryPeriod']> = {
 
 type Category = { id: string; name: string; slug: string };
 
+type WorkTimeInput = {
+  workDays: WeekDay[] | null;
+  clockIn: string | null;
+  clockOut: string | null;
+  payMax: number | null;
+};
+
 type SaveFailure = { kind: 'limit' | 'error'; message: string };
+
+type PlanId = 'free' | 'pro' | 'enterprise';
+
+/**
+ * Reads the server's plan-limit message, e.g.
+ * "Your free plan allows 2 active jobs. ..." / "Your pro plan allows 50 published posts per month. ...",
+ * and works out the plan the employer needs next.
+ */
+function planLimitDetails(message: string): { current: PlanId; required: PlanId; reason: 'active' | 'posts'; limit: string } {
+  const plan = (message.match(/your\s+(free|pro|enterprise)\s+plan/i)?.[1]?.toLowerCase() ?? 'free') as PlanId;
+  const limit = message.match(/allows\s+(\d+)/i)?.[1] ?? '';
+  const reason = /post/i.test(message) && !/active/i.test(message) ? 'posts' : 'active';
+  const required: PlanId = plan === 'free' ? 'pro' : 'enterprise';
+  return { current: plan, required, reason, limit };
+}
 
 /**
  * Turns whatever the mutation threw into something showable. A plan/listing
@@ -93,17 +125,24 @@ function describeFailure(err: unknown): SaveFailure {
 
 export default function PostJobWizard() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [saving, setSaving] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [savedDraftId, setSavedDraftId] = useState<string | null>(null);
   const [failure, setFailure] = useState<SaveFailure | null>(null);
+  /** Progress screen: the steps for this publish, the one running, and the finished flag. */
+  const [progress, setProgress] = useState<{ steps: PublishStep[]; step: number; done: boolean; jobTitle: string } | null>(null);
   /**
    * Set once the listing has gone live. Guards every destructive path: a live
    * job must never be sent back through the draft save (which would set
    * p_status='draft' on a real listing) or deleted by a stray discard.
    */
   const [published, setPublished] = useState(false);
+  /** Set when the listing was submitted but waits for moderator review. */
+  const [pendingReview, setPendingReview] = useState(false);
+  /** The finished wizard draft waiting for the publish declaration sheet. */
+  const [declaring, setDeclaring] = useState<JobDraft | null>(null);
 
   const { user } = useAuth();
   const saveJob = trpc.homlo.employer.saveJob.useMutation();
@@ -122,14 +161,21 @@ export default function PostJobWizard() {
   const toSaveInput = (
     d: JobDraft,
     status: 'draft' | 'open',
-    options?: { bannerImage?: string; jobId?: string | null },
-  ): JobSaveInput => {
-    const slug = categorySlug(d.category ?? '');
-    const category = categories.find((c) => c.slug === slug);
+    options?: { bannerImage?: string; jobId?: string | null; trust?: ListingTrustFields },
+  ): JobSaveInput & Partial<ListingTrustFields> & WorkTimeInput => {
+    // The wizard offers the 19 official job fields; the database still stores
+    // the older category names. Map field -> database category through the
+    // field aliases (e.g. "IT & Technology" -> "Technology"); a legacy name
+    // (an older draft) resolves the same way.
+    const field = resolveJobField(d.category ?? '');
+    const category = field
+      ? categories.find((c) => resolveJobField(c.name)?.id === field.id)
+      : categories.find((c) => c.slug === categorySlug(d.category ?? ''));
     if (d.category && !category) {
-      // The wizard offers a category the database does not have, so the job
-      // is saved with no category id. Logged so a rejected save is traceable.
-      console.warn('[post-job] no database category matches', d.category, '->', slug);
+      // No database category exists for this field yet (see the
+      // add_job_field_categories migration), so the job is saved without a
+      // category id. Logged so it is traceable.
+      console.warn('[post-job] no database category matches', d.category);
     }
     const draft: JobPostingDraft = {
       ...defaultJobPosting,
@@ -138,7 +184,7 @@ export default function PostJobWizard() {
       employmentType: d.type ? EMPLOYMENT_TYPE[d.type] : '',
       workArrangement: d.arrangement ? WORK_ARRANGEMENT[d.arrangement] : '',
       salaryMin: String(d.salaryMin),
-      salaryMax: String(d.salaryMax),
+      salaryMax: String(d.payMode === 'fixed' ? d.salaryMin : d.salaryMax),
       salaryCurrency: 'USD',
       salaryVisible: true,
       salaryPeriod: SALARY_PERIOD[d.salaryPeriod],
@@ -156,7 +202,14 @@ export default function PostJobWizard() {
     };
     const input = buildJobSaveInput(draft, status, options?.jobId ?? savedDraftId);
     // Override categoryId with the actual UUID from database
-    return { ...input, categoryId: category?.id ?? null };
+    // Work time + pay range (059_job_work_time.sql). N/A parts are sent as null.
+    const workTime: WorkTimeInput = {
+      workDays: d.daysNA || d.workDays.length === 0 ? null : d.workDays,
+      clockIn: d.hoursNA || !d.clockIn || !d.clockOut ? null : d.clockIn,
+      clockOut: d.hoursNA || !d.clockIn || !d.clockOut ? null : d.clockOut,
+      payMax: d.payMode === 'range' && d.salaryMax > d.salaryMin ? d.salaryMax : null,
+    };
+    return { ...input, categoryId: category?.id ?? null, ...(options?.trust ?? {}), ...workTime };
   };
 
   const pickPhoto = async () => {
@@ -170,21 +223,35 @@ export default function PostJobWizard() {
     return result.assets[0]?.uri;
   };
 
-  const publish = async (d: JobDraft) => {
+  const publish = async (d: JobDraft, trust: ListingTrustFields) => {
     if (publishing) return;
     if (!user) { router.replace('/login' as never); return; }
     setFailure(null);
     setPublishing(true);
-    try {
-      const draftResponse = await saveJob.mutateAsync(toSaveInput(d, 'draft', { bannerImage: '' }));
-      const draftJob = (draftResponse as { job?: { id?: string } }).job;
-      const draftId = draftJob?.id ?? savedDraftId;
-      if (!draftId) throw new Error('Could not prepare the listing. Please try again.');
-      setSavedDraftId(draftId);
 
+    const steps: PublishStep[] = [
+      { key: 'check', label: 'Checking your details' },
+      ...(d.photoUri ? [{ key: 'photo', label: 'Uploading your photo' }] : []),
+      { key: 'publish', label: 'Publishing to job seekers' },
+    ];
+    const advance = (key: string) =>
+      setProgress((p) => (p ? { ...p, step: Math.max(p.step, steps.findIndex((s) => s.key === key)) } : p));
+    setProgress({ steps, step: 0, done: false, jobTitle: d.name.trim() });
+
+    try {
+      let draftId = savedDraftId;
       let bannerImage = '';
       let bannerUploadFailed = false;
+
       if (d.photoUri) {
+        // The photo needs a job id to upload against, so save a bannerless draft first.
+        const draftResponse = await saveJob.mutateAsync(toSaveInput(d, 'draft', { bannerImage: '' }));
+        const draftJob = (draftResponse as { job?: { id?: string } }).job;
+        draftId = draftJob?.id ?? savedDraftId;
+        if (!draftId) throw new Error('Could not prepare the listing. Please try again.');
+        setSavedDraftId(draftId);
+
+        advance('photo');
         try {
           const image = await pickerImageToJpegDataUrl({ uri: d.photoUri });
           const uploaded = await uploadJobImage(draftId, image);
@@ -195,10 +262,18 @@ export default function PostJobWizard() {
         }
       }
 
-      const response = await saveJob.mutateAsync(toSaveInput(d, 'open', { bannerImage, jobId: draftId }));
-      const job = (response as { job?: { id?: string } }).job;
+      // Without a photo there is nothing to upload, so the listing is published in one save.
+      advance('publish');
+      const response = await saveJob.mutateAsync(toSaveInput(d, 'open', { bannerImage, jobId: draftId, trust }));
+      const job = (response as { job?: { id?: string; status?: string } }).job;
       if (job?.id) setSavedDraftId(job.id);
+      setPendingReview(job?.status === 'pending_review');
+
+      // Let the ring close and the check draw before showing the success page.
+      setProgress((p) => (p ? { ...p, done: true } : p));
+      await new Promise((r) => setTimeout(r, 650));
       setPublished(true);
+      setProgress(null);
       if (bannerUploadFailed) {
         Alert.alert(
           'Published without a photo',
@@ -214,7 +289,19 @@ export default function PostJobWizard() {
       void utils.homlo.homeFeed.invalidate();
     } catch (err) {
       console.warn('[post-job] publish failed', err);
-      setFailure(describeFailure(err));
+      setProgress(null);
+      const f = describeFailure(err);
+      if (f.kind === 'limit') {
+        // Over the plan: open Account plans on the plan that lifts the limit. The wizard
+        // stays mounted underneath, so "Back" returns to the finished listing.
+        const info = planLimitDetails(f.message);
+        router.push({
+          pathname: '/account-plans',
+          params: { required: info.required, reason: info.reason, limit: info.limit, from: info.current },
+        } as never);
+      } else {
+        setFailure(f);
+      }
     } finally {
       setPublishing(false);
     }
@@ -270,10 +357,35 @@ export default function PostJobWizard() {
   };
 
   // Show loading while categories fetch
+  // Loading: the wizard's own shape (header, progress, question, tiles) as skeletons.
   if (categoriesLoading) {
     return (
-      <View style={styles.safe}>
-        <ActivityIndicator size="large" color="#5DCAA5" style={{ flex: 1, justifyContent: 'center' }} />
+      <View style={[styles.safe, { paddingTop: insets.top + 6 }]} accessibilityLabel="Loading" accessibilityState={{ busy: true }}>
+        <View style={styles.skelHeader}>
+          <Skeleton width={42} height={42} radius={21} />
+          <View style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+            <Skeleton width={90} height={14} />
+            <Skeleton width={130} height={10} />
+          </View>
+          <Skeleton width={42} height={42} radius={21} />
+        </View>
+        <View style={styles.skelProgress}>
+          {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} height={5} radius={3} style={{ flex: 1, width: undefined }} />)}
+        </View>
+        <View style={{ padding: 20, gap: 12 }}>
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+            <Skeleton width={52} height={52} radius={16} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <Skeleton width="30%" height={10} />
+              <Skeleton width="85%" height={20} />
+            </View>
+          </View>
+          <Skeleton width="90%" height={12} />
+          <Skeleton height={54} radius={radii.input} style={{ marginTop: 12 }} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+            {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} width="48%" height={104} radius={radii.tile} />)}
+          </View>
+        </View>
       </View>
     );
   }
@@ -283,27 +395,36 @@ export default function PostJobWizard() {
   if (published) {
     return (
       <View style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.successPage}>
-          <View style={styles.successBadge}>
-            <AppIcon name="check" size={28} color="#04342C" />
-          </View>
-          <Text style={styles.successTitle}>Your listing is live</Text>
-          <Text style={styles.successSubtitle}>
-            This listing is now visible to candidates on the Jobs search.
-          </Text>
-          <Pressable style={styles.cta} onPress={goToListings}>
-            <Text style={styles.ctaText}>Go to listings</Text>
-          </Pressable>
-          {savedDraftId ? (
-            <Pressable
-              style={styles.successSecondary}
-              onPress={() =>
-                router.push({ pathname: '/boost/plan', params: { jobId: savedDraftId } } as never)
-              }
-            >
-              <Text style={styles.successSecondaryText}>Boost this listing</Text>
-            </Pressable>
-          ) : null}
+        <ScrollView contentContainerStyle={[styles.successPage, { paddingBottom: insets.bottom + 24 }]}>
+          <Reveal index={0} style={styles.successBadge}>
+            <SuccessIcon size={72} />
+          </Reveal>
+          <Reveal index={1}>
+            <TextNew variant="hero" heading weight="extrabold" color={palette.ink} align="center">
+              {pendingReview ? 'Submitted for review' : 'Your job is live'}
+            </TextNew>
+            <TextNew variant="body" color={palette.muted} align="center" style={styles.successSubtitle}>
+              {pendingReview
+                ? 'Our team checks new and flagged listings before they appear. We will email you when it is live.'
+                : 'Job seekers can now find it in Jobs search, on the map and in their recommendations.'}
+            </TextNew>
+          </Reveal>
+          <Reveal index={2} style={{ alignSelf: 'stretch' }}>
+            <PressableScale style={[styles.cta, shadows.lift]} onPress={goToListings} accessibilityRole="button">
+              <TextNew variant="title" heading weight="bold" color="#fff">Go to my listings</TextNew>
+            </PressableScale>
+            {savedDraftId && !pendingReview ? (
+              <PressableScale
+                style={styles.successSecondary}
+                accessibilityRole="button"
+                onPress={() =>
+                  router.push({ pathname: '/boost/plan', params: { jobId: savedDraftId } } as never)
+                }
+              >
+                <TextNew variant="title" heading weight="bold" color={palette.amberInk}>Boost this listing</TextNew>
+              </PressableScale>
+            ) : null}
+          </Reveal>
         </ScrollView>
       </View>
     );
@@ -312,132 +433,138 @@ export default function PostJobWizard() {
   return (
     <View style={styles.safe}>
       <PostJobFlow
-        categories={categories.map((c) => c.name)}
-        onPublish={(d) => void publish(d)}
+        categories={JOB_FIELDS.map((f) => f.title)}
+        renderCategoryIcon={(name) => {
+          const field = resolveJobField(name);
+          return field ? <JobFieldGlyph id={field.id} size={24} /> : null;
+        }}
+        onPublish={(d) => setDeclaring(d)}
         onSaveDraft={(d) => void saveDraft(d)}
         onDiscard={() => void discard()}
         onPickPhoto={pickPhoto}
-        renderMap={({ onChange }) => (
-          <JobLocationPicker
-            onSelect={(address) =>
-              onChange({
-                address:
-                  address.formatted || [address.street, address.district, address.city].filter(Boolean).join(', '),
-                latitude: address.latitude,
-                longitude: address.longitude,
-              })
-            }
-          />
-        )}
       />
+
+      {declaring ? (
+      <PublishDeclarationSheet
+        visible
+        listingText={declaring ? [declaring.name, declaring.description, ...declaring.requirements].filter(Boolean).join(' ') : ''}
+        defaultEmployerName={user?.name ?? ''}
+        onCancel={() => setDeclaring(null)}
+        onConfirm={(trust) => {
+          const d = declaring;
+          setDeclaring(null);
+          if (d) void publish(d, trust);
+        }}
+      />
+      ) : null}
+
+      {progress ? (
+        <PublishingProgress steps={progress.steps} step={progress.step} done={progress.done} jobTitle={progress.jobTitle} />
+      ) : null}
 
       {/*
         Failure screen. Rendered on top of the wizard (not instead of it) so the
         employer's answers survive and "Try again" returns to the final step.
       */}
       {failure ? (
-        <View style={styles.failureOverlay}>
-          <View style={styles.failureBadge}>
-            <Text style={styles.failureBadgeText}>!</Text>
+        <View style={[styles.failureOverlay, { paddingTop: insets.top + 96 }]}>
+          <View style={styles.successBadge}>
+            <ErrorStateIcon size={72} surface={palette.page} />
           </View>
-          <Text style={styles.failureTitle}>
-            {failure.kind === 'limit' ? "You've reached your listing limit" : "Couldn't publish your listing"}
-          </Text>
-          <Text style={styles.failureSubtitle}>{failure.message}</Text>
+          <TextNew variant="header" heading weight="extrabold" color={palette.ink} align="center">
+            {failure.kind === 'limit' ? "You've reached your listing limit" : "Couldn't publish your job"}
+          </TextNew>
+          <TextNew variant="body" color={palette.muted} align="center" style={styles.successSubtitle}>{failure.message}</TextNew>
+          <View style={styles.failureNote}>
+            <TextNew variant="caption" weight="semibold" color={palette.cyanDeep} align="center">
+              Your answers are safe. Nothing you entered was lost.
+            </TextNew>
+          </View>
           {failure.kind === 'limit' ? (
-            <Pressable
-              style={styles.cta}
+            <PressableScale
+              style={[styles.cta, shadows.lift]}
+              accessibilityRole="button"
               onPress={() => {
                 setFailure(null);
                 router.push('/account-plans' as never);
               }}
             >
-              <Text style={styles.ctaText}>See plans</Text>
-            </Pressable>
+              <TextNew variant="title" heading weight="bold" color="#fff">See plans</TextNew>
+            </PressableScale>
           ) : (
-            <Pressable style={styles.cta} onPress={() => setFailure(null)}>
-              <Text style={styles.ctaText}>Try again</Text>
-            </Pressable>
+            <PressableScale style={[styles.cta, shadows.lift]} onPress={() => setFailure(null)} accessibilityRole="button">
+              <TextNew variant="title" heading weight="bold" color="#fff">Try again</TextNew>
+            </PressableScale>
           )}
-          <Pressable style={styles.successSecondary} onPress={() => setFailure(null)}>
-            <Text style={styles.successSecondaryText}>
+          <PressableScale style={styles.successSecondary} onPress={() => setFailure(null)} accessibilityRole="button">
+            <TextNew variant="title" heading weight="bold" color={palette.cyanDeep}>
               {failure.kind === 'limit' ? 'Back to my listing' : 'Back to editing'}
-            </Text>
-          </Pressable>
+            </TextNew>
+          </PressableScale>
         </View>
       ) : null}
     </View>
   );
 }
 
-// Fixed pixel values are intentional — they match the approved mockup exactly.
-// Do not substitute percentages, flex sizing, or a theme spacing scale.
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: palette.page },
+
+  skelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16 },
+  skelProgress: { flexDirection: 'row', gap: 4, paddingHorizontal: 16, marginTop: 12 },
 
   successPage: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
-  } as any,
-  successBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#5DCAA5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
   },
-  successTitle: { fontSize: 18, fontWeight: '600', color: '#12271F', marginBottom: 6, textAlign: 'center' },
-  successSubtitle: {
-    fontSize: 13,
-    color: '#5F7A6E',
-    textAlign: 'center',
+  successBadge: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: palette.cyanTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
     marginBottom: 20,
   },
+  successSubtitle: { marginTop: 8, marginBottom: 24 },
 
   failureOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 120,
-    alignItems: 'center',
+    backgroundColor: palette.page,
+    paddingHorizontal: 24,
+    alignItems: 'stretch',
   },
-  failureBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FBEAE6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  failureNote: {
+    alignSelf: 'center',
+    marginTop: -8,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: palette.cyanTint,
   },
-  failureBadgeText: { fontSize: 28, fontWeight: '700', color: '#C0392B' },
 
   cta: {
-    marginTop: 20,
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: '#C0392B',
+    marginTop: 12,
+    height: 52,
+    borderRadius: radii.pill,
+    backgroundColor: palette.cyan,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',
   },
   successSecondary: {
     marginTop: 10,
-    height: 44,
+    height: 52,
+    borderRadius: radii.pill,
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.line,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  successSecondaryText: { fontSize: 14, fontWeight: '600', color: '#C0392B' },
-  ctaText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
-  failureTitle: { fontSize: 18, fontWeight: '600', color: '#C0392B', marginBottom: 6, textAlign: 'center' },
-  failureSubtitle: {
-    fontSize: 13,
-    color: '#C0392B',
-    textAlign: 'center',
-    marginBottom: 20,
+    alignSelf: 'stretch',
   },
 });

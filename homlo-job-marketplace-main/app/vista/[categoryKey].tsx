@@ -8,16 +8,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { logJobEvent } from '@/lib/event-logging';
 import { haptic } from '@/lib/haptics';
-import { defaultSearchCenter, haversineDistance } from '@/lib/job-geography';
+import { defaultSearchCenter } from '@/lib/job-geography';
 import { resolveJobField } from '@/lib/job-fields';
 import { useUserLocation } from '@/lib/use-user-location';
 import { employerIdForCompany } from '@/lib/mock/employerMockData';
 import { goBack } from '@/lib/navigation';
 import { trpc } from '@/lib/trpc';
-import { getProfilePhotoUrl } from '@/lib/profile-photo';
 import { useJobStore } from '@/components/job-store';
 import VistaCategoryScreen from '@/components/vista/VistaCategoryScreen';
 import { fieldForVistaKey, type VistaJob } from '@/components/vista/vistaCategoryData';
+import { toVistaJob } from '@/components/vista/toVistaJob';
 
 export default function VistaCategoryRoute() {
   const params = useLocalSearchParams<{ categoryKey?: string }>();
@@ -30,7 +30,7 @@ export default function VistaCategoryRoute() {
   const center = location ?? defaultSearchCenter;
 
   const { data, isLoading } = trpc.homlo.publicJobs.useQuery(undefined, {
-    staleTime: 30_000,
+    // PERF: staleTime comes from the shared publicJobs default (app/_layout.tsx).
   });
 
   const jobs = useMemo<VistaJob[]>(() => {
@@ -42,28 +42,7 @@ export default function VistaCategoryRoute() {
       // land on the same Job-field page.
       if (resolveJobField(record.category)?.id !== fieldId) continue;
 
-      const remote = record.work_arrangement
-        ? record.work_arrangement.toLowerCase() === 'remote'
-        : (record.location_text ?? '').toLowerCase().includes('remote');
-      const pay = Number(record.pay_amount);
-      const latitude = Number(record.latitude);
-      const longitude = Number(record.longitude);
-      const hasCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
-      mapped.push({
-        id: record.id,
-        title: record.title,
-        company: record.employer_name?.trim() || 'Homlo employer',
-        pay: Number.isFinite(pay) ? pay : 0,
-        kind: remote ? 'remote' : record.pay_type === 'fixed' ? 'monthly' : 'partTime',
-        // 99 for "no coordinates": far enough to never match "Near me", while 0
-        // stays reserved for remote (which the screen treats specially).
-        km: remote ? 0 : hasCoords ? haversineDistance(center, { latitude, longitude }) : 99,
-        // Display-only fields for the card (already in the same record).
-        area: record.location_text ?? undefined,
-        postedAt: record.created_at,
-        logoUrl: getProfilePhotoUrl(record.employer_photo_key),
-        payUnit: record.pay_type === 'hourly' ? '/hr' : record.pay_type === 'daily' ? '/day' : '/mo',
-      });
+      mapped.push(toVistaJob(record, center));
     }
     return mapped;
   }, [data, center, fieldId]);

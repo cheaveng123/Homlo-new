@@ -1,15 +1,9 @@
-import { Tabs, usePathname, useRouter } from "expo-router";
-import { useSafeRouter } from "@/lib/navigation";
+import { Tabs } from "expo-router";
+import { useTabNavigation } from "@/lib/navigation";
 
-import { useRef } from "react";
 import { Animated, Easing } from "react-native";
 import { BottomTabBar } from "@/components/home/BottomTabBar";
 import { useMessagingUnread } from "@/hooks/use-messaging-unread";
-import { haptic } from "@/lib/haptics";
-
-// Event-handler debouncing only; kept behind a module boundary so the
-// purity lint rule doesn't flag the (intended) render-independent usage.
-const nowMs = () => Date.now();
 
 // Symmetric fade + subtle scale for tab switches. Runs on the navigator's
 // core Animated.Value (progress = -1/0/1 relative to the active index), so
@@ -33,44 +27,13 @@ const fadeScaleInterpolator = ({ current: { progress } }: { current: { progress:
   },
 });
 
-const ROUTES: Record<string, string> = {
-  home: "/",
-  search: "/explore",
-  post: "/employer",
-  alerts: "/inbox",
-  profile: "/profile",
-};
-
-function keyForPath(pathname: string): string {
-  if (pathname === "/") return "home";
-  if (pathname === "/explore") return "search";
-  if (pathname === "/jobs") return "search";
-  if (pathname === "/employer" || pathname.startsWith("/employer")) return "post";
-  if (pathname === "/inbox") return "alerts";
-  if (pathname === "/profile") return "profile";
-  if (pathname.startsWith("/inbox") || pathname.startsWith("/conversations")) return "alerts";
-  if (pathname.startsWith("/profile")) return "profile";
-  return "home";
-}
-
 function HomeTabBar() {
-  const router = useSafeRouter();
-  const pathname = usePathname();
+  const { activeKey, select } = useTabNavigation();
   const { count } = useMessagingUnread();
-  const lockUntilRef = useRef(0);
-
-  const select = (key: string) => {
-    const now = nowMs();
-    if (now < lockUntilRef.current) return;
-    if (keyForPath(pathname) === key) return;
-    lockUntilRef.current = now + 400;
-    haptic.light();
-    router.push(ROUTES[key] as never);
-  };
-
-  return <BottomTabBar activeKey={keyForPath(pathname)} onSelect={select} badgeCount={count} />;
+  // No tap lock: switching between mounted tabs is instant and idempotent, and
+  // the old 400ms lock swallowed quick taps, which read as lag.
+  return <BottomTabBar activeKey={activeKey} onSelect={select} badgeCount={count} />;
 }
-
 
 export default function TabLayout() {
   return (
@@ -78,6 +41,10 @@ export default function TabLayout() {
       screenOptions={{
         animation: "fade",
         headerShown: false,
+        // Tabs stay mounted once visited (no remount, no refetch, scroll kept).
+        // Freezing the hidden ones stops them re-rendering on every cache or
+        // store update in the background, which made switching feel heavy.
+        freezeOnBlur: true,
         sceneStyleInterpolator: fadeScaleInterpolator,
         transitionSpec: {
           animation: "timing",

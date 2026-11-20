@@ -1,239 +1,319 @@
 /**
- * "New applicants" tile.
+ * "New applicants" tile — employer dashboard style.
  *
- * This is the one employer screen that is allowed to show statistics: the tile
- * it belongs to is a count, so the screen has to explain where that count came
- * from. It answers three questions in order — how many, when, and which job.
+ * Answers three questions in order: how many (hero ring + counts), when (lit bar
+ * chart with a range switch), and which job (donut + per-job containers), then
+ * lists the applications still waiting on the employer.
  *
- * Read state comes from `viewed_at` (migration 042) via useEmployerApplications,
- * so opening an application anywhere in the app decrements the unread figure
- * here on the next refetch. The optimistic overlay in the hook makes that instant
- * within a single mounted screen.
- *
- * The charts are hand-rolled from react-native-svg rather than pulling in a
- * charting library, which would be the only new dependency in this whole feature.
- * Every figure animates in: sections stagger up on mount, the histogram sweeps
- * its bars, and switching range remounts the figures so they replay.
+ * Read state comes from `viewed_at` via useEmployerApplications, so opening an
+ * application anywhere decrements the unread figure here on the next refetch.
+ * Data, routes and status changes are unchanged from the previous screen; only
+ * the presentation is new.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
+  Extrapolation,
+  FadeInDown,
+  interpolate,
   useAnimatedProps,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
-import Svg, { Circle, type CircleProps } from 'react-native-svg';
-import { AppIcon } from '@/components/ui/AppIcon';
+import Svg, { Circle } from 'react-native-svg';
 
-import { ScalePressable } from '@/components/ui/scale-pressable';
-import { JobListingSkeleton } from '@/components/job-listing-skeleton';
-import { StaggerIn } from '@/components/StaggerIn';
-import ApplicantTicketCard, {
-  ticketStatus,
-  type Applicant,
-} from '@/components/employer-job/ApplicantTicketCard';
-import { colors, fontFamily } from '@/theme';
+import { TextNew } from '@/src/new/components/TextNew';
+import { PressableScaleNew } from '@/src/new/components/PrimitivesNew';
+import { Skeleton } from '@/src/design/primitives';
+import { SMOOTH } from '@/src/design/motion';
+import { useCountUpNew } from '@/src/new/theme/motionNew';
+import { RevealOnScroll, ScrollRevealProvider } from '@/src/new/components/home/ScrollRevealNew';
 import { formatRelativeAgo } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { trpc } from '@/lib/trpc';
 import {
   APPLICATIONS_RANGES,
   useEmployerApplications,
-  type ApplicationsPerJob,
   type ApplicationsRange,
   type EmployerApplication,
 } from '@/hooks/use-employer-applications';
 
-/** The prompt asked for the top 5 jobs by applicant volume; the full list lives on Applications. */
+import { ApplicationsChart, RANGE_LABEL } from './applicants/ApplicationsChart';
+import { JobBreakdown } from './applicants/JobBreakdown';
+import { ApplicantCardNew } from './applicants/ApplicantCardNew';
+import {
+  AllCaughtUpArt,
+  BackGlyph,
+  ChartGlyph,
+  JobsNewGlyph,
+  ReceivedGlyph,
+  StackGlyph,
+  UnreadGlyph,
+  WaitingGlyph,
+} from './applicants/ApplicantGlyphs';
+import { AP, cardShadow } from './applicants/tokens';
+
+/** Top 5 jobs by applicant volume; the full list lives on Applications. */
 const TOP_JOBS = 5;
+const SHEET_OVERLAP = 26;
 
-const RANGE_LABEL: Record<ApplicationsRange, string> = {
-  '1w': 'Past week',
-  '1m': 'Past month',
-  '6m': 'Past 6 months',
-  '1y': 'Past year',
-};
-
-/**
- * Days in each range. The hook buckets per day, so the screen needs the same
- * numbers to label histogram columns and to re-derive each column's start date.
- */
-const RANGE_DAYS: Record<ApplicationsRange, number> = { '1w': 7, '1m': 30, '6m': 183, '1y': 365 };
-
-/**
- * Column count per range.
- *
- * A year is 365 daily buckets — far too many to render as separate bars, and
- * honest to draw as an area anyway. Grouping to ~12 columns keeps every column
- * wide enough to read and keeps the bar count animation-cheap.
- */
-const RANGE_COLUMNS: Record<ApplicationsRange, number> = { '1w': 7, '1m': 15, '6m': 12, '1y': 12 };
-
-/** One colour per slice, ordered for maximum separation between neighbours. */
-const SLICE_COLORS = [colors.primary, colors.deep, colors.tint, colors.amber, colors.amberDark];
-
-const HISTOGRAM_HEIGHT = 116;
-const DONUT_SIZE = 150;
-const DONUT_THICKNESS = 26;
-const DONUT_RADIUS = (DONUT_SIZE - DONUT_THICKNESS) / 2;
-const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const ACircle = Animated.createAnimatedComponent(Circle);
+const RING = 92;
+const RING_R = 38;
+const RING_C = 2 * Math.PI * RING_R;
 
 export function NewApplicantsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: viewportH } = useWindowDimensions();
   const [range, setRange] = useState<ApplicationsRange>('1m');
   const { stats, applicationsPerJob, applicationsOverTime, unread, isLoading, isError, refetch } =
     useEmployerApplications(range);
 
   const topJobs = useMemo(() => applicationsPerJob.slice(0, TOP_JOBS), [applicationsPerJob]);
+  const y = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => { y.value = e.contentOffset.y; });
+  // Status-bar backdrop fades in once the hero has scrolled away.
+  const statusBar = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [200, 280], [0, 1], Extrapolation.CLAMP) }));
 
-  const onRetry = useCallback(() => {
-    void refetch();
-  }, [refetch]);
-
-  // A status change rewrites the ticket's tag in place, so the row needs the
-  // fresh server copy rather than the optimistic one it was rendered from.
-  const onApplicantChanged = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+  const onRetry = useCallback(() => { void refetch(); }, [refetch]);
+  // A status change rewrites the card, so it needs the fresh server copy.
+  const onApplicantChanged = useCallback(() => { void refetch(); }, [refetch]);
 
   return (
-    <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom + 32,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <StaggerIn index={0}>
-          <View style={styles.header}>
-            <ScalePressable
-              onPress={() => router.back()}
-              hapticFeedback
-              style={styles.back}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <AppIcon name="back" size={20} color={colors.ink} />
-            </ScalePressable>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>New applicants</Text>
-              <Text style={styles.headerSubtitle}>Across all your jobs</Text>
-            </View>
+    <View style={st.root}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollRevealProvider scrollY={y} viewportH={viewportH}>
+          <Hero
+            topInset={insets.top}
+            scrollY={y}
+            loading={isLoading}
+            received={stats.totalApplications}
+            unread={stats.newApplicants}
+            jobsWithNew={stats.jobsWithNew}
+            onBack={() => router.back()}
+          />
+
+          <View style={[st.sheet, { paddingBottom: insets.bottom + 32 }]}>
+            {isLoading ? (
+              <LoadingSheet />
+            ) : isError ? (
+              <ErrorCard onRetry={onRetry} />
+            ) : (
+              <>
+                <Section
+                  index={0}
+                  glyph={<ChartGlyph />}
+                  title="Applications received"
+                  meta={RANGE_LABEL[range]}
+                >
+                  <ApplicationsChart ranges={APPLICATIONS_RANGES} range={range} onRange={setRange} buckets={applicationsOverTime.buckets} />
+                </Section>
+
+                {topJobs.length > 0 && (
+                  <Section
+                    index={1}
+                    glyph={<StackGlyph />}
+                    title="By job"
+                    meta={`Top ${topJobs.length} listings`}
+                    action={applicationsPerJob.length > TOP_JOBS ? { label: 'See all', onPress: () => router.push('/employer/applications' as never) } : undefined}
+                  >
+                    <JobBreakdown key={range} entries={topJobs} onOpenJob={(id) => router.push(`/employer/job/${id}` as never)} />
+                  </Section>
+                )}
+
+                <RevealOnScroll style={st.waitHead}>
+                  <View style={st.headGlyph}><WaitingGlyph /></View>
+                  <TextNew variant="section" heading weight="extrabold" color={AP.navy} style={st.sectionTitle}>Waiting on you</TextNew>
+                  <View style={st.countPill}>
+                    <TextNew variant="caption" heading weight="extrabold" color={AP.white}>{unread.length}</TextNew>
+                  </View>
+                </RevealOnScroll>
+
+                {unread.length === 0 ? (
+                  <RevealOnScroll style={[st.card, cardShadow, st.empty]}>
+                                  <AllCaughtUpArt />
+                    <TextNew variant="section" heading weight="extrabold" color={AP.navy} align="center" style={{ marginTop: 14 }}>You&rsquo;re all caught up</TextNew>
+                    <TextNew variant="body" color={AP.muted} align="center" style={{ marginTop: 4 }}>
+                      New applications will appear here the moment they arrive.
+                    </TextNew>
+                  </RevealOnScroll>
+                ) : (
+                  <View style={{ gap: 14 }}>
+                    {unread.map((application, i) => (
+                      <RevealOnScroll key={application.id} index={i % 3}>
+                        <ApplicantRow application={application} onChanged={onApplicantChanged} />
+                      </RevealOnScroll>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
           </View>
-        </StaggerIn>
-
-        {isLoading ? (
-          <JobListingSkeleton count={4} />
-        ) : isError ? (
-          <StaggerIn index={1}>
-            <View style={styles.center}>
-              <Text style={styles.errorTitle}>Couldn&rsquo;t load your applicants</Text>
-              <Text style={styles.errorBody}>Check your connection and try again.</Text>
-              <ScalePressable
-                onPress={onRetry}
-                hapticFeedback
-                style={styles.retry}
-                containerStyle={styles.retryWrap}
-                accessibilityRole="button"
-                accessibilityLabel="Retry loading applicants"
-              >
-                <Text style={styles.retryText}>Retry</Text>
-              </ScalePressable>
-            </View>
-          </StaggerIn>
-        ) : (
-          <>
-            <StaggerIn index={1}>
-              <StatStrip stats={stats} />
-            </StaggerIn>
-
-            <StaggerIn index={2} style={styles.section}>
-              <View style={styles.sectionHead}>
-                <Text style={styles.sectionTitle}>Applications received</Text>
-                <Text style={styles.sectionMeta}>{RANGE_LABEL[range]}</Text>
-              </View>
-              <RangeTabs value={range} onChange={setRange} />
-              {/* Keyed on range so switching periods replays the bar sweep
-                  instead of leaving the old bars standing. */}
-              <Histogram
-                key={`hist-${range}`}
-                columns={toColumns(applicationsOverTime.buckets, range)}
-              />
-            </StaggerIn>
-
-            {topJobs.length > 0 ? (
-              <StaggerIn index={3} style={styles.section}>
-                <Text style={styles.sectionTitle}>Most applicants</Text>
-                <Text style={styles.sectionHint}>Top {topJobs.length} of your listings</Text>
-                <JobPie key={`pie-${range}`} entries={topJobs} />
-              </StaggerIn>
-            ) : null}
-
-            <StaggerIn index={4} style={styles.section}>
-              <View style={styles.sectionHead}>
-                <Text style={styles.sectionTitle}>Waiting on you</Text>
-                <Text style={styles.sectionMeta}>{unread.length} unread</Text>
-              </View>
-              {unread.length === 0 ? (
-                <View style={styles.empty}>
-                  <Text style={styles.emptyTitle}>You&rsquo;re all caught up</Text>
-                  <Text style={styles.emptyBody}>
-                    New applications will appear here the moment they arrive.
-                  </Text>
-                </View>
-              ) : (
-                unread.map((application, index) => (
-                  <StaggerIn key={application.id} index={5 + index}>
-                    <TicketRow application={application} onChanged={onApplicantChanged} />
-                  </StaggerIn>
-                ))
-              )}
-            </StaggerIn>
-          </>
-        )}
-      </ScrollView>
+        </ScrollRevealProvider>
+      </Animated.ScrollView>
+      <Animated.View pointerEvents="none" style={[st.statusStrip, { height: insets.top + 14 }, statusBar]}>
+        <LinearGradient colors={[AP.white, AP.white, 'rgba(255,255,255,0)']} locations={[0, 0.7, 1]} style={StyleSheet.absoluteFill} />
+      </Animated.View>
     </View>
   );
 }
 
-/**
- * Adapts a cross-job application to the ticket card the per-job screen uses.
- *
- * The list spans every listing, so the row has to carry its own job title and
- * route back through `application/[id]` with the job id that detail screen needs
- * to resolve the listing for pay and status.
- */
-function TicketRow({
-  application,
-  onChanged,
-}: {
-  application: EmployerApplication;
-  onChanged: () => void;
+/* ───────── hero ───────── */
+
+function UnreadRing({ unread, received, loading }: { unread: number; received: number; loading: boolean }) {
+  const reduced = useReducedMotion();
+  const ratio = received > 0 ? Math.min(1, unread / received) : 0;
+  const target = RING_C * (1 - ratio);
+  const off = useSharedValue(RING_C);
+  useEffect(() => {
+    if (loading) return;
+    off.value = reduced ? target : withDelay(200, withTiming(target, { duration: 1100, easing: SMOOTH }));
+  }, [target, loading, reduced, off]);
+  const arc = useAnimatedProps(() => ({ strokeDashoffset: off.value }));
+  const n = useCountUpNew(loading ? 0 : unread, 900);
+  return (
+    <View style={st.ringWrap}>
+      <Svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`}>
+        <Circle cx={RING / 2} cy={RING / 2} r={RING_R} stroke="#E8EEF1" strokeWidth={8} fill="none" />
+        <ACircle
+          animatedProps={arc}
+          cx={RING / 2} cy={RING / 2} r={RING_R} stroke={AP.amber} strokeWidth={8} strokeLinecap="round" fill="none"
+          strokeDasharray={`${RING_C} ${RING_C}`} transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+        />
+      </Svg>
+      <View style={st.ringCenter} pointerEvents="none">
+        <TextNew variant="hero" heading weight="extrabold" color={AP.navy} style={st.ringNum}>{loading ? '–' : n}</TextNew>
+        <TextNew variant="caption" weight="medium" color={AP.muted} style={{ fontSize: 11, lineHeight: 14 }}>unread</TextNew>
+      </View>
+    </View>
+  );
+}
+
+function HeroStat({ glyph, label, value, index, loading, last }: { glyph: ReactNode; label: string; value: number; index: number; loading: boolean; last?: boolean }) {
+  const n = useCountUpNew(loading ? 0 : value, 900);
+  const reduced = useReducedMotion();
+  return (
+    <Animated.View entering={reduced ? undefined : FadeInDown.delay(200 + index * 90).duration(450)} style={[st.statRow, !last && st.statLine]}>
+      <View style={st.statGlyph}>{glyph}</View>
+      <TextNew variant="body" weight="medium" color={AP.muted} numberOfLines={1} style={{ flex: 1 }}>{label}</TextNew>
+      <TextNew variant="header" heading weight="extrabold" color={AP.navy} style={st.statNum}>{loading ? '–' : n}</TextNew>
+    </Animated.View>
+  );
+}
+
+function Hero({ topInset, scrollY, loading, received, unread, jobsWithNew, onBack }: {
+  topInset: number; scrollY: SharedValue<number>; loading: boolean; received: number; unread: number; jobsWithNew: number; onBack: () => void;
 }) {
+  const reduced = useReducedMotion();
+  const bg = useAnimatedStyle(() => {
+    const v = scrollY.value;
+    if (reduced) return {};
+    if (v < 0) return { transform: [{ translateY: v / 2 }, { scaleY: 1 + -v / 320 }] };
+    return { transform: [{ translateY: v * 0.4 }] };
+  });
+  const content = useAnimatedStyle(() => {
+    const v = Math.max(0, scrollY.value);
+    return {
+      opacity: interpolate(v, [0, 180], [1, 0], Extrapolation.CLAMP),
+      transform: reduced ? [] : [{ translateY: v * 0.3 }, { scale: interpolate(v, [0, 200], [1, 0.96], Extrapolation.CLAMP) }],
+    };
+  });
+  return (
+    <View style={[st.hero, { paddingTop: topInset + 8 }]}>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, bg]}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: AP.white }]} />
+      </Animated.View>
+
+      <Animated.View style={content}>
+        <View style={st.topRow}>
+          <PressableScaleNew onPress={onBack} scaleTo={0.92} accessibilityLabel="Go back" style={st.glassBtn}>
+            <BackGlyph color={AP.navy} />
+          </PressableScaleNew>
+        </View>
+        <TextNew variant="hero" heading weight="extrabold" color={AP.navy} style={st.title}>New applicants</TextNew>
+        <TextNew variant="body" weight="medium" color={AP.muted}>Across all your jobs</TextNew>
+
+        <View style={st.summary}>
+          <UnreadRing unread={unread} received={received} loading={loading} />
+          <View style={{ flex: 1 }}>
+            <HeroStat index={0} loading={loading} glyph={<ReceivedGlyph size={22} color={AP.navy} />} label="Received" value={received} />
+            <HeroStat index={1} loading={loading} glyph={<UnreadGlyph size={22} color={AP.navy} />} label="Unread" value={unread} />
+            <HeroStat index={2} loading={loading} glyph={<JobsNewGlyph size={22} color={AP.navy} />} label="Jobs with new" value={jobsWithNew} last />
+          </View>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+/* ───────── sections ───────── */
+
+function Section({ index, glyph, title, meta, action, children }: {
+  index: number; glyph: ReactNode; title: string; meta?: string; action?: { label: string; onPress: () => void }; children: ReactNode;
+}) {
+  return (
+    <RevealOnScroll index={index} style={[st.card, cardShadow, st.section]}>
+      <View style={st.sectionHead}>
+        <View style={st.headGlyph}>{glyph}</View>
+        <View style={{ flex: 1 }}>
+          <TextNew variant="section" heading weight="extrabold" color={AP.navy} style={st.sectionTitle}>{title}</TextNew>
+          {!!meta && <TextNew variant="caption" color={AP.muted}>{meta}</TextNew>}
+        </View>
+        {action && (
+          <PressableScaleNew onPress={action.onPress} accessibilityLabel={action.label} style={st.sectionAction}>
+            <TextNew variant="meta" heading weight="bold" color={AP.cyan}>{action.label}</TextNew>
+          </PressableScaleNew>
+        )}
+      </View>
+      {children}
+    </RevealOnScroll>
+  );
+}
+
+function LoadingSheet() {
+  return (
+    <View style={{ gap: 16 }}>
+      <View style={[st.card, cardShadow, st.section, { gap: 14 }]}>
+        <Skeleton width="55%" height={18} />
+        <Skeleton height={36} radius={14} />
+        <Skeleton height={148} radius={14} />
+      </View>
+      <View style={[st.card, cardShadow, st.section, { gap: 12 }]}>
+        <Skeleton width="40%" height={18} />
+        {[0, 1, 2].map((i) => <Skeleton key={i} height={64} radius={18} />)}
+      </View>
+    </View>
+  );
+}
+
+function ErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <View style={[st.card, cardShadow, st.empty]}>
+      <TextNew variant="section" heading weight="extrabold" color={AP.navy} align="center">Couldn&rsquo;t load your applicants</TextNew>
+      <TextNew variant="body" color={AP.muted} align="center" style={{ marginTop: 4 }}>Check your connection and try again.</TextNew>
+      <PressableScaleNew onPress={onRetry} accessibilityLabel="Retry loading applicants" style={st.retry}>
+        <TextNew variant="body" heading weight="bold" color={AP.white}>Try again</TextNew>
+      </PressableScaleNew>
+    </View>
+  );
+}
+
+/* ───────── applicant row: maps data + owns status changes and navigation ───────── */
+
+function ApplicantRow({ application, onChanged }: { application: EmployerApplication; onChanged: () => void }) {
   const router = useRouter();
   const changeStatus = trpc.homlo.applications.changeStatus.useMutation();
 
-  const applicant: Applicant = {
-    id: application.id,
-    name: application.fullName,
-    appliedAt: formatRelativeAgo(application.appliedAt),
-    note: application.message ?? '',
-    location: application.locationLabel ?? 'Location not provided',
-    status: ticketStatus(application.status),
-    isNew: application.isNew,
-    jobTitle: application.jobTitle,
-  };
-
-  function confirmMove(next: 'accepted' | 'rejected') {
-    const hiring = next === 'accepted';
+  function confirmMove(hiring: boolean) {
     Alert.alert(
       hiring ? 'Accept this applicant?' : 'Reject this applicant?',
       hiring
@@ -247,17 +327,11 @@ function TicketRow({
           onPress: () => {
             haptic.selection();
             changeStatus
-              .mutateAsync({
-                applicationId: application.id,
-                status: hiring ? 'hired' : 'declined',
-              })
-              .then(() => {
-                haptic.success();
-                onChanged();
-              })
+              .mutateAsync({ applicationId: application.id, status: hiring ? 'hired' : 'declined' })
+              .then(() => { haptic.success(); onChanged(); })
               .catch((err) => {
                 haptic.selection();
-                Alert.alert("Couldn't update the application", err instanceof Error ? err.message : "Try again in a moment.");
+                Alert.alert("Couldn't update the application", err instanceof Error ? err.message : 'Try again in a moment.');
               });
           },
         },
@@ -266,540 +340,62 @@ function TicketRow({
   }
 
   return (
-    <ApplicantTicketCard
-      applicant={applicant}
-      onAccept={() => confirmMove('accepted')}
-      onReject={() => confirmMove('rejected')}
+    <ApplicantCardNew
+      busy={changeStatus.isPending}
+      data={{
+        name: application.fullName,
+        avatarUrl: application.avatarUrl,
+        jobTitle: application.jobTitle,
+        appliedAgo: formatRelativeAgo(application.appliedAt),
+        location: application.locationLabel ?? 'Location not provided',
+        message: application.message,
+        isNew: application.isNew,
+      }}
+      onAccept={() => confirmMove(true)}
+      onReject={() => confirmMove(false)}
       onMessage={() =>
         router.push({
           pathname: '/conversations/[id]',
-          params: {
-            id: 'conversation',
-            applicationId: application.id,
-            name: application.fullName,
-            applicationStatus: application.status,
-          },
+          params: { id: 'conversation', applicationId: application.id, name: application.fullName, applicationStatus: application.status },
         } as never)
       }
       onPress={() =>
-        router.push({
-          pathname: '/employer/application/[id]',
-          params: { id: application.id, jobId: application.jobId },
-        } as never)
+        router.push({ pathname: '/employer/application/[id]', params: { id: application.id, jobId: application.jobId } } as never)
       }
     />
   );
 }
 
-function StatStrip({
-  stats,
-}: {
-  stats: { totalApplications: number; newApplicants: number; jobsWithNew: number };
-}) {
-  return (
-    <View style={[styles.statStrip, shadows.card]}>
-      <Stat value={stats.totalApplications} label="Received" />
-      <Stat value={stats.newApplicants} label="Unread" emphasis />
-      <Stat value={stats.jobsWithNew} label="Jobs with new" divider />
-    </View>
-  );
-}
-
-function Stat({
-  value,
-  label,
-  emphasis,
-  divider,
-}: {
-  value: number;
-  label: string;
-  emphasis?: boolean;
-  divider?: boolean;
-}) {
-  return (
-    <View style={[styles.stat, divider && styles.statDivider]}>
-      <AnimatedCount value={value} emphasis={emphasis} />
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-/** Counts tick up rather than snapping, so a change caused by a refetch reads as intentional. */
-function AnimatedCount({ value, emphasis }: { value: number; emphasis?: boolean }) {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = 0;
-    progress.value = withTiming(1, { duration: 480 });
-  }, [progress, value]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: 0.35 + 0.65 * progress.value,
-    transform: [{ scale: 0.92 + 0.08 * progress.value }],
-  }));
-
-  return (
-    <Animated.Text
-      style={[styles.statValue, emphasis && styles.statValueEmphasis, animatedStyle]}
-      // The label is already announced by the screen; the number would double up.
-      accessibilityLabel={`${value}`}
-    >
-      {value}
-    </Animated.Text>
-  );
-}
-
-function RangeTabs({
-  value,
-  onChange,
-}: {
-  value: ApplicationsRange;
-  onChange: (range: ApplicationsRange) => void;
-}) {
-  return (
-    <View style={styles.rangeRow}>
-      {APPLICATIONS_RANGES.map((option) => {
-        const active = option === value;
-        return (
-          <ScalePressable
-            key={option}
-            onPress={() => onChange(option)}
-            hapticFeedback
-            style={[styles.rangeTab, active && styles.rangeTabActive]}
-            containerStyle={styles.rangeTabWrap}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={`Show ${RANGE_LABEL[option].toLowerCase()}`}
-          >
-            <Text style={[styles.rangeTabText, active && styles.rangeTabTextActive]}>{option}</Text>
-          </ScalePressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function startOfDayMs(ms: number): number {
-  const date = new Date(ms);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-}
-
-/**
- * Folds the hook's daily buckets into a readable number of histogram columns,
- * re-deriving each column's label from its start date so the axis stays honest
- * at every range.
- */
-function toColumns(
-  buckets: { label: string; count: number }[],
-  range: ApplicationsRange,
-): { label: string; count: number }[] {
-  const days = RANGE_DAYS[range];
-  const from = startOfDayMs(Date.now()) - (days - 1) * 86_400_000;
-  const size = Math.max(1, Math.ceil(days / RANGE_COLUMNS[range]));
-
-  const columns: { label: string; count: number }[] = [];
-  for (let index = 0; index < buckets.length; index += size) {
-    let count = 0;
-    for (let cursor = index; cursor < Math.min(index + size, buckets.length); cursor += 1) {
-      count += buckets[cursor]?.count ?? 0;
-    }
-    const date = new Date(from + index * 86_400_000);
-    columns.push({
-      label: date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-      count,
-    });
-  }
-  return columns;
-}
-
-/** Applications received per period, as bars rather than an area. */
-function Histogram({ columns }: { columns: { label: string; count: number }[] }) {
-  const peak = Math.max(1, ...columns.map((column) => column.count));
-  const total = columns.reduce((sum, column) => sum + column.count, 0);
-  // Skip alternating labels so they never collide on a narrow phone.
-  const labelStride = columns.length > 10 ? 2 : 1;
-
-  return (
-    <View style={styles.chart}>
-      <View style={styles.histogram} accessibilityLabel={`${total} applications in this period`}>
-        {columns.map((column, index) => (
-          <HistogramBar
-            key={column.label}
-            ratio={column.count / peak}
-            index={index}
-            empty={column.count === 0}
-          />
-        ))}
-      </View>
-      <View style={styles.axis}>
-        {columns.map((column, index) => (
-          <Text
-            key={`${column.label}-${index}`}
-            style={[styles.axisLabel, index % labelStride !== 0 && styles.axisLabelHidden]}
-            numberOfLines={1}
-          >
-            {column.label}
-          </Text>
-        ))}
-      </View>
-      <Text style={styles.chartTotal}>
-        {total} application{total === 1 ? '' : 's'} in this period
-      </Text>
-    </View>
-  );
-}
-
-function HistogramBar({
-  ratio,
-  index,
-  empty,
-}: {
-  ratio: number;
-  index: number;
-  empty: boolean;
-}) {
-  const progress = useSharedValue(0);
-
-  useEffect(() => {
-    progress.value = 0;
-    progress.value = withDelay(Math.min(index, 14) * 26, withTiming(1, { duration: 420 }));
-  }, [index, progress]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    // A zero-value column still gets a 2px stub so the baseline stays continuous.
-    height: Math.max(2, ratio * HISTOGRAM_HEIGHT * progress.value),
-    opacity: empty ? 0.25 * progress.value : progress.value,
-  }));
-
-  return <Animated.View style={[styles.bar, animatedStyle]} />;
-}
-
-/**
- * Share of applicants per listing.
- *
- * A doughnut rather than a pie so the total can sit in the middle. Each slice is
- * a stroked circle whose dash offset animates from empty to filled, which sweeps
- * the arc in — animating an SVG arc path's `d` would mean recomputing path data
- * on every frame from the UI thread.
- */
-function JobPie({ entries }: { entries: ApplicationsPerJob[] }) {
-  const router = useRouter();
-  const total = entries.reduce((sum, entry) => sum + entry.total, 0);
-
-  const ratios = entries.map((entry) => (total > 0 ? entry.total / total : 0));
-  const slices = entries.map((entry, index) => ({
-    entry,
-    ratio: ratios[index],
-    // Prefix sum of everything before this slice, so each arc starts where the
-    // previous one stopped. Computed without mutating a running total.
-    startRatio: ratios.slice(0, index).reduce((sum, value) => sum + value, 0),
-    color: SLICE_COLORS[index % SLICE_COLORS.length],
-  }));
-
-  return (
-    <View style={styles.pieWrap}>
-      <View style={styles.pieBox}>
-        <Svg width={DONUT_SIZE} height={DONUT_SIZE}>
-          {slices.map((slice, index) => (
-            <DonutSlice
-              key={slice.entry.jobId}
-              ratio={slice.ratio}
-              startRatio={slice.startRatio}
-              color={slice.color}
-              delay={index * 110}
-            />
-          ))}
-        </Svg>
-        <View pointerEvents="none" style={styles.pieCentre}>
-          <Text style={styles.pieCentreValue}>{total}</Text>
-          <Text style={styles.pieCentreLabel}>
-            applicant{total === 1 ? '' : 's'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.legend}>
-        {slices.map((slice) => (
-          <ScalePressable
-            key={slice.entry.jobId}
-            onPress={() => router.push(`/employer/job/${slice.entry.jobId}` as never)}
-            hapticFeedback
-            style={styles.legendRow}
-          >
-            <View style={[styles.legendDot, { backgroundColor: slice.color }]} />
-            <Text style={styles.legendTitle} numberOfLines={1}>
-              {slice.entry.jobTitle}
-            </Text>
-            <Text style={styles.legendValue}>
-              {slice.entry.total}
-              <Text style={styles.legendShare}>
-                {total > 0 ? ` · ${Math.round(slice.ratio * 100)}%` : ''}
-              </Text>
-            </Text>
-          </ScalePressable>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function DonutSlice({
-  ratio,
-  startRatio,
-  color,
-  delay,
-}: {
-  ratio: number;
-  startRatio: number;
-  color: string;
-  delay: number;
-}) {
-  const arcLength = ratio * DONUT_CIRCUMFERENCE;
-  const dashOffset = useSharedValue(DONUT_CIRCUMFERENCE);
-
-  useEffect(() => {
-    dashOffset.value = DONUT_CIRCUMFERENCE;
-    dashOffset.value = withDelay(delay, withTiming(DONUT_CIRCUMFERENCE - arcLength, { duration: 620 }));
-  }, [arcLength, dashOffset, delay]);
-
-  const animatedProps = useAnimatedProps<CircleProps>(() => ({ strokeDashoffset: dashOffset.value }));
-
-  return (
-    <AnimatedCircle
-      cx={DONUT_SIZE / 2}
-      cy={DONUT_SIZE / 2}
-      r={DONUT_RADIUS}
-      stroke={color}
-      strokeWidth={DONUT_THICKNESS}
-      fill="none"
-      strokeDasharray={`${arcLength} ${DONUT_CIRCUMFERENCE}`}
-      // -90deg puts the first slice at 12 o'clock instead of 3.
-      rotation={-90 + startRatio * 360}
-      originX={DONUT_SIZE / 2}
-      originY={DONUT_SIZE / 2}
-      animatedProps={animatedProps}
-    />
-  );
-}
-
-const shadows = {
-  card: {
-    shadowColor: '#0A2A20',
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+const st = StyleSheet.create({
+  root: { flex: 1, backgroundColor: AP.white },
+  statusStrip: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
+  hero: { paddingHorizontal: 16, paddingBottom: 26 + SHEET_OVERLAP, overflow: 'visible' },
+  topRow: { flexDirection: 'row', marginBottom: 14 },
+  glassBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: AP.white, borderWidth: 1, borderColor: AP.line,
   },
-};
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.pageBg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
+  title: { fontSize: 30, lineHeight: 36, letterSpacing: -0.5 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 20 },
+  ringWrap: { width: RING, height: RING, alignItems: 'center', justifyContent: 'center' },
+  ringCenter: { position: 'absolute', alignItems: 'center' },
+  ringNum: { fontSize: 26, lineHeight: 30 },
+  statRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
+  statLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#D9E3E7' },
+  statGlyph: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  statNum: { fontSize: 19, lineHeight: 24 },
+  sheet: {
+    flexGrow: 1, marginTop: -SHEET_OVERLAP, paddingTop: 20, paddingHorizontal: 16, gap: 18, backgroundColor: AP.white,
+    borderTopLeftRadius: SHEET_OVERLAP, borderTopRightRadius: SHEET_OVERLAP,
   },
-  back: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.cardBg,
-  },
-  headerText: { flex: 1 },
-  headerTitle: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.ink,
-    letterSpacing: -0.4,
-  },
-  headerSubtitle: {
-    marginTop: 2,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 13,
-    color: colors.sub,
-  },
-  statStrip: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingVertical: 18,
-    borderRadius: 22,
-    backgroundColor: colors.cardBg,
-  },
-  stat: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
-  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.line },
-  statValue: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: 26,
-    color: colors.ink,
-    letterSpacing: -0.6,
-  },
-  statValueEmphasis: { color: colors.primary },
-  statLabel: {
-    marginTop: 4,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 12,
-    color: colors.sub,
-    textAlign: 'center',
-  },
-  section: { paddingHorizontal: 20, marginBottom: 28 },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  sectionTitle: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: 17,
-    color: colors.ink,
-    letterSpacing: -0.2,
-  },
-  sectionMeta: {
-    fontFamily: fontFamily.interRegular,
-    fontSize: 13,
-    color: colors.sub,
-  },
-  sectionHint: {
-    marginTop: 3,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 12,
-    color: colors.sub,
-  },
-  rangeRow: { flexDirection: 'row', gap: 8, marginTop: 14, marginBottom: 4 },
-  // The wrapper carries the margin so the press scale doesn't clip it.
-  rangeTabWrap: { flex: 1 },
-  rangeTab: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-    borderRadius: 999,
-    backgroundColor: colors.cardBg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-  },
-  rangeTabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  rangeTabText: {
-    fontFamily: fontFamily.interSemiBold,
-    fontSize: 13,
-    color: colors.sub,
-  },
-  rangeTabTextActive: { color: colors.white },
-  chart: { marginTop: 16 },
-  // alignItems:flex-end keeps every bar sitting on the same baseline so a short
-  // bar reads as "few" rather than "floating".
-  histogram: {
-    height: HISTOGRAM_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 3,
-  },
-  bar: {
-    flex: 1,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  axis: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  axisLabel: {
-    flex: 1,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 10,
-    color: colors.sub,
-    textAlign: 'center',
-  },
-  // Labels alternate rather than disappearing: the column keeps its width.
-  axisLabelHidden: { opacity: 0 },
-  chartTotal: {
-    marginTop: 10,
-    fontFamily: fontFamily.interSemiBold,
-    fontSize: 12,
-    color: colors.sub,
-  },
-  pieWrap: { marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 18 },
-  pieBox: { width: DONUT_SIZE, height: DONUT_SIZE },
-  pieCentre: {
-    // Explicit insets rather than StyleSheet.absoluteFillObject, whose type is
-    // missing from this project's React Native typings.
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pieCentreValue: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: 26,
-    color: colors.ink,
-    letterSpacing: -0.6,
-  },
-  pieCentreLabel: {
-    marginTop: 1,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 11,
-    color: colors.sub,
-  },
-  legend: { flex: 1, gap: 9 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendTitle: {
-    flex: 1,
-    fontFamily: fontFamily.interSemiBold,
-    fontSize: 13,
-    color: colors.ink,
-  },
-  legendValue: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: 13,
-    color: colors.ink,
-  },
-  legendShare: {
-    fontFamily: fontFamily.interRegular,
-    fontSize: 11,
-    color: colors.sub,
-  },
-  empty: { paddingVertical: 28, alignItems: 'center' },
-  emptyTitle: { fontFamily: fontFamily.extraBold, fontSize: 15, color: colors.ink },
-  emptyBody: {
-    marginTop: 5,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 13,
-    color: colors.sub,
-    textAlign: 'center',
-  },
-  center: { alignItems: 'center', paddingHorizontal: 32, paddingTop: 48 },
-  errorTitle: { fontFamily: fontFamily.extraBold, fontSize: 17, color: colors.ink },
-  errorBody: {
-    marginTop: 6,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 14,
-    color: colors.sub,
-    textAlign: 'center',
-  },
-  retryWrap: { marginTop: 18 },
-  retry: {
-    minHeight: 44,
-    paddingHorizontal: 28,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  retryText: {
-    fontFamily: fontFamily.interSemiBold,
-    fontSize: 15,
-    color: colors.white,
-  },
+  card: { backgroundColor: AP.white, borderRadius: 22, borderWidth: 1, borderColor: AP.line },
+  section: { padding: 16 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  headGlyph: { width: 38, height: 38, borderRadius: 12, backgroundColor: AP.tint, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 18, lineHeight: 23 },
+  sectionAction: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 4 },
+  waitHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  countPill: { minWidth: 26, height: 26, borderRadius: 13, paddingHorizontal: 8, backgroundColor: AP.amber, alignItems: 'center', justifyContent: 'center' },
+  empty: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 },
+  retry: { marginTop: 18, height: 46, paddingHorizontal: 28, borderRadius: 23, backgroundColor: AP.cyan, alignItems: 'center', justifyContent: 'center' },
 });

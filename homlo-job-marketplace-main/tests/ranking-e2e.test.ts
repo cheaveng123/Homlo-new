@@ -924,7 +924,7 @@ describe("E2E — quality feedback loop", () => {
     const feed = serviceFor(database);
 
     // Round 1: no stats yet — both jobs neutral, no aggregated evidence.
-    const round1 = await feed.getFeed({ userId: "worker-U", userLocation: location, now: NOW });
+    await feed.getFeed({ userId: "worker-U", userLocation: location, now: NOW });
     expect(store.jobQuality.size).toBe(0);
 
     // U2 engages with job-good (events → the aggregation's input source).

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,6 +9,7 @@ import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
+import { ReportSheet } from "@/components/legal/ReportSheet";
 import { formatRelativeAgo } from "@/lib/format";
 import { EmployerApplicantSkeleton } from "@/src/new/components/NewSkeletons";
 import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
@@ -26,6 +27,7 @@ export default function EmployerApplicantDetailScreen() {
   const router = useRouter();
   const { id, jobId } = useLocalSearchParams<{ id: string; jobId: string }>();
   const { user } = useAuth();
+  const [reportOpen, setReportOpen] = useState(false);
   const applicationsQuery = trpc.homlo.employer.applications.useQuery({ jobId: jobId ?? "00000000-0000-0000-0000-000000000000" }, { enabled: Boolean(user && jobId) });
   const jobsQuery = trpc.homlo.employer.jobs.useQuery(undefined, { enabled: Boolean(user) });
   const application = (((applicationsQuery.data as { applications?: GatewayApplication[] } | undefined)?.applications ?? []).find((candidate) => candidate.id === id));
@@ -75,14 +77,26 @@ export default function EmployerApplicantDetailScreen() {
   };
 
   return (
-    <EmployerApplicantDetailView
-      applicant={applicant}
-      job={jobSummary}
-      onBack={() => router.back()}
-      onMessage={() => router.push({ pathname: "/conversations/[id]", params: { id: "conversation", applicationId: application.id } } as never)}
-      topInset={insets.top}
-      bottomInset={insets.bottom}
-    />
+    <View style={{ flex: 1 }}>
+      <EmployerApplicantDetailView
+        applicant={applicant}
+        job={jobSummary}
+        onBack={() => router.back()}
+        onMessage={() => router.push({ pathname: "/conversations/[id]", params: { id: "conversation", applicationId: application.id } } as never)}
+        topInset={insets.top}
+        bottomInset={insets.bottom}
+      />
+      {/* Report button on every profile (scam, underage user, discrimination, illegal, other). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Report this profile"
+        onPress={() => setReportOpen(true)}
+        style={{ position: "absolute", top: insets.top + 10, right: 16, backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}
+      >
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#6A7C84" }}>Report</Text>
+      </Pressable>
+      <ReportSheet visible={reportOpen} onClose={() => setReportOpen(false)} targetType="user" targetId={application.worker_id} targetLabel={application.worker_full_name} />
+    </View>
   );
 }
 

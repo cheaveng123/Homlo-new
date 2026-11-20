@@ -3,7 +3,7 @@
 import React from 'react';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import Animated, { useAnimatedProps } from 'react-native-reanimated';
-import { kf, useLoop } from './loop';
+import { kf, softFade, useLoop } from './loop';
 
 const AG = Animated.createAnimatedComponent(G);
 
@@ -21,15 +21,15 @@ const OP = [[0, 0], [0.08, 1], [0.78, 1], [0.9, 0], [1, 0]];
 export function BoostIcon({ size = 34, delay = 0, replayKey = 0, active = true }: { size?: number; delay?: number; replayKey?: number; active?: boolean }) {
   const p = useLoop(delay, replayKey, active);
   const rise = useAnimatedProps(() => ({
-    opacity: kf(p.value, OP),
+    opacity: softFade(kf(p.value, OP)),
     transform: [{ translateY: kf(p.value, [[0, 19], [0.08, 19], [0.3, 0], [1, 0]]) }],
   }));
   const step = useAnimatedProps(() => ({
-    opacity: kf(p.value, OP),
+    opacity: softFade(kf(p.value, OP)),
     transform: [{ translateY: kf(p.value, [[0, -9.5], [0.08, -9.5], [0.3, 0], [1, 0]]) }],
   }));
   const step2 = useAnimatedProps(() => ({
-    opacity: kf(p.value, OP),
+    opacity: softFade(kf(p.value, OP)),
     transform: [{ translateY: kf(p.value, [[0, -9.5], [0.08, -9.5], [0.3, 0], [1, 0]]) }],
   }));
   const chev = useAnimatedProps(() => ({

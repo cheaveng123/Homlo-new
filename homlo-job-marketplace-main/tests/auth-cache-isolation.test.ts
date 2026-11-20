@@ -5,6 +5,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useAuth } from "../hooks/use-auth";
+
 const mocks = vi.hoisted(() => ({
   clearQueryClient: vi.fn(),
   logout: vi.fn(async () => undefined),
@@ -15,10 +17,16 @@ const mocks = vi.hoisted(() => ({
   clearAuthSession: vi.fn(async () => undefined),
   setUserInfo: vi.fn(async () => undefined),
   clearUserInfo: vi.fn(async () => undefined),
+  identifyPurchasesUser: vi.fn(async () => undefined),
+  clearPurchasesUser: vi.fn(async () => undefined),
 }));
 
 vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 vi.mock("@/lib/trpc", () => ({ clearQueryClient: mocks.clearQueryClient }));
+vi.mock("@/lib/purchases", () => ({
+  identifyPurchasesUser: mocks.identifyPurchasesUser,
+  clearPurchasesUser: mocks.clearPurchasesUser,
+}));
 vi.mock("@/lib/_core/auth", () => ({
   getRefreshToken: mocks.getRefreshToken,
   setAuthSession: mocks.setAuthSession,
@@ -31,8 +39,6 @@ vi.mock("@/lib/_core/api", () => ({
   getSupabaseMe: mocks.getSupabaseMe,
   refreshSupabaseSession: mocks.refreshSupabaseSession,
 }));
-
-import { useAuth } from "../hooks/use-auth";
 
 type HookApi = ReturnType<typeof useAuth>;
 

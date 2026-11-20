@@ -1,12 +1,12 @@
 // JOB MANAGER. Keep your existing hooks: replace JOB / APPS with them. Layout, motion and links are the redesign.
-import React,{useEffect,useState} from 'react';
-import {View,Text} from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useLocalSearchParams,router} from 'expo-router';
-import Animated,{ZoomIn,FadeInDown,FadeOut,LinearTransition,useSharedValue,useAnimatedStyle,useAnimatedScrollHandler,withRepeat,withTiming,withDelay,interpolate,Extrapolation,useReducedMotion} from 'react-native-reanimated';
-import {c,f,sh} from './NewTheme';
-import {Icon,Circ,Btn,Pill,Sun,Sec,Reveal,Tabs} from './NewUI';
-import {R,go} from './NewRoutes';
+import React, { useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, router } from 'expo-router';
+import Animated, { ZoomIn, FadeInDown, FadeOut, LinearTransition, useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withRepeat, withTiming, withDelay, interpolate, Extrapolation, useReducedMotion } from 'react-native-reanimated';
+import { c, f, sh } from './NewTheme';
+import { Icon, Circ, Btn, Pill, Sec, Reveal, Tabs } from './NewUI';
+import { R, go } from './NewRoutes';
 
 const JOB={title:'Cashier (Weekend)',place:'Chamkar Mon, Phnom Penh',views:0,pay:'$2.2',unit:'/hr',filled:1,total:4,unread:1}; // TODO existing job hook
 const APPS=[{id:'a1',name:'Worker',when:'2w ago',status:'Accepted',answer:'"Worker\n\nYes"',loc:'Location not provided'}]; // TODO existing applications hook
@@ -14,12 +14,12 @@ const TABS=['All','Pending','Accepted','Rejected'];
 
 function Seat({on,i}:{on:boolean;i:number}){
   const p=useSharedValue(0);const rm=useReducedMotion();
-  useEffect(()=>{if(!rm)p.value=withDelay(900+i*150,withRepeat(withTiming(1,{duration:1400}),-1,true))},[]);
+  useEffect(()=>{if(!rm)p.value=withDelay(900+i*150,withRepeat(withTiming(1,{duration:1400}),-1,true))},[i, p, rm]);
   const a=useAnimatedStyle(()=>({transform:[{scale:1+p.value*(on?0.04:0.06)}],borderColor:on?'#fff':`rgba(245,181,43,${0.25+p.value*0.6})`}));
   return <Animated.View entering={ZoomIn.delay(100+i*130).springify()} style={[{width:44,height:52,borderRadius:14,borderWidth:2,borderStyle:on?'solid':'dashed',alignItems:'center',justifyContent:'center',backgroundColor:on?'#fff':'transparent'},a]}><Icon n="user" color={on?c.teal:'rgba(255,255,255,0.5)'}/></Animated.View>;
 }
 function Bar({i,hot}:{i:number;hot:boolean}){
-  const h=useSharedValue(0);useEffect(()=>{h.value=withDelay(300+i*100,withTiming(1,{duration:500}))},[]);
+  const h=useSharedValue(0);useEffect(()=>{h.value=withDelay(300+i*100,withTiming(1,{duration:500}))},[h, i]);
   const a=useAnimatedStyle(()=>({height:`${h.value*(hot?100:10)}%`}));
   return <Animated.View style={[{flex:1,borderRadius:3,backgroundColor:hot?c.teal:c.track},a]}/>;
 }
@@ -35,7 +35,7 @@ export default function JobManager(){
   const onScroll=useAnimatedScrollHandler(e=>{y.value=e.contentOffset.y});
   const big=useAnimatedStyle(()=>({opacity:interpolate(y.value,[0,70],[1,0],Extrapolation.CLAMP),transform:[{translateY:interpolate(y.value,[0,70],[0,-10],Extrapolation.CLAMP)}]}));
   const small=useAnimatedStyle(()=>({opacity:interpolate(y.value,[60,100],[0,1],Extrapolation.CLAMP)}));
-  const glow=useSharedValue(0);const rm=useReducedMotion();useEffect(()=>{if(!rm)glow.value=withRepeat(withTiming(1,{duration:1200}),-1,true)},[]);
+  const glow=useSharedValue(0);const rm=useReducedMotion();useEffect(()=>{if(!rm)glow.value=withRepeat(withTiming(1,{duration:1200}),-1,true)},[glow, rm]);
   const bolt=useAnimatedStyle(()=>({shadowColor:c.sun,shadowOpacity:0.3+glow.value*0.5,shadowRadius:4+glow.value*8,shadowOffset:{width:0,height:0},elevation:2}));
   const shown=APPS.filter(a=>tab==='All'||a.status===tab);
   return <View style={{flex:1,backgroundColor:'#fff'}}>

@@ -8,6 +8,8 @@ import { ApplicationCard } from './ApplicationCard';
 import { PressableScale } from './PressableScale';
 import { Skeleton } from './Skeleton';
 import { StateMessage } from './StateMessage';
+import { NoApplicationsEmpty } from './NoApplicationsEmpty';
+import { STATUS_TONES, StatusGlyph } from './StatusBadge';
 import { copy } from './copy';
 import { statusLabel } from './status';
 import { colors, fonts, radii, SIDE_MARGIN } from './theme';
@@ -16,22 +18,33 @@ import type { ApplicationListItem, ApplicationStatus } from './types';
 type Filter = 'all' | ApplicationStatus;
 const FILTERS: Filter[] = ['all', 'waiting', 'accepted', 'declined'];
 
-function Chip({ label, count, selected, onPress }: { label: string; count: number; selected: boolean; onPress: () => void }) {
+function Chip({ filter, label, count, selected, onPress }: { filter: Filter; label: string; count: number; selected: boolean; onPress: () => void }) {
+  // "All" keeps the brand teal; status filters take their own tone so the chip
+  // matches the pill on every card it filters to.
+  const tone = filter === 'all' ? null : STATUS_TONES[filter];
+  const activeBg = tone?.bg ?? colors.tint;
+  const activeBorder = tone?.disc ?? colors.teal;
+  const activeFg = tone?.fg ?? colors.deep;
   const p = useSharedValue(selected ? 1 : 0);
   useEffect(() => { p.value = withTiming(selected ? 1 : 0, { duration: 180 }); }, [selected, p]);
   const a = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(p.value, [0, 1], [colors.card, colors.tint]),
-    borderColor: interpolateColor(p.value, [0, 1], [colors.border, colors.teal]),
+    backgroundColor: interpolateColor(p.value, [0, 1], [colors.card, activeBg]),
+    borderColor: interpolateColor(p.value, [0, 1], [colors.border, activeBorder]),
     borderWidth: interpolate(p.value, [0, 1], [1, 1.6]),
   }));
   const countStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(p.value, [0, 1], [colors.page, colors.white]),
   }));
   return (
-      <PressableScale onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} style={[styles.chip, a as unknown as ViewStyle]}>
-      <Text maxFontSizeMultiplier={1.3} style={[styles.chipText, { color: selected ? colors.deep : colors.muted }]}>{label}</Text>
+      <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}, ${count}`} accessibilityState={{ selected }} style={[styles.chip, a as unknown as ViewStyle]}>
+      {tone ? (
+        <View style={[styles.chipDisc, { backgroundColor: tone.disc }]}>
+          <StatusGlyph status={filter as ApplicationStatus} size={9} color={tone.discFg} animate={false} />
+        </View>
+      ) : null}
+      <Text maxFontSizeMultiplier={1.3} style={[styles.chipText, { color: selected ? activeFg : colors.muted }]}>{label}</Text>
       <Animated.View style={[styles.count, countStyle]}>
-        <Text maxFontSizeMultiplier={1.3} style={[styles.countText, { color: selected ? colors.teal : colors.muted }]}>{count}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={[styles.countText, { color: selected ? (tone?.fg ?? colors.teal) : colors.muted }]}>{count}</Text>
       </Animated.View>
     </PressableScale>
   );
@@ -87,7 +100,7 @@ export function ApplicationsList({ applications, isLoading, isError, onRetry, on
     return <StateMessage icon="alert" title={copy.errorTitle} body={copy.errorBody} actionLabel={copy.tryAgain} onAction={onRetry} />;
   }
   if (applications.length === 0) {
-    return <StateMessage icon="inbox" title={copy.emptyTitle} body={copy.emptyBody} />;
+    return <NoApplicationsEmpty title={copy.emptyTitle} body={copy.emptyBody} />;
   }
 
   return (
@@ -95,13 +108,13 @@ export function ApplicationsList({ applications, isLoading, isError, onRetry, on
       <Animated.View entering={reduced ? undefined : FadeIn.duration(300)}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
           {FILTERS.map((f) => (
-            <Chip key={f} label={f === 'all' ? copy.filterAll : statusLabel(f)} count={counts[f]} selected={filter === f} onPress={() => setFilter(f)} />
+            <Chip key={f} filter={f} label={f === 'all' ? copy.filterAll : statusLabel(f)} count={counts[f]} selected={filter === f} onPress={() => setFilter(f)} />
           ))}
         </ScrollView>
       </Animated.View>
       <View style={styles.list}>
         {visible.length === 0 ? (
-          <StateMessage icon="inbox" title={copy.emptyFilterTitle} body={copy.emptyFilterBody} />
+          <NoApplicationsEmpty compact title={copy.emptyFilterTitle} body={copy.emptyFilterBody} />
         ) : (
           visible.map((a, i) => (
             <Animated.View
@@ -123,6 +136,7 @@ export function ApplicationsList({ applications, isLoading, isError, onRetry, on
 const styles = StyleSheet.create({
   chips: { gap: 8, paddingHorizontal: SIDE_MARGIN, paddingTop: 12, paddingBottom: 12 },
   chip: { height: 36, borderRadius: radii.chip, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chipDisc: { width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
   count: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center' },
   countText: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },

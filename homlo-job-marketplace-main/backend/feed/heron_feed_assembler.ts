@@ -20,6 +20,8 @@ import {
   type Viewer,
 } from './finch_shared_shapes';
 import { rerankFeedWithBoosts } from '../../server/hlBoostRanking';
+import { rankPopularityFeed } from './kestrel_ranking_pipeline';
+import type { ActiveJobBoost } from './finch_shared_shapes';
 import {
   compareRanked,
   computeFitPercent,
@@ -57,6 +59,8 @@ interface Context {
   globals: GlobalRates;
   /** Region-aware candidates for Recommended / Popular / Explore. */
   general: JobCandidate[];
+  /** Active boosts for `general`, loaded once so the boost term can shape the ranking itself. */
+  boosts: ActiveJobBoost[];
 }
 
 export function createFeedService(
@@ -80,6 +84,17 @@ export function createFeedService(
     return { now: clock(), offset: 0, seed: undefined as string | undefined };
   };
 
+  const loadBoosts = async (ids: string[], now: Date): Promise<ActiveJobBoost[]> => {
+    const getActiveBoosts = store.getActiveBoosts;
+    if (!getActiveBoosts || ids.length === 0) return [];
+    try {
+      return await getActiveBoosts.call(store, ids, now);
+    } catch (error) {
+      console.error('[feed] boost lookup failed; serving organic order', error);
+      return [];
+    }
+  };
+
   const isShowable = (j: JobCandidate): boolean => j.positionsLeft === null || j.positionsLeft > 0;
 
   const loadContext = async (viewer: Viewer, now: Date): Promise<Context> => {
@@ -87,7 +102,8 @@ export function createFeedService(
       store.getCandidates({ viewer, limit: cfg.candidateLimit }),
       store.getGlobalRates(),
     ]);
-    return { now, globals, general: general.filter(isShowable) };
+    const showable = general.filter(isShowable);
+    return { now, globals, general: showable, boosts: await loadBoosts(showable.map((j) => j.id), now) };
   };
 
   const toItem = (r: Ranked<JobCandidate>, viewer: Viewer): FeedItem => ({
@@ -120,7 +136,8 @@ export function createFeedService(
         baseScore: r.score,
         quality: r.job.employerQuality,
       }));
-      return rerankFeedWithBoosts(candidates, active, now).flatMap((r) => {
+      // Near / Explore keep their own order; boosts only get the sponsored ranks and the per-page cap.
+      return rerankFeedWithBoosts(candidates, active, now, { preserveOrder: true }).flatMap((r) => {
         const original = byId.get(r.jobId);
         if (!original) return [];
         return [{
@@ -167,12 +184,17 @@ export function createFeedService(
 
   // ---------- list builders (take a Context so home() can share one database read) ----------
 
-  const buildPopularityList = (ctx: Context, period: Period, exclude?: ReadonlySet<string>) => {
-    const ranked: Ranked<JobCandidate>[] = ctx.general
-      .map((job) => ({ job, score: popularityScore(job, period, ctx.globals, ctx.now, cfg) }))
-      .sort(compareRanked);
-    return capAndMix(ranked, exclude);
-  };
+  /** Recommended + Popular: the documented equation, cold-start slots, variety and boost placement. */
+  const buildPopularityList = (ctx: Context, period: Period, exclude?: ReadonlySet<string>) =>
+    rankPopularityFeed({
+      candidates: ctx.general,
+      period,
+      globals: ctx.globals,
+      now: ctx.now,
+      cfg,
+      boosts: ctx.boosts,
+      exclude,
+    });
 
   const buildExploreList = (ctx: Context, seed: string, exclude?: ReadonlySet<string>) => {
     const pool = exclude ? ctx.general.filter((j) => !exclude.has(j.id)) : ctx.general;
@@ -226,7 +248,7 @@ export function createFeedService(
     const st = startState(opts.cursor);
     const limit = clampLimit(opts.limit, cfg.paging.defaultPageSize);
     const ctx = await loadContext(viewer, st.now);
-    const list = await withBoosts(buildPopularityList(ctx, cfg.recommended.period, opts.excludeIds), st.now);
+    const list = buildPopularityList(ctx, cfg.recommended.period, opts.excludeIds);
     return page(list, viewer, st.offset, limit, st.now);
   };
 
@@ -235,7 +257,7 @@ export function createFeedService(
     const limit = clampLimit(opts.limit, cfg.paging.defaultPageSize);
     const period = opts.period ?? cfg.popular.defaultDetailPeriod;
     const ctx = await loadContext(viewer, st.now);
-    const list = await withBoosts(buildPopularityList(ctx, period, opts.excludeIds), st.now);
+    const list = buildPopularityList(ctx, period, opts.excludeIds);
     return page(list, viewer, st.offset, limit, st.now, { period });
   };
 
@@ -274,12 +296,12 @@ export function createFeedService(
     const take = (p: FeedPage) => p.items.forEach((i) => shown.add(i.jobId));
 
     const recPage = preview(
-      await withBoosts(buildPopularityList(ctx, cfg.recommended.period), now),
+      buildPopularityList(ctx, cfg.recommended.period),
       cfg.home.recommendedCount,
     );
     take(recPage);
     const popPage = preview(
-      await withBoosts(buildPopularityList(ctx, cfg.popular.homePeriod, new Set(shown)), now),
+      buildPopularityList(ctx, cfg.popular.homePeriod, new Set(shown)),
       cfg.home.popularCount,
     );
     take(popPage);

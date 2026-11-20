@@ -51,12 +51,6 @@ interface WireMessage {
   job_title?: string | null;
 }
 
-interface WireConversationDetail {
-  id: string;
-  application_id: string | null;
-  job_id: string | null;
-}
-
 function mapConversationSummary(row: WireConversation): ConversationSummary {
   return {
     id: row.conversation_id,

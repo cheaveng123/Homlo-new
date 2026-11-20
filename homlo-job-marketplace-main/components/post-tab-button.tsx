@@ -15,11 +15,11 @@ export function PostTabButton() {
 
   const openEmployerHub = () => {
     const now = Date.now();
-    const alreadyOnEmployer = pathname === "/employer" || pathname.startsWith("/employer");
+    const alreadyOnEmployer = pathname === "/post" || pathname.startsWith("/employer");
     if (alreadyOnEmployer || authLoading || now < lockUntilRef.current) return;
     lockUntilRef.current = now + 700;
     haptic.light();
-    router.push("/employer" as never);
+    router.dismissTo("/post" as never);
   };
 
   return (

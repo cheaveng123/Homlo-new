@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 /** "2d 4h", "5h 12m", "18m", "<1m". Returns null when finished. */
 export function formatRemaining(ms: number): string | null {
@@ -13,20 +13,29 @@ export function formatRemaining(ms: number): string | null {
 
 /** Counts down to endsAt using the SERVER clock (serverNow) so a wrong phone clock can't lie. */
 export function useBoostCountdown(endsAt?: string | null, serverNow?: string | null, onExpire?: () => void) {
-  const offset = useMemo(() => (serverNow ? Date.parse(serverNow) - Date.now() : 0), [serverNow]);
   const end = endsAt ? Date.parse(endsAt) : 0;
-  const [now, setNow] = useState(() => Date.now() + offset);
+  const [now, setNow] = useState(() => (serverNow ? Date.parse(serverNow) : Date.now()));
 
   useEffect(() => {
     if (!end) return;
-    setNow(Date.now() + offset);
-    const id = setInterval(() => setNow(Date.now() + offset), 15_000);
-    return () => clearInterval(id);
-  }, [end, offset]);
+    // Server-clock offset, measured when the server time arrives.
+    const offset = serverNow ? Date.parse(serverNow) - Date.now() : 0;
+    const tick = () => setNow(Date.now() + offset);
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 15_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [end, serverNow]);
 
   const remainingMs = end ? end - now : 0;
   const expired = !!end && remainingMs <= 0;
-  useEffect(() => { if (expired) onExpire?.(); }, [expired]);
+  // Always calls the latest onExpire without re-running when it changes.
+  const fireExpire = useEffectEvent(() => onExpire?.());
+  useEffect(() => {
+    if (expired) fireExpire();
+  }, [expired]);
 
   return { remainingMs, label: formatRemaining(remainingMs), expired };
 }

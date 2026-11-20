@@ -11,7 +11,7 @@ import {
 export type JobDetail = {
   job: Job;
   category: Category | null;
-  media: Array<JobMedia & { url: string }>;
+  media: (JobMedia & { url: string })[];
 };
 
 /** Owns all job-level authorization rules; database policies remain defense in depth. */

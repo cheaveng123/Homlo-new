@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCanonicalJobId, jobDetailDecision, type JobDetailDecision } from "../lib/job-detail-decision";
+import { isCanonicalJobId, jobDetailDecision } from "../lib/job-detail-decision";
 
 describe("isCanonicalJobId", () => {
   it("accepts real UUID job ids", () => {
@@ -30,11 +30,13 @@ describe("jobDetailDecision", () => {
     expect(jobDetailDecision(undefined, canonical, new Error("boom"))).toBe("error");
   });
 
-  it("keeps the curated/mock fallback for a non-canonical id", () => {
-    expect(jobDetailDecision(undefined, curated, null)).toBe("detail");
+  it("shows sample content for a non-canonical id only in demo mode", () => {
+    expect(jobDetailDecision(undefined, curated, null, true)).toBe("detail");
   });
 
-  it("never reports 'unavailable' for a curated id even with an error", () => {
-    expect(jobDetailDecision(undefined, curated, new Error("boom"))).toBe("detail");
+  it("never shows sample content to real users (demo mode off)", () => {
+    // App Store 2.3 / 5.6: no fake listings — unknown ids are "unavailable".
+    expect(jobDetailDecision(undefined, curated, null, false)).toBe("unavailable");
+    expect(jobDetailDecision(undefined, curated, new Error("boom"), false)).toBe("unavailable");
   });
 });

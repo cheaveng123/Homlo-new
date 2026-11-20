@@ -66,7 +66,7 @@ export function VistaMove({ kind, delay = 0, duration, origin = [0, 0], dir = 1,
       ),
     );
     return () => cancelAnimation(p);
-  }, [kind, delay, duration, reduce]);
+  }, [kind, delay, duration, reduce, p]);
 
   // Object-form style transforms: RN applies style transforms natively (the same
   // path every Animated.View uses). react-native-svg merges style keys into its
@@ -133,7 +133,7 @@ export function VistaDraw({ d, delay = 0, duration = 3, len = 200, ...rest }: Dr
     p.value = 0;
     p.value = withDelay(delay * 1000, withRepeat(withTiming(1, { duration: duration * 1000, easing: Easing.linear }), -1, false));
     return () => cancelAnimation(p);
-  }, [delay, duration, reduce]);
+  }, [delay, duration, p, reduce]);
 
   const animatedProps = useAnimatedProps(() => {
     const v = p.value;

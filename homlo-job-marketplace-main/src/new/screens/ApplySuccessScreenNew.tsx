@@ -23,7 +23,7 @@ function AnimatedCheckNew() {
     c.value = withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) });
     k.value = withDelay(800, withTiming(0, { duration: 500 }));
     rip.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.out(Easing.quad) }), -1);
-  }, [reduced]);
+  }, [c, k, reduced, rip]);
   const cp = useAnimatedProps(() => ({ strokeDashoffset: c.value }));
   const kp = useAnimatedProps(() => ({ strokeDashoffset: k.value }));
   const ripple = useAnimatedStyle(() => ({ opacity: 0.6 * (1 - rip.value), transform: [{ scale: 1 + rip.value * 0.6 }] }));

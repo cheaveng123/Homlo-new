@@ -3,7 +3,7 @@
 // renders the Lagoon & Sunrise layout: collapsible title, bento stats, cream
 // boost ticket, sticky underlined tabs and a sun-dot application timeline.
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   FadeInRight,
   FadeOutLeft,
@@ -16,7 +16,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,9 +29,10 @@ import {
   Press,
   PressDisc,
   Txt,
+  colors,font,radius,shadow
 } from './ui';
-import { colors, font, radius, shadow } from './ui';
 
+import { smooth } from '@/src/design/motion';
 export type ManageFilter = 'All' | 'Pending' | 'Accepted' | 'Rejected';
 
 export type ManageJobInfo = {
@@ -242,7 +242,7 @@ function SeatPop({ index, filled }: { index: number; filled: boolean }) {
   const size = 22;
   React.useEffect(() => {
     if (reduce) { s.value = 1; return; }
-    s.value = withDelay(index * 90, withSpring(1, { damping: 14, stiffness: 190 }));
+    s.value = withDelay(index * 90, smooth(1));
     if (filled) {
       ring.value = withDelay(320 + index * 90, withSequence(
         withTiming(1, { duration: 820, easing: Easing.out(Easing.quad) }),

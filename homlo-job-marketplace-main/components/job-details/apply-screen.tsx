@@ -87,7 +87,7 @@ export default function ApplyScreen({ job }: Props) {
           </Text>
           <TouchableOpacity
             style={styles.successButton}
-            onPress={() => router.replace("/" as never)}
+            onPress={() => router.dismissTo("/" as never)}
             activeOpacity={0.8}
           >
             <Text style={styles.successButtonText}>Back to home</Text>

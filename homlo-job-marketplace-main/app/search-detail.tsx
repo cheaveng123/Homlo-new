@@ -4,9 +4,12 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppIcon } from "@/components/ui/AppIcon";
 
-import { SearchScreenNew, type SuggestionNew } from "@/src/new/screens/SearchScreenNew";
+import { type SuggestionNew } from "@/src/new/screens/SearchScreenNew";
+import { SearchPage } from "@/components/search/SearchPage";
+import { palette } from "@/src/design/tokens";
 import { JobLocationPicker, type PickedAddress } from "@/components/JobLocationPicker";
-import { opportunityCategories } from "@/lib/category-data";
+import { JOB_FIELDS } from "@/lib/job-fields";
+import { vistaKeyForField } from "@/components/vista/vistaCategoryData";
 import { haptic } from "@/lib/haptics";
 import { goBack } from "@/lib/navigation";
 import { useSearchHistory } from "@/lib/search-history";
@@ -23,7 +26,8 @@ export default function SearchDetailRoute() {
   const recents = useMemo(() => history.map((item) => item.original), [history]);
 
   const suggestions = useMemo<SuggestionNew[]>(
-    () => opportunityCategories.map((category) => ({ id: category.id, label: category.title, kind: "search" })),
+    // The 19 official job fields (same list as Home and the Category pages).
+    () => JOB_FIELDS.map((field) => ({ id: field.id, label: field.title, kind: "search" })),
     []
   );
 
@@ -81,7 +85,7 @@ export default function SearchDetailRoute() {
 
   return (
     <View style={styles.screen}>
-      <SearchScreenNew
+      <SearchPage
         query={query}
         onChangeQuery={setQuery}
         onSubmit={handleSubmitSearch}
@@ -94,7 +98,17 @@ export default function SearchDetailRoute() {
         onRemoveRecent={handleRemoveRecent}
         onClearRecent={handleClearRecents}
         suggestions={suggestions}
-        onPressSuggestion={(s) => handleSuggestionPress(s.label)}
+        // A field opens its Category page, which gathers every job for the field
+        // through its aliases (text search alone misses most of them).
+        onPressSuggestion={(s) => {
+          const key = vistaKeyForField(s.id);
+          if (key) {
+            haptic.light();
+            router.push({ pathname: "/vista/[categoryKey]", params: { categoryKey: key } } as never);
+          } else {
+            handleSuggestionPress(JOB_FIELDS.find((f) => f.id === s.id)?.aliases[0] ?? s.label);
+          }
+        }}
         trending={[]}
         onPressTrending={() => {}}
       />
@@ -114,7 +128,7 @@ export default function SearchDetailRoute() {
               hitSlop={10}
               style={styles.pickerClose}
             >
-              <AppIcon name="close" size={18} color="#0E3B2E" />
+              <AppIcon name="close" size={18} color={palette.navy} />
             </TouchableOpacity>
           </View>
           <KeyboardAvoidingView
@@ -130,8 +144,8 @@ export default function SearchDetailRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F6F8F7" },
-  pickerScreen: { flex: 1, backgroundColor: "#F6F8F7" },
+  screen: { flex: 1, backgroundColor: palette.page },
+  pickerScreen: { flex: 1, backgroundColor: palette.page },
   pickerHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -140,14 +154,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pickerTitle: {
-    fontFamily: "PlusJakartaSans_700Bold",
-    fontSize: 15,
-    color: "#0E3B2E",
+    fontFamily: "PlusJakartaSans_800ExtraBold",
+    fontSize: 17,
+    color: palette.navy,
   },
   pickerClose: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#E3E9EC",
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",

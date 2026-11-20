@@ -6,6 +6,7 @@ import {
   PROFILE_PHOTO_MAX_BYTES,
 } from "../lib/profile-photo-shared";
 import { JOB_IMAGES_BUCKET, buildPublicJobImageUrl } from "../lib/job-images-shared";
+import { AGE_MAX, AGE_MIN } from "../lib/age";
 import { SupabaseAdapter, type SupabaseIssuedSession } from "../backend/infrastructure/database/SupabaseAdapter";
 import type { WorkArrangement } from "../backend/domain/work-arrangement";
 import { CandidateRetrievalService, type RetrievalInput, type RetrievalResult } from "../backend/ranking/candidate-retrieval";
@@ -13,6 +14,49 @@ import { RankingScoringService, type ScoreCandidatesInput, type ScoredCandidate 
 import { RecommendationFeedService, type FeedAssemblyResult } from "../backend/ranking/recommendation-feed";
 import { HomeFeedService, type HomeFeedInput, type HomeFeedResult } from "./home-feed";
 import { EventLoggingService, type EventLogResult, type HomloEventLogInput } from "./event-logging";
+import { createHash } from "node:crypto";
+import { TtlCache } from "./_core/ttl-cache";
+
+// PERF: cache lifetimes for hot read paths. Kept short so new posts/edits show
+// up quickly; any write request also clears them (see invalidateAfterWrite).
+const SESSION_CACHE_TTL_MS = 20_000;
+const PUBLIC_JOBS_CACHE_TTL_MS = 15_000;
+const SEARCH_CACHE_TTL_MS = 15_000;
+const CATEGORIES_CACHE_TTL_MS = 10 * 60_000;
+// Public employer profile (name, photo, banner, bio, coarse location).
+const EMPLOYER_PROFILE_CACHE_TTL_MS = 60_000;
+
+export type EmployerPublicProfile = {
+  fullName: string | null; profilePhotoKey: string | null;
+  bannerImage: string | null; verified: boolean; about: string | null;
+  locationText: string | null; latitude: number | null; longitude: number | null;
+};
+// After the TTL, keep serving the last value instantly while one background
+// refresh runs. Writes clear these caches outright, so they are never stale.
+const PUBLIC_STALE_WHILE_REVALIDATE_MS = 5 * 60_000;
+
+/**
+ * Makes a row from `homlo_list_public_published_jobs()` read over postgres.js
+ * identical to what the edge function returned via PostgREST JSON: numeric →
+ * number, timestamptz → ISO string, and only http(s) banner URLs.
+ */
+function normalizePublicJobRow(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...row };
+  for (const [key, value] of Object.entries(out)) {
+    if (value instanceof Date) out[key] = value.toISOString();
+  }
+  if (typeof out.pay_amount === "string") {
+    const n = Number(out.pay_amount);
+    out.pay_amount = Number.isFinite(n) ? n : null;
+  }
+  const banner = typeof out.banner_image === "string" ? out.banner_image.trim() : "";
+  out.banner_image = /^https?:\/\//i.test(banner) ? banner : null;
+  return out;
+}
+
+function tokenKey(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 export const SUPABASE_ACCESS_COOKIE = "homlo_supabase_access";
 export const SUPABASE_REFRESH_COOKIE = "homlo_supabase_refresh";
@@ -51,6 +95,11 @@ export type PublishedJobRecord = {
   status?: string | null;
   workers_hired?: number | null;
   boosted?: boolean;
+  /** 059_job_work_time.sql; null/absent = not set. */
+  work_days?: string[] | null;
+  clock_in?: string | null;
+  clock_out?: string | null;
+  pay_amount_max?: number | null;
 };
 
 export type SearchJobRecord = PublishedJobRecord & {
@@ -65,8 +114,102 @@ export function coarsenCoordinate(value: number | string | null | undefined): nu
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
 }
 
-class HomloDirectService {
+function toIso(value: Date | string | null | undefined): string | null {
+  if (value == null) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+/**
+ * Maps a missing-column error (migration 055 not applied yet) to a clear
+ * message instead of leaking raw SQL errors to the client.
+ */
+function ageStorageError(error: unknown): Error {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === "42703" || (error instanceof Error && /column .*age.* does not exist/i.test(error.message))) {
+    console.error("[homlo-direct-service] users.age is missing — apply backend/database/migrations/055_user_age.sql", error);
+    return new Error("Saving your age isn't available yet. Please try again shortly.");
+  }
+  console.error("[homlo-direct-service] age storage failed", error);
+  return new Error("We could not save your age. Please try again.");
+}
+
+export type AdultStatus = { isAdult: boolean | null; suggested: boolean | null; confirmedAt: string | null };
+
+function adultStorageError(error: unknown): Error {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === "42703" || (error instanceof Error && /column .*(is_adult|age).* does not exist/i.test(error.message))) {
+    console.error("[homlo-direct-service] users.is_adult is missing — apply backend/database/migrations/056_user_adult_confirmation.sql", error);
+    return new Error("The age check isn't available yet. Please try again shortly.");
+  }
+  console.error("[homlo-direct-service] age check storage failed", error);
+  return new Error("We could not save your age check. Please try again.");
+}
+
+export class HomloDirectService {
   constructor(private readonly adapter: SupabaseAdapter) {}
+
+  // PERF: before this cache every authenticated request paid for TWO Supabase
+  // round trips in createContext (getUser + gateway "session"), and every
+  // invoke() paid for the same two AGAIN before doing its real work.
+  private readonly sessionCache = new TtlCache<HomloSessionUser>(SESSION_CACHE_TTL_MS, 2_000);
+  private readonly publicJobsCache = new TtlCache<{ jobs: PublishedJobRecord[] }>(PUBLIC_JOBS_CACHE_TTL_MS, 1, PUBLIC_STALE_WHILE_REVALIDATE_MS);
+  private readonly searchCache = new TtlCache<{ jobs: SearchJobRecord[]; total: number }>(SEARCH_CACHE_TTL_MS, 300, PUBLIC_STALE_WHILE_REVALIDATE_MS);
+  private readonly categoriesCache = new TtlCache<{ categories: { id: string; name: string; slug: string }[] }>(CATEGORIES_CACHE_TTL_MS, 1, 60 * 60_000);
+  private readonly employerProfileCache = new TtlCache<EmployerPublicProfile | null>(EMPLOYER_PROFILE_CACHE_TTL_MS, 500);
+
+  /**
+   * Called after any write request. Drops the caller's cached session (role,
+   * profileComplete, etc. may have changed) and the public job lists (a job
+   * may have been posted, edited, closed, boosted or applied to).
+   */
+  /**
+   * PERF: called once at server start. Opens the DB pool (first connect
+   * measured ~1.5–7s) and fills the public job list cache, so the first user
+   * after a deploy/restart doesn't pay for it.
+   */
+  async warmUp(): Promise<void> {
+    const startedAt = Date.now();
+    try {
+      await Promise.all([this.listPublishedJobs(), this.listCategories()]);
+      console.log(`[api] caches warmed in ${Date.now() - startedAt}ms`);
+    } catch (error) {
+      console.warn("[api] cache warm-up failed (will load on first request)", error instanceof Error ? error.message : error);
+    }
+  }
+
+  /**
+   * Readiness probe: one trivial query with a short timeout, so a load
+   * balancer can stop sending traffic to an instance that can't reach the DB.
+   */
+  async checkDatabase(timeoutMs = 2_000): Promise<{ ok: boolean; latencyMs: number }> {
+    const startedAt = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        this.adapter.query(`select 1 as ok`),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("database health check timed out")), timeoutMs);
+        }),
+      ]);
+      return { ok: true, latencyMs: Date.now() - startedAt };
+    } catch {
+      return { ok: false, latencyMs: Date.now() - startedAt };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /** Drops only the caller's cached session (writes with no listing impact). */
+  invalidateSessionAfterWrite(accessToken: string | null): void {
+    if (accessToken) this.sessionCache.delete(tokenKey(accessToken));
+  }
+
+  invalidateAfterWrite(accessToken: string | null): void {
+    this.invalidateSessionAfterWrite(accessToken);
+    this.publicJobsCache.clear();
+    this.searchCache.clear();
+    this.employerProfileCache.clear();
+  }
 
   private eventLogger: EventLoggingService | null = null;
 
@@ -158,7 +301,10 @@ class HomloDirectService {
   }
 
   async signUp(email: string, password: string, fullName?: string): Promise<HomloAuthResult | { confirmationRequired: true }> {
-    const issued = await this.adapter.signUpWithEmailPassword(email, password, fullName);
+    // Auto-login on account creation: the account is created confirmed and
+    // signed in at once. `confirmationRequired` now only means "account made,
+    // but the follow-up sign-in failed — log in normally".
+    const issued = await this.adapter.createConfirmedUserAndSignIn(email, password, fullName);
     if (!issued.session) return { confirmationRequired: true };
     return { user: await this.resolveSession(issued.session.accessToken), session: issued.session };
   }
@@ -172,10 +318,33 @@ class HomloDirectService {
   async refresh(refreshToken: string): Promise<HomloAuthResult> {
     const issued = await this.adapter.refreshAuthSession(refreshToken);
     if (!issued.session) throw new Error("Supabase did not refresh the authentication session");
-    return { user: await this.resolveSession(issued.session.accessToken), session: issued.session };
+    // The refresh token is already rotated at this point, so a transient
+    // gateway failure here must not lose the new session: retry briefly.
+    let lastError: unknown;
+    for (const delayMs of [0, 800, 2_000]) {
+      if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      try {
+        return { user: await this.resolveSession(issued.session.accessToken), session: issued.session };
+      } catch (error) {
+        lastError = error;
+        if (!(error as { authUnavailable?: boolean } | null)?.authUnavailable) break;
+      }
+    }
+    throw lastError;
   }
 
-  async resolveSession(accessToken: string): Promise<HomloSessionUser> {
+  /**
+   * Verifies the token and loads the Homlo user. Cached per token for
+   * SESSION_CACHE_TTL_MS; pass `{ fresh: true }` for the authoritative
+   * /me check so profile/role changes are never served stale there.
+   */
+  async resolveSession(accessToken: string, options?: { fresh?: boolean }): Promise<HomloSessionUser> {
+    const key = tokenKey(accessToken);
+    if (options?.fresh) this.sessionCache.delete(key);
+    return this.sessionCache.get(key, () => this.resolveSessionUncached(accessToken));
+  }
+
+  private async resolveSessionUncached(accessToken: string): Promise<HomloSessionUser> {
     const verified = await this.adapter.verifySupabaseToken(accessToken);
     if (!verified) throw new Error("Invalid Supabase authentication token");
     const response = await this.adapter.invokeAuthenticatedFunction<HomloSessionUser>("homlo-service-gateway", accessToken, { action: "session" });
@@ -187,11 +356,149 @@ class HomloDirectService {
     return this.adapter.invokeAuthenticatedFunction<T>("homlo-service-gateway", accessToken, { action, payload });
   }
 
+  /**
+   * The age a member gave after signing up (055_user_age.sql). Read and written
+   * straight from Postgres by the app server, keyed by the already-verified
+   * session user id, so it does not depend on the edge gateway version.
+   */
+  async getUserAge(userId: string): Promise<{ age: number | null; recordedAt: string | null }> {
+    try {
+      const { rows } = await this.adapter.query<{ age: number | null; age_recorded_at: Date | string | null }>(
+        `select age, age_recorded_at from users where id = $1 and deleted_at is null limit 1`,
+        [userId],
+      );
+      const row = rows[0];
+      return { age: row?.age ?? null, recordedAt: toIso(row?.age_recorded_at) };
+    } catch (error) {
+      throw ageStorageError(error);
+    }
+  }
+
+  async setUserAge(userId: string, age: number): Promise<{ age: number; recordedAt: string | null }> {
+    if (!Number.isInteger(age) || age < AGE_MIN || age > AGE_MAX) {
+      throw new Error(`Age must be a whole number between ${AGE_MIN} and ${AGE_MAX}`);
+    }
+    let rows: { age: number; age_recorded_at: Date | string | null }[];
+    try {
+      ({ rows } = await this.adapter.query<{ age: number; age_recorded_at: Date | string | null }>(
+        `update users
+            set age = $2, age_recorded_at = now()
+          where id = $1 and deleted_at is null and status = 'active'
+          returning age, age_recorded_at`,
+        [userId, age],
+      ));
+    } catch (error) {
+      throw ageStorageError(error);
+    }
+    if (!rows[0]) throw new Error("This Homlo account is unavailable");
+    return { age: rows[0].age, recordedAt: toIso(rows[0].age_recorded_at) };
+  }
+
+  /**
+   * "Are you 18 or older?" (056_user_adult_confirmation.sql). `isAdult` is the
+   * member's own answer, or null if they never answered; `suggested` falls
+   * back to the sign-up age so the screen can pre-select a choice.
+   */
+  async getAdultStatus(userId: string): Promise<AdultStatus> {
+    try {
+      const { rows } = await this.adapter.query<{ is_adult: boolean | null; is_adult_confirmed_at: Date | string | null; age: number | null }>(
+        `select is_adult, is_adult_confirmed_at, age from users where id = $1 and deleted_at is null limit 1`,
+        [userId],
+      );
+      const row = rows[0];
+      const isAdult = row?.is_adult ?? null;
+      const suggested = isAdult ?? (row?.age != null ? row.age >= 18 : null);
+      return { isAdult, suggested, confirmedAt: toIso(row?.is_adult_confirmed_at) };
+    } catch (error) {
+      throw adultStorageError(error);
+    }
+  }
+
+  async setAdultStatus(userId: string, isAdult: boolean): Promise<AdultStatus> {
+    let rows: { is_adult: boolean; is_adult_confirmed_at: Date | string | null }[];
+    try {
+      ({ rows } = await this.adapter.query<{ is_adult: boolean; is_adult_confirmed_at: Date | string | null }>(
+        `update users
+            set is_adult = $2, is_adult_confirmed_at = now()
+          where id = $1 and deleted_at is null and status = 'active'
+          returning is_adult, is_adult_confirmed_at`,
+        [userId, isAdult],
+      ));
+    } catch (error) {
+      throw adultStorageError(error);
+    }
+    if (!rows[0]) throw new Error("This Homlo account is unavailable");
+    return { isAdult: rows[0].is_adult, suggested: rows[0].is_adult, confirmedAt: toIso(rows[0].is_adult_confirmed_at) };
+  }
+
   async listPublishedJobs(): Promise<{ jobs: PublishedJobRecord[] }> {
+    // PERF: the whole public feed is requested by ~10 screens; share it.
+    return this.publicJobsCache.get("all", () => this.listPublishedJobsUncached());
+  }
+
+  private async listPublishedJobsUncached(): Promise<{ jobs: PublishedJobRecord[] }> {
+    // PERF: read the same database function the `homlo-public-job-feed` edge
+    // function wraps, straight over the server's pooled DB connection. Measured
+    // ~100ms vs ~400ms warm / ~15s cold-start through the edge function. Falls
+    // back to the edge function if the direct connection is unavailable.
+    try {
+      const { rows } = await this.adapter.query<Record<string, unknown>>(
+        `select * from homlo_list_public_published_jobs()`,
+      );
+      return { jobs: await this.withBoostsAndWorkTime(rows.map(normalizePublicJobRow) as unknown as PublishedJobRecord[]) };
+    } catch (error) {
+      console.warn("[homlo] direct public job read failed; using edge function", error instanceof Error ? error.message : error);
+    }
     const result = await this.adapter.invokePublicFunction<{ jobs: PublishedJobRecord[] }>(
       "homlo-public-job-feed",
     );
-    return { jobs: await this.withActiveBoosts(result.jobs ?? []) };
+    return { jobs: await this.withBoostsAndWorkTime(result.jobs ?? []) };
+  }
+
+  /**
+   * PERF: the boost flag and the work-time columns are two independent
+   * lookups by the same job ids. They used to run one after the other
+   * (feed → boosts → work time: 3 sequential round trips on a cache miss);
+   * now they run together (2 round trips). Same fields, same values.
+   */
+  private async withBoostsAndWorkTime<T extends { id: string; boosted?: boolean }>(rows: T[]): Promise<T[]> {
+    const [boosted, timed] = await Promise.all([this.withActiveBoosts(rows), this.withWorkTime(rows)]);
+    return timed.map((row, index) => ({ ...row, boosted: boosted[index]?.boosted ?? false }));
+  }
+
+  /**
+   * Adds work days, clock-in/out and the pay-range top (059_job_work_time.sql),
+   * which homlo_list_public_published_jobs() does not return. Best effort: if
+   * the migration is not applied yet the feed is returned unchanged.
+   */
+  private async withWorkTime<T extends { id: string }>(rows: T[]): Promise<T[]> {
+    if (rows.length === 0) return rows;
+    try {
+      const { rows: extra } = await this.adapter.query<{
+        id: string; work_days: string[] | null; clock_in: string | null; clock_out: string | null; pay_amount_max: number | string | null;
+      }>(
+        `select id, work_days, to_char(clock_in, 'HH24:MI') as clock_in, to_char(clock_out, 'HH24:MI') as clock_out, pay_amount_max
+           from public.jobs
+          where id = any($1::uuid[])`,
+        [`{${rows.map((row) => row.id).join(",")}}`],
+      );
+      const byId = new Map(extra.map((row) => [row.id, row]));
+      return rows.map((row) => {
+        const e = byId.get(row.id);
+        if (!e) return row;
+        const max = e.pay_amount_max == null ? null : Number(e.pay_amount_max);
+        return {
+          ...row,
+          work_days: e.work_days ?? null,
+          clock_in: e.clock_in ?? null,
+          clock_out: e.clock_out ?? null,
+          pay_amount_max: max != null && Number.isFinite(max) ? max : null,
+        };
+      });
+    } catch (error) {
+      console.warn("[homlo] work time columns unavailable (apply 059_job_work_time.sql)", error instanceof Error ? error.message : error);
+      return rows;
+    }
   }
 
   /** Adds the job-seeker ad flag without leaking price, plan, or end time. */
@@ -210,11 +517,95 @@ class HomloDirectService {
     return rows.map((row) => ({ ...row, boosted: boosted.has(row.id) }));
   }
 
-  async listCategories(): Promise<{ categories: Array<{ id: string; name: string; slug: string }> }> {
+  /**
+   * PERF: an employer's dashboard asks for applicants once PER JOB (34 calls
+   * for 34 jobs), and each went through the edge gateway (~1–2s each). Read
+   * the same security-definer function the gateway's "employer.applications"
+   * action uses, directly over the pooled DB connection. `userId` must be the
+   * verified session user (ownership is enforced in SQL by employer_id).
+   */
+  async listEmployerApplicationsDirect(userId: string, jobId: string): Promise<{ applications: Record<string, unknown>[] }> {
+    const { rows } = await this.adapter.query<Record<string, unknown>>(
+      `select * from homlo_list_employer_applications_detailed($1::uuid, $2::uuid)`,
+      [userId, jobId],
+    );
+    // Match the gateway's JSON (timestamps as ISO strings, not Date objects).
+    const applications = rows.map((row) => {
+      const out: Record<string, unknown> = { ...row };
+      for (const [key, value] of Object.entries(out)) {
+        if (value instanceof Date) out[key] = value.toISOString();
+      }
+      return out;
+    });
+    return { applications };
+  }
+
+  /**
+   * PERF: every applicant across ALL of the employer's jobs in ONE query.
+   * The dashboard used to call listEmployerApplicationsDirect once per job
+   * (1 + N queries). Same joins, filters and columns as
+   * homlo_list_employer_applications_detailed (042_application_viewed_at.sql),
+   * minus the single-job filter; `job_id` is in every row so the client groups
+   * by it. `userId` must be the verified session user.
+   */
+  async listAllEmployerApplicationsDirect(userId: string): Promise<{ applications: Record<string, unknown>[] }> {
+    const { rows } = await this.adapter.query<Record<string, unknown>>(
+      `select a.id, a.job_id, a.worker_id, a.status, a.message, a.created_at, a.updated_at, a.viewed_at,
+              p.full_name as worker_full_name, p.location_text as worker_location,
+              p.bio as worker_bio, p.profile_photo_key as worker_photo_key
+         from applications a
+         join jobs j on j.id = a.job_id and j.deleted_at is null
+         join profiles p on p.user_id = a.worker_id and p.deleted_at is null
+        where j.employer_id = $1::uuid
+        order by a.created_at desc, a.id desc`,
+      [userId],
+    );
+    const applications = rows.map((row) => {
+      const out: Record<string, unknown> = { ...row };
+      for (const [key, value] of Object.entries(out)) {
+        if (value instanceof Date) out[key] = value.toISOString();
+      }
+      return out;
+    });
+    return { applications };
+  }
+
+  /**
+   * PERF: the employer dashboard's job list, read directly instead of through
+   * the gateway's "employer.jobs" action (same security-definer function,
+   * same verified user id). Converts postgres.js types to what PostgREST JSON
+   * returned: numeric/bigint -> number, timestamptz -> ISO string.
+   */
+  async listEmployerJobsDirect(userId: string): Promise<{ jobs: Record<string, unknown>[] }> {
+    const { rows } = await this.adapter.query<Record<string, unknown>>(
+      `select * from homlo_list_employer_jobs_with_boosts($1::uuid)`,
+      [userId],
+    );
+    const NUMERIC = ["pay_amount", "boost_rank_multiplier", "views_count", "latitude", "longitude", "workers_needed", "workers_hired", "queued_boosts"];
+    const jobs = rows.map((row) => {
+      const out: Record<string, unknown> = { ...row };
+      for (const [key, value] of Object.entries(out)) {
+        if (value instanceof Date) out[key] = value.toISOString();
+        else if (typeof value === "bigint") out[key] = Number(value);
+      }
+      for (const key of NUMERIC) {
+        if (typeof out[key] === "string") {
+          const n = Number(out[key]);
+          out[key] = Number.isFinite(n) ? n : null;
+        }
+      }
+      return out;
+    });
+    return { jobs };
+  }
+
+  async listCategories(): Promise<{ categories: { id: string; name: string; slug: string }[] }> {
+    return this.categoriesCache.get("all", async () => {
     const { rows } = await this.adapter.query<{ id: string; name: string; slug: string }>(
       `select id, name, slug from categories order by name asc`
     );
     return { categories: rows };
+    });
   }
 
   async searchJobs(input: {
@@ -235,8 +626,12 @@ class HomloDirectService {
     limit?: number;
     offset?: number;
   }): Promise<{ jobs: SearchJobRecord[]; total: number }> {
+    // PERF: identical searches (same filters) within a few seconds share one query.
+    return this.searchCache.get(JSON.stringify(input), () => this.searchJobsUncached(input));
+  }
+
+  private async searchJobsUncached(input: Parameters<HomloDirectService["searchJobs"]>[0]): Promise<{ jobs: SearchJobRecord[]; total: number }> {
     const { parseSearchQuery, buildSearchParams, searchInputSchema } = await import("../backend/search/query-parser");
-    const { SearchService } = await import("../backend/search/search-service");
     
     const validatedInput = searchInputSchema.parse(input);
     const rawQuery = validatedInput.query ?? "";
@@ -273,7 +668,93 @@ class HomloDirectService {
     };
   }
 
+  /**
+   * App Store guideline 1.2 (user-generated content): any signed-in user can
+   * report a job listing for moderation. One open report per user per job.
+   */
+  async reportJob(reporterId: string, jobId: string, reason: string, details: string | null): Promise<{ reported: true }> {
+    const { rows: job } = await this.adapter.query<{ id: string }>(
+      `select id from jobs where id = $1::uuid and deleted_at is null limit 1`,
+      [jobId],
+    );
+    if (!job[0]) throw new Error("This job is no longer available");
+    const { rows: existing } = await this.adapter.query<{ id: string }>(
+      `select id from reports
+        where reporter_id = $1::uuid and target_type = 'job' and target_id = $2::uuid and status = 'open'
+        limit 1`,
+      [reporterId, jobId],
+    );
+    if (!existing[0]) {
+      await this.adapter.query(
+        `insert into reports (reporter_id, target_type, target_id, reason, category, details)
+         values ($1::uuid, 'job', $2::uuid, $3, $3, $4)`,
+        [reporterId, jobId, reason, details],
+      );
+    }
+    return { reported: true };
+  }
+
+  /**
+   * App Store guideline 5.1.1(v): in-app account deletion.
+   *
+   * Permanently closes the account for the verified session user:
+   *  - their job listings are closed and removed from every feed;
+   *  - their profile is wiped (name, phone, photo, bio, location, banner);
+   *  - the login identity and the Homlo user are marked deleted;
+   *  - the Supabase auth user is deleted, so the credentials stop working.
+   * Conversations/applications stay for the other party, shown as "Deleted user".
+   * `userId` must come from the verified session, never from the client.
+   */
+  async deleteAccount(accessToken: string, userId: string): Promise<{ deleted: true }> {
+    const authUser = await this.adapter.verifySupabaseToken(accessToken);
+    if (!authUser) throw new Error("Invalid Supabase authentication token");
+    await this.closeAccountData(userId);
+    await this.adapter.deleteAuthUser(authUser.id);
+    this.invalidateAfterWrite(accessToken);
+    return { deleted: true };
+  }
+
+  /**
+   * Closes an account without a session: used by the retention job for
+   * accounts inactive past `inactive_account_months` (server/trust/privacy.ts).
+   */
+  async closeAccountById(userId: string): Promise<void> {
+    const { rows } = await this.adapter.query<{ provider_user_id: string }>(
+      `select provider_user_id from user_identities where user_id = $1::uuid and provider = 'supabase' and deleted_at is null limit 1`,
+      [userId],
+    );
+    await this.closeAccountData(userId);
+    if (rows[0]) await this.adapter.deleteAuthUser(rows[0].provider_user_id);
+  }
+
+  private async closeAccountData(userId: string): Promise<void> {
+    await this.adapter.transaction(async (db) => {
+      await db.query(
+        `update jobs
+            set status = case when status in ('open', 'draft', 'filled', 'pending_review') then 'closed' else status end,
+                deleted_at = now(), updated_at = now()
+          where employer_id = $1::uuid and deleted_at is null`,
+        [userId],
+      );
+      await db.query(
+        `update profiles
+            set full_name = 'Deleted user', phone = null, profile_photo_key = null, bio = null,
+                location_text = null, latitude = null, longitude = null, banner_image = null,
+                deleted_at = now(), updated_at = now()
+          where user_id = $1::uuid`,
+        [userId],
+      );
+      await db.query(
+        `update user_identities set deleted_at = now() where user_id = $1::uuid and deleted_at is null`,
+        [userId],
+      );
+      // closed_at starts the retention clock (server/trust/privacy.ts runRetention).
+      await db.query(`update users set deleted_at = now(), closed_at = now(), updated_at = now() where id = $1::uuid`, [userId]);
+    });
+  }
+
   async signOut(accessToken: string): Promise<void> {
+    this.sessionCache.delete(tokenKey(accessToken));
     await this.adapter.signOutAuthSession(accessToken);
   }
 
@@ -444,11 +925,14 @@ class HomloDirectService {
    * has posted a job can be an employer even if their role flag is still
    * `worker`, so filtering by role would hide legitimate profiles.
    */
-  async getEmployerProfile(name: string): Promise<{
-    fullName: string | null; profilePhotoKey: string | null;
-    bannerImage: string | null; verified: boolean; about: string | null;
-    locationText: string | null; latitude: number | null; longitude: number | null;
-  } | null> {
+  async getEmployerProfile(name: string): Promise<EmployerPublicProfile | null> {
+    // PERF: public, identical for every viewer, and read on every job detail
+    // page. Cleared by invalidateAfterWrite (profile saves and account
+    // deletion both go through it), so edits show on the next read.
+    return this.employerProfileCache.get(name, () => this.getEmployerProfileUncached(name));
+  }
+
+  private async getEmployerProfileUncached(name: string): Promise<EmployerPublicProfile | null> {
     const { rows } = await this.adapter.query<{
       full_name: string | null; profile_photo_key: string | null;
       banner_image: string | null; verified: boolean; bio: string | null;

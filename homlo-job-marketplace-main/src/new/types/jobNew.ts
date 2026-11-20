@@ -7,6 +7,8 @@ export type JobSummaryNew = {
   positionsLeft: number;
   positionsTotal: number;
   employerInitials: string;
+  /** Optional company name for cards that show it (search results). */
+  employerName?: string;
   imageUri?: string;
   typeLabel?: string;
   liked?: boolean;

@@ -146,7 +146,6 @@ export function diversityMetrics(items: readonly RankedItem[], universe?: { empl
 
   const seenIds = new Set<string>();
   for (const item of top) seenIds.add(item.jobId);
-  const duplicateJobRate = top.length > 0 ? (top.length - seenIds.size) / top.length : null;
 
   return {
     topK,

@@ -40,7 +40,7 @@ export function VistaEdge({ width, type, n, seed, seconds = 30, fill = '#fff' }:
     if (reduce) return;
     x.value = withRepeat(withTiming(-width, { duration: seconds * 1000, easing: Easing.linear }), -1, false);
     return () => cancelAnimation(x);
-  }, [width, seconds, reduce, d]);
+  }, [width, seconds, reduce, d, x]);
 
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
 

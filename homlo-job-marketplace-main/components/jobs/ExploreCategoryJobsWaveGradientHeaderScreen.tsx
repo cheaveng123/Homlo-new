@@ -56,8 +56,7 @@ const WAVE_MID = WAVE_H / 2;
 // (it ships a different green and a pale mint), so they stay explicit here with the same
 // hexes used across the job surfaces.
 const HERO = { deep: '#116B47', base: '#1D8A5C', light: '#2FAE79' };
-const FOREST = '#0E3B2E';
-const MINT = '#0F9D62';
+const MINT = '#0891B2';
 const ON_HERO = 'rgba(255,255,255,0.85)';
 
 const AView = Animated.View;

@@ -15,7 +15,7 @@ export type AreaRow = { key: string | undefined; label: string; count: number };
 
 type Props = {
   open: boolean;
-  category: string;
+  subject: string; // lower-case noun, e.g. "it & technology" or "part-time jobs"
   rows: AreaRow[];
   selected: string | undefined;
   onPick: (area: string | undefined) => void;
@@ -25,7 +25,7 @@ type Props = {
 const OPEN_MS = 300;
 const CLOSE_MS = 240;
 
-export function AreaSheet({ open, category, rows, selected, onPick, onClose }: Props) {
+export function AreaSheet({ open, subject, rows, selected, onPick, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const [mounted, setMounted] = useState(open);
@@ -62,7 +62,7 @@ export function AreaSheet({ open, category, rows, selected, onPick, onClose }: P
           >
             <View style={s.grab} />
             <Text style={s.title} accessibilityRole="header">Choose area</Text>
-            <Text style={s.sub}>Jobs in {category.toLowerCase()} by area of Phnom Penh.</Text>
+            <Text style={s.sub}>Jobs in {subject} by area of Phnom Penh.</Text>
             {rows.map((row, i) => {
               const on = row.key === selected;
               return (

@@ -3,7 +3,7 @@
  * Built on the jobs-v2 tokens (Lagoon & Sunrise) + jobs-v2 ui primitives.
  * Every loop/animation respects Reduce Motion.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Animated as RNAnimated,
   Easing as RNEasing,
@@ -26,13 +26,13 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { Press, BottomSheet } from '../jobs-v2/ui';
 import { colors, font, radius, shadow } from '../jobs-v2/theme';
 import { AppIcon } from '../jobs-v2/AppIcon';
 
+import { smooth } from '@/src/design/motion';
 export * from '../jobs-v2/ui';
 export * from '../jobs-v2/theme';
 export { AppIcon, type IconName } from '../jobs-v2/AppIcon';
@@ -84,7 +84,7 @@ export function Bars({
     p.value = 0;
     p.value = withDelay(140, withTiming(1, { duration: 560, easing: Easing.out(Easing.cubic) }));
     return () => cancelAnimation(p);
-  }, [reduce]);
+  }, [p, reduce]);
 
   const count = Math.max(1, bars);
   const filledCount = Math.max(0, Math.min(count, active ?? count));
@@ -120,7 +120,7 @@ export function Breathe({
     if (reduce) return;
     o.value = withRepeat(withTiming(0.98, { duration: duration / 2, easing: Easing.inOut(Easing.sin) }), -1, true);
     return () => cancelAnimation(o);
-  }, [reduce, duration]);
+  }, [reduce, duration, o]);
   const anim = useAnimatedStyle(() => ({ opacity: o.value }));
   return <Animated.View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: color }, style, anim]} />;
 }
@@ -138,7 +138,7 @@ export function LightSweep({
     if (reduce) return;
     t.value = withRepeat(withTiming(1, { duration: period, easing: Easing.linear }), -1, false);
     return () => cancelAnimation(t);
-  }, [reduce, period]);
+  }, [reduce, period, t]);
 
   const anim = useAnimatedStyle(() => {
     const x = -band + t.value * (travel + band * 2);
@@ -166,19 +166,26 @@ export function Ripple({
     if (reduce) return;
     t.value = withRepeat(withTiming(1, { duration: period, easing: Easing.out(Easing.quad) }), -1, false);
     return () => cancelAnimation(t);
-  }, [reduce, period]);
+  }, [reduce, period, t]);
 
   return (
     <View pointerEvents="none" style={{ position: 'absolute', width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {Array.from({ length: periods }, (_, i) => {
-        const anim = useAnimatedStyle(() => {
-          const p = Math.max(0, Math.min(1, t.value * periods - i));
-          return { transform: [{ scale: 0.45 + p * 1.05 }], opacity: reduce ? 0.12 : 0.42 * (1 - p) };
-        });
-        return <Animated.View key={i} style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 1.5, borderColor: color }, anim]} />;
-      })}
+      {Array.from({ length: periods }, (_, i) => (
+        <RippleRing key={i} index={i} periods={periods} progress={t} reduce={reduce} size={size} color={color} />
+      ))}
     </View>
   );
+}
+
+/** One ring of the Ripple: its own component so the hook isn't called in a loop. */
+function RippleRing({
+  index, periods, progress, reduce, size, color,
+}: { index: number; periods: number; progress: SharedValue<number>; reduce: boolean; size: number; color: string }) {
+  const anim = useAnimatedStyle(() => {
+    const p = Math.max(0, Math.min(1, progress.value * periods - index));
+    return { transform: [{ scale: 0.45 + p * 1.05 }], opacity: reduce ? 0.12 : 0.42 * (1 - p) };
+  });
+  return <Animated.View style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, borderWidth: 1.5, borderColor: color }, anim]} />;
 }
 
 /* ───────────── dashes ───────────── */
@@ -265,7 +272,7 @@ export function Switch({ value, onChange, disabled }: { value: boolean; onChange
   const reduce = useReducedMotion();
   const t = useSharedValue(value ? 1 : 0);
   useEffect(() => {
-    t.value = reduce ? (value ? 1 : 0) : withSpring(value ? 1 : 0, { damping: 18, stiffness: 260 });
+    t.value = reduce ? (value ? 1 : 0) : smooth(value ? 1 : 0);
     return () => cancelAnimation(t);
   }, [value, reduce]); // eslint-disable-line react-hooks/exhaustive-deps
   const track = useAnimatedStyle(() => ({ backgroundColor: value ? colors.teal : colors.track }));
@@ -327,7 +334,8 @@ export function ExpandCard({
   const [open, setOpen] = useState(defaultOpen);
   const [h, setH] = useState<number | null>(null);
   const reduce = useReducedMotion();
-  const prog = useRef(new RNAnimated.Value(open ? 1 : 0)).current;
+  // Stable animated value, created once (no ref read during render).
+  const [prog] = useState(() => new RNAnimated.Value(open ? 1 : 0));
 
   useEffect(() => {
     RNAnimated.timing(prog, {

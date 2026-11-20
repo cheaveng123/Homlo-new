@@ -1,4 +1,4 @@
-﻿export const themeColors: {
+export const themeColors: {
   primary: { light: string; dark: string };
   background: { light: string; dark: string };
   surface: { light: string; dark: string };

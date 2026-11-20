@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { boostColors } from './BoostBadge';
+import { ChargingBoltIcon } from './ChargingBoltIcon';
 import { useBoostCountdown } from './useBoostCountdown';
 
 export interface OwnerBoostState {
@@ -32,7 +33,7 @@ export function EmployerBoostPanel({ boost, onExpire }: { boost: OwnerBoostState
   return (
     <View style={s.card}>
       <View style={s.row}>
-        <AppIcon name="zap" size={18} color={boostColors.employerIcon} />
+        <ChargingBoltIcon size={20} color={boostColors.employerIcon} />
         <Text style={s.title}>Boost active</Text>
         <Text style={s.left}>{label} left</Text>
       </View>

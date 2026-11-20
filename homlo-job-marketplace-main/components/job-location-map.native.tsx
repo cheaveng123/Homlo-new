@@ -6,16 +6,22 @@ import { MAP_MAX_TILE_ZOOM, MAP_TILE_URL } from "@/lib/map-config";
 import { MapAttribution } from "@/components/maps/map-attribution";
 import { useUserLocation } from "@/lib/use-user-location";
 import type { MapCoordinate } from "@/lib/openstreetmap-geocoding";
+import { JobMapPin } from "@/src/components/map/JobMapPin";
+import { useMarkerTracking } from "@/src/components/map/useMarkerTracking";
 
 type JobLocationMapProps = {
   coordinate: MapCoordinate | null;
   defaultCoordinate: MapCoordinate;
+  /** Job category / field; picks the pin glyph. */
+  category?: string | null;
   onChange: (coordinate: MapCoordinate) => void;
 };
 
 const openStreetMapTiles = MAP_TILE_URL;
 
-export function JobLocationMap({ coordinate, defaultCoordinate, onChange }: JobLocationMapProps) {
+export function JobLocationMap({ coordinate, defaultCoordinate, category, onChange }: JobLocationMapProps) {
+  const pinKey = coordinate ? `${coordinate.latitude},${coordinate.longitude}` : "none";
+  const trackingPin = useMarkerTracking(pinKey);
   const { location, permissionStatus, requestPermission } = useUserLocation({ requestOnMount: true });
   const mapRef = useRef<MapView | null>(null);
   const center = location ?? coordinate ?? defaultCoordinate;
@@ -71,7 +77,9 @@ export function JobLocationMap({ coordinate, defaultCoordinate, onChange }: JobL
       >
         <UrlTile maximumZ={MAP_MAX_TILE_ZOOM} minimumZ={2} shouldReplaceMapContent urlTemplate={openStreetMapTiles} />
         {coordinate ? (
-          <Marker anchor={{ x: 0.5, y: 1 }} coordinate={coordinate} pinColor="#C0392B" />
+          <Marker key={pinKey} anchor={{ x: 0.5, y: 1 }} coordinate={coordinate} tracksViewChanges={trackingPin}>
+            <JobMapPin category={category} selected />
+          </Marker>
         ) : null}
       </MapView>
       <MapAttribution />

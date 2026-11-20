@@ -80,7 +80,7 @@ suite("RLS security audit (migration 038)", () => {
   const statusIsDenied = (s: number) => [401, 403, 404, 425].includes(s);
 
   describe("row level security is enabled, not forced", () => {
-    let sql: postgres.Sql<{}> | null = null;
+    let sql: postgres.Sql | null = null;
 
     beforeAll(async () => {
       sql = connect();
@@ -146,7 +146,7 @@ suite("RLS security audit (migration 038)", () => {
   });
 
   describe("grants are minimal", () => {
-    let sql: postgres.Sql<{}> | null = null;
+    let sql: postgres.Sql | null = null;
 
     beforeAll(async () => {
       sql = connect();
@@ -195,7 +195,7 @@ suite("RLS security audit (migration 038)", () => {
   });
 
   describe("security-definer helper functions are locked down", () => {
-    let sql: postgres.Sql<{}> | null = null;
+    let sql: postgres.Sql | null = null;
 
     beforeAll(async () => {
       sql = connect();
@@ -229,7 +229,7 @@ suite("RLS security audit (migration 038)", () => {
   });
 
   describe("behavioral checks against the live project", () => {
-    let sql: postgres.Sql<{}> | null = null;
+    let sql: postgres.Sql | null = null;
 
     beforeAll(async () => {
       sql = connect();
@@ -239,7 +239,7 @@ suite("RLS security audit (migration 038)", () => {
       await sql?.end({ timeout: 3 });
     }, 20_000);
 
-    const asRole = <T>(role: "anon" | "authenticated", fn: (t: postgres.TransactionSql<{}>) => Promise<T>) =>
+    const asRole = <T>(role: "anon" | "authenticated", fn: (t: postgres.TransactionSql) => Promise<T>) =>
       sql!.begin(async (t) => {
         await t.unsafe(`set local role ${role}`);
         return await fn(t);

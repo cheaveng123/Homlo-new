@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, View, Modal } from "react-native";
+import { Platform, Pressable, View, Modal } from "react-native";
 
 import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";
@@ -70,7 +70,7 @@ const STYLES = {
   confirm: {
     alignItems: "center" as const,
     alignSelf: "flex-end" as const,
-    backgroundColor: "#16803C",
+    backgroundColor: "#0891B2",
     borderRadius: 10,
     bottom: 12,
     flexDirection: "row" as const,
@@ -110,7 +110,7 @@ const STYLES = {
     marginTop: 20,
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: "#0F6E56",
+    backgroundColor: "#0B6F8A",
     borderRadius: 10,
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -131,10 +131,6 @@ export function OnboardingLocationMap({ location, onSelect }: { location: string
   const [zoom, setZoom] = useState(13);
   const { location: userLocation, requestPermission } = useUserLocation({ requestOnMount: true });
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
-
-  const showPermissionScreen = () => {
-    setShowPermissionDialog(true);
-  };
 
   const handlePermissionGranted = async () => {
     setShowPermissionDialog(false);
@@ -217,13 +213,13 @@ export function OnboardingLocationMap({ location, onSelect }: { location: string
       >
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
           <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 24, alignItems: "center", width: "80%" }}>
-            <AppIcon name="pin" size={48} color="#0F6E56" style={{ marginBottom: 16 }} />
+            <AppIcon name="pin" size={48} color="#0B6F8A" style={{ marginBottom: 16 }} />
             <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 8, textAlign: "center" }}>Location Access Required</Text>
             <Text style={{ fontSize: 15, color: "#5F7A6E", textAlign: "center", marginBottom: 20 }}>
               We need your location to provide you with the best job recommendations. This helps us show you jobs near your actual location.
             </Text>
             <Pressable
-              style={{ backgroundColor: "#0F6E56", borderRadius: 10, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" }}
+              style={{ backgroundColor: "#0B6F8A", borderRadius: 10, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" }}
               onPress={handlePermissionGranted}
               accessibilityLabel="Allow location access"
             >

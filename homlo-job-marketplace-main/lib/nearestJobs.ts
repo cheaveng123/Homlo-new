@@ -14,6 +14,7 @@ export type MapJob = {
   lat: number;
   lng: number;
   imageUrl?: string;
+  category?: string | null;
   workArrangement: 'on-site' | 'hybrid' | 'remote';
 };
 
@@ -77,6 +78,7 @@ export function useMapJobs(): MapJob[] {
           lat: record.latitude as number,
           lng: record.longitude as number,
           imageUrl: resolveJobImage(record.banner_image),
+          category: record.category ?? null,
           workArrangement: location.toLowerCase().includes('remote') ? 'remote' : 'on-site',
         };
       });

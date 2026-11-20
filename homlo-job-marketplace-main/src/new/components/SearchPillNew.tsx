@@ -44,6 +44,7 @@ export function SearchPillNew({ onPress, editable, value, onChangeText, onSubmit
       {editable ? (
         <TextInput
           value={value} onChangeText={onChangeText} onSubmitEditing={onSubmitEditing} autoFocus={autoFocus} returnKeyType="search"
+          autoCapitalize="none" autoCorrect={false} clearButtonMode="never"
           placeholder={inputPlaceholder} placeholderTextColor={colorsNew.muted} maxFontSizeMultiplier={1.3}
           style={{ flex: 1, height, fontFamily: hasKhmerNew(value) ? familyNew.khmer.medium : familyNew.body.medium, fontSize: 16, color: colorsNew.text }}
         />

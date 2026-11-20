@@ -72,7 +72,7 @@ export function parsePrefs(raw: string | undefined): QuickSearchPrefs | null {
     if (!Array.isArray(p.jobTypes) || p.jobTypes.length > 4 || !p.jobTypes.every((t) => (JOB_TYPES as readonly unknown[]).includes(t))) {
       throw new FeedInputError('Invalid prefs.jobTypes');
     }
-    out.jobTypes = p.jobTypes as Array<JobType | 'remote'>;
+    out.jobTypes = p.jobTypes as (JobType | 'remote')[];
   }
   for (const key of ['payMin', 'payMax'] as const) {
     const v = p[key];

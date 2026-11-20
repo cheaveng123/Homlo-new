@@ -1,3 +1,4 @@
+import { formatWorkDays, formatWorkHours, formatWorkTime, normalizeWorkDays } from "@/lib/work-time";
 import type { Job } from "@/components/job-store";
 import { resolveJobImage } from "@/lib/job-banner";
 import { computePositionsLeft } from "@/lib/positions";
@@ -31,6 +32,11 @@ export type JobRecord = {
   boost?: { isSponsored: true } | null;
   /** When the active boost expires, if any. */
   boost_expires_at?: string | null;
+  /** Work time + pay range (059_job_work_time.sql); null/absent = not set. */
+  work_days?: string[] | null;
+  clock_in?: string | null;
+  clock_out?: string | null;
+  pay_amount_max?: number | string | null;
 };
 
 export function formatMoney(amount: number | string, currency: string, type: JobRecord["pay_type"]) {
@@ -41,6 +47,17 @@ export function formatMoney(amount: number | string, currency: string, type: Job
   const symbol = currency.toUpperCase() === "USD" ? "$" : `${currency.toUpperCase()} `;
   const suffix = type === "hourly" ? " / hour" : type === "daily" ? " / day" : "";
   return `${symbol}${formatted}${suffix}`;
+}
+
+/** A fixed amount ("$500"), or a range ("$300 – $900") when pay_amount_max is above it. */
+export function formatPay(record: Pick<JobRecord, "pay_amount" | "pay_amount_max" | "pay_currency" | "pay_type">) {
+  const max = record.pay_amount_max == null ? NaN : Number(record.pay_amount_max);
+  const min = Number(record.pay_amount);
+  if (!Number.isFinite(max) || !Number.isFinite(min) || max <= min) {
+    return formatMoney(record.pay_amount, record.pay_currency, record.pay_type);
+  }
+  const low = formatMoney(min, record.pay_currency, "fixed");
+  return `${low} – ${formatMoney(max, record.pay_currency, record.pay_type)}`;
 }
 
 export function formatPostedAt(value: string) {
@@ -80,8 +97,10 @@ export function normalizePublishedJob(record: JobRecord): Job {
     title: record.title,
     company: record.employer_name?.trim() || "Homlo employer",
     location,
-    schedule: record.pay_type === "hourly" ? "Flexible hours" : "Schedule set by employer",
-    pay: formatMoney(record.pay_amount, record.pay_currency, record.pay_type),
+    schedule:
+      formatWorkTime(record.work_days, record.clock_in, record.clock_out)
+      ?? (record.pay_type === "hourly" ? "Flexible hours" : "Schedule set by employer"),
+    pay: formatPay(record),
     tag: employmentTypeForPayType(record.pay_type),
     category: record.category || "Other",
     image: resolveJobImage(record.banner_image),
@@ -98,5 +117,8 @@ export function normalizePublishedJob(record: JobRecord): Job {
     longitude: record.longitude ?? undefined,
     boosted: record.boosted === true,
     boost: record.boosted === true ? { isSponsored: true } : null,
+    workDaysLabel: formatWorkDays(record.work_days),
+    workDays: normalizeWorkDays(record.work_days),
+    workHoursLabel: formatWorkHours(record.clock_in, record.clock_out),
   } as Job;
 }

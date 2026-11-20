@@ -1,0 +1,14 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; padding: 16px; }
+main { max-width: 640px; margin: 0 auto; }
+.muted { opacity: .7; font-size: .9em; }
+button { font-size: 1.1em; padding: 12px 20px; border-radius: 8px; border: 0; background: #2563eb; color: #fff; cursor: pointer; }
+button:disabled { opacity: .5; }
+select { margin: 6px 0 16px; display: block; font-size: 1em; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #8884; vertical-align: top; }
+th { width: 45%; font-weight: 500; }
+.badge { display: inline-block; padding: 6px 12px; border-radius: 999px; background: #8883; font-weight: 600; }
+.badge[data-s="Approved"] { background: #16a34a; color: #fff; }
+.badge[data-s="Declined"] { background: #dc2626; color: #fff; }
+.badge[data-s="In Review"] { background: #d97706; color: #fff; }

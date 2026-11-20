@@ -1,8 +1,8 @@
-import MapView, { Marker, UrlTile, type MapPressEvent, type Region } from "react-native-maps";
+import MapView, { Marker, UrlTile, type MapPressEvent } from "react-native-maps";
 import { useState } from "react";
-import { StyleSheet, View, Text, Pressable, Modal } from "react-native";
+import { View, Text, Pressable, Modal } from "react-native";
 
-import { MAP_TILE_URL, MAP_MAX_TILE_ZOOM, MAP_ATTRIBUTION } from "@/lib/map-config";
+import { MAP_TILE_URL, MAP_MAX_TILE_ZOOM } from "@/lib/map-config";
 import { useUserLocation } from "@/lib/use-user-location";
 import { AppIcon } from "@/components/ui/AppIcon";
 
@@ -76,7 +76,7 @@ const STYLES = {
     marginTop: 20,
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: "#0F6E56",
+    backgroundColor: "#0B6F8A",
     borderRadius: 10,
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -93,10 +93,6 @@ const STYLES = {
 export function OnboardingLocationMap({ location, onSelect }: { location: string; onSelect: (label: string) => void }) {
   const { location: userLocation, permissionStatus, requestPermission } = useUserLocation({ requestOnMount: true });
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
-
-  const showPermissionScreen = () => {
-    setShowPermissionDialog(true);
-  };
 
   const handlePermissionGranted = async () => {
     setShowPermissionDialog(false);
@@ -167,13 +163,13 @@ export function OnboardingLocationMap({ location, onSelect }: { location: string
       <Modal transparent visible={showPermissionDialog} animationType="fade">
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
           <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 24, alignItems: "center", width: "80%" }}>
-            <AppIcon name="pin" size={48} color="#0F6E56" style={{ marginBottom: 16 }} />
+            <AppIcon name="pin" size={48} color="#0B6F8A" style={{ marginBottom: 16 }} />
             <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 8, textAlign: "center" }}>Location Access Required</Text>
             <Text style={{ fontSize: 15, color: "#5F7A6E", textAlign: "center", marginBottom: 20 }}>
               We need your location to provide you with the best job recommendations. This helps us show you jobs near your actual location.
             </Text>
             <Pressable
-              style={{ backgroundColor: "#0F6E56", borderRadius: 10, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" }}
+              style={{ backgroundColor: "#0B6F8A", borderRadius: 10, paddingVertical: 14, paddingHorizontal: 20, alignItems: "center" }}
               onPress={handlePermissionGranted}
               accessibilityLabel="Allow location access"
             >

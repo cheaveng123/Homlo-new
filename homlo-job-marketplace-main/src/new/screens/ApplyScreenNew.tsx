@@ -1,8 +1,8 @@
-import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { SafetyNotice } from '@/components/legal/LegalUI';
+import { CONSENT_WORDING } from '@/lib/legal/consent-wording';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { AppIconNew } from '../icons/AppIconNew';
 import { TextNew } from '../components/TextNew';
 import { AvatarNew, ButtonNew, FieldNew, IconDiscNew, PressableScaleNew, RoundButtonNew } from '../components/PrimitivesNew';
 import { colorsNew, radiusNew } from '../theme/tokensNew';
@@ -47,6 +47,10 @@ export function ApplyScreenNew(p: Props & { showPhone?: boolean; cvRequired?: bo
             <TextNew variant="meta" color={colorsNew.muted}>{p.employerName}</TextNew>
           </View>
         </Animated.View>
+        {/* Applicant protection notice (owner's legal template, Part 3). Always shown. */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <SafetyNotice text={CONSENT_WORDING.applicantWarning} />
+        </View>
         <Animated.View entering={enter(1)} style={{ paddingHorizontal: 16 }}>
           <FieldNew label={copy.apply.name} value={p.form.name} onChangeText={(v) => p.onChangeField('name', v)} />
           {p.showPhone !== false && <FieldNew label={copy.apply.phone} value={p.form.phone} keyboardType="phone-pad" onChangeText={(v) => p.onChangeField('phone', v)} />}

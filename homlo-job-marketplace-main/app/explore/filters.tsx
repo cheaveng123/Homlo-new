@@ -1,6 +1,5 @@
 import FilterScreen from '@/04_FilterScreen';
-import { useRouter } from 'expo-router';
-import { Stack } from 'expo-router';
+import { useRouter , Stack } from 'expo-router';
 
 export default function FiltersRoute() {
   const router = useRouter();

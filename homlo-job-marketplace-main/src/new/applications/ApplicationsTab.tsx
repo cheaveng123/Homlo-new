@@ -4,6 +4,8 @@ import Animated from "react-native-reanimated";
 
 import { AppIconNameNew } from "../icons/AppIconNew";
 import { ChipNew, EmptyStateNew, FieldNew, SkeletonNew } from "../components/PrimitivesNew";
+import { NoApplicationsEmpty } from "./NoApplicationsEmpty";
+import { copy } from "./copy";
 import { TextNew } from "../components/TextNew";
 import { useEnterNew } from "../theme/motionNew";
 import { ApplicationCard } from "./ApplicationCard";
@@ -153,9 +155,9 @@ export function ApplicationsTab({
                 }}
               />
             ) : (
-              <EmptyStateNew
-                icon="brief"
-                title="No applications yet"
+              <NoApplicationsEmpty
+                title={copy.emptyTitle}
+                body={copy.emptyBody}
                 actionLabel="Explore jobs"
                 onAction={onExplore}
               />

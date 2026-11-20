@@ -37,6 +37,18 @@ function salaryParts(pay: string): { salary: string; salaryPeriod: string; salar
   return { salary, salaryPeriod: "Per month", salaryUnit: "/mo" };
 }
 
+/**
+ * The post-a-job flow saves requirements inside the description text as a
+ * "Requirements: a\nb" block (lib/job-posting.ts buildJobSaveInput). Pull
+ * them back out as a list; null when the listing has none.
+ */
+function requirementsFrom(description: string | null | undefined): string[] | null {
+  const m = (description ?? "").match(/(?:^|\n\n)Requirements:\s*([\s\S]*?)(?:\n\n[A-Z][a-z]+:|$)/);
+  if (!m) return null;
+  const list = m[1].split("\n").map((r) => r.trim()).filter(Boolean);
+  return list.length ? list : null;
+}
+
 export function mapJobToDetails(job: Job): JobDetails {
   const locationArea = (job.location.split(",")[0] ?? "").trim();
   const salary = salaryParts(job.pay);
@@ -72,11 +84,14 @@ export function mapJobToDetails(job: Job): JobDetails {
     spotsLabel,
     spotsRemaining: positionsAvailable,
     description: job.description,
-    requirements: [
+    requirements: requirementsFrom(job.description) ?? [
       `Availability for the ${job.schedule.toLowerCase()} schedule.`,
       "A friendly, reliable approach to working with people.",
       "A willingness to learn and contribute as part of a team.",
     ],
+    workDays: job.workDaysLabel ?? null,
+    workHours: job.workHoursLabel ?? null,
+    workDayKeys: job.workDays ?? [],
     employerVerified: true,
     employerSubtitle: `${job.category} · ${locationArea}`,
     category: job.category,

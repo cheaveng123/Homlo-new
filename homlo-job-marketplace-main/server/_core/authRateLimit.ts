@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import rateLimit, { ipKeyGenerator, type Options, type RateLimitRequestHandler } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator, type Options, type RateLimitRequestHandler } from "express-rate-limit";
 
 import { requestSourceIp } from "./requestIp";
 

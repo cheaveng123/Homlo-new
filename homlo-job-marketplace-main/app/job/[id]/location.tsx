@@ -9,6 +9,7 @@ import { colors } from "@/components/job-details/colors";
 import { type, fonts } from "@/components/job-details/typography";
 import { defaultSearchCenter, jobCoordinate } from "@/lib/job-geography";
 import { mockJobFor } from "@/lib/mock-job";
+import { DEMO_CONTENT_ENABLED } from "@/lib/demo-content";
 import { usePublishedJobs } from "@/hooks/use-published-jobs";
 
 /**
@@ -21,7 +22,7 @@ export default function JobLocationScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { jobs: availableJobs } = usePublishedJobs();
-  const job = availableJobs.find((candidate) => candidate.id === id) ?? getJob(id) ?? mockJobFor(id);
+  const job = availableJobs.find((candidate) => candidate.id === id) ?? getJob(id) ?? (DEMO_CONTENT_ENABLED ? mockJobFor(id) : undefined);
   const isRemote = job?.arrangement === "Remote";
   // Remote roles have no site to show, so they never get a map pin.
   const coordinate = job && !isRemote ? jobCoordinate(job) : null;
@@ -118,7 +119,7 @@ export default function JobLocationScreen() {
       </View>
 
       <View style={styles.mapWrap}>
-        <JobLocationMap coordinate={coordinate} defaultCoordinate={defaultSearchCenter} onChange={() => {}} />
+        <JobLocationMap coordinate={coordinate} defaultCoordinate={defaultSearchCenter} category={job.category} onChange={() => {}} />
       </View>
 
       <View style={styles.infoCard}>

@@ -39,7 +39,7 @@ export function areaOf(job: VistaJob): string | undefined {
 
 /** Short place label for the card meta line. */
 export function placeLabel(job: VistaJob): string {
-  if (job.kind === 'remote') return 'Remote';
+  if (job.kind === 'remote' || /remote/i.test(job.area ?? '')) return 'Remote';
   return areaOf(job) ?? CITY;
 }
 
@@ -62,10 +62,20 @@ export function agoLabel(iso?: string): string | undefined {
   return `${Math.floor(d / 7)}w ago`;
 }
 
+/** Card time label: from the timestamp, else the ready-made text without "Posted ". */
+export function postedLabel(job: VistaJob): string | undefined {
+  const ago = agoLabel(job.postedAt);
+  if (ago) return ago;
+  const text = job.postedText?.replace(/^posted\s+/i, '').trim();
+  if (!text || /recently/i.test(text)) return undefined;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /** "New" chip: posted within the last day. */
 export const isNew = (job: VistaJob) => {
   const h = hoursSince(job.postedAt);
-  return h !== undefined && h < 24;
+  if (h !== undefined) return h < 24;
+  return /just now|\b\d+h ago/i.test(job.postedText ?? '');
 };
 
 export function payParts(job: VistaJob): { amount: string; unit: string } {
@@ -79,6 +89,8 @@ export function scheduleLabel(job: VistaJob): string {
   if (job.kind === 'remote') return 'Flexible hours';
   return 'Mon–Sat · 8h';
 }
+
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function hashOf(value: string): number {
   let hash = 0;

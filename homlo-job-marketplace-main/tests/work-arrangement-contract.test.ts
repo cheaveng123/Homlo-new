@@ -190,7 +190,7 @@ describe("work arrangement domain rules", () => {
   });
 
   it("never maps an on-site job with a missing or unusable coordinate pair", () => {
-    const unusable: Array<{ latitude: number | null; longitude: number | null }> = [
+    const unusable: { latitude: number | null; longitude: number | null }[] = [
       { latitude: null, longitude: 104.916 },
       { latitude: 11.5621, longitude: null },
       { latitude: null, longitude: null },

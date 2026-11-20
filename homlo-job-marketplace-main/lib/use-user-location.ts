@@ -23,8 +23,13 @@ type UseUserLocationReturn = {
 /** Centralized user-location hook backed by a shared location service. */
 export function useUserLocation(options: UseUserLocationOptions = {}): UseUserLocationReturn {
   const { requestOnMount = false } = options;
-  const [location, setLocation] = useState<UserLocation | null>(null);
-const [accuracy, setAccuracy] = useState<number | null>(null);
+  // PERF: start from the last fix any screen already got, so newly mounted
+  // screens render with a position immediately instead of waiting for GPS.
+  const [location, setLocation] = useState<UserLocation | null>(() => {
+    const last = locationService.getLastLocation();
+    return last ? { latitude: last.latitude, longitude: last.longitude } : null;
+  });
+const [, setAccuracy] = useState<number | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<LocationPermissionStatus>("undetermined");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

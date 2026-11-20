@@ -1,13 +1,13 @@
-import { useLocalSearchParams, usePathname, useRouter } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { BottomTabBar } from "@/components/home/BottomTabBar";
 import { useAuth } from "@/hooks/use-auth";
 import { useEmployerApplications } from "@/hooks/use-employer-applications";
 import { useMessagingUnread } from "@/hooks/use-messaging-unread";
 import { haptic } from "@/lib/haptics";
-import { computePositionsLeft, formatPositionsLabel } from "@/lib/positions";
+import { useTabNavigation } from "@/lib/navigation";
+import { formatPositionsLabel } from "@/lib/positions";
 import { trpc } from "@/lib/trpc";
 import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
 import {
@@ -26,15 +26,24 @@ type GatewayJob = {
   created_at?: string | null;
   workers_needed?: number | null;
   workers_hired?: number | null;
+  boost_status?: string | null;
+  boost_expires_at?: string | null;
+  boost_starts_at?: string | null;
+  banner_image?: string | null;
+  server_now?: string | null;
 };
 
-const ROUTES: Record<string, string> = {
-  home: "/",
-  search: "/jobs",
-  post: "/employer",
-  alerts: "/inbox",
-  profile: "/profile",
-};
+/** A running boost on this listing, or null. Expired rows are hidden by the badge's own countdown. */
+function activeBoost(job: GatewayJob): DashJobNew["boost"] {
+  if (job.boost_status !== "active" || !job.boost_expires_at) return null;
+  return { endsAt: job.boost_expires_at, startsAt: job.boost_starts_at ?? null, serverNow: job.server_now ?? null };
+}
+
+/** Only a directly loadable banner is shown; anything else falls back to the card's photo placeholder. */
+function bannerUri(job: GatewayJob): string | undefined {
+  const value = job.banner_image?.trim();
+  return value && /^(https?:|data:image\/)/i.test(value) ? value : undefined;
+}
 
 const TABS: TabKey[] = ["Live", "Draft", "Review"];
 
@@ -57,9 +66,10 @@ function initialsOf(name: string | null | undefined): string {
   return (parts[0].charAt(0) + (parts[1]?.charAt(0) ?? "")).toUpperCase();
 }
 
-export default function EmployerDashboardNewAdapter() {
+/** `inTabs`: rendered as the Post tab, so the tab layout draws the bottom bar. */
+export default function EmployerDashboardNewAdapter({ inTabs = false }: { inTabs?: boolean } = {}) {
   const router = useRouter();
-  const pathname = usePathname();
+  const tabNav = useTabNavigation();
   const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const { user } = useAuth();
   const { count } = useMessagingUnread();
@@ -73,7 +83,6 @@ export default function EmployerDashboardNewAdapter() {
   });
   const [menuJob, setMenuJob] = useState<GatewayJob | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const lockUntilRef = useRef(0);
 
   const jobsQuery = trpc.homlo.employer.jobs.useQuery(undefined, { enabled: Boolean(user) });
   const gatewayJobs = useMemo<GatewayJob[]>(
@@ -111,26 +120,26 @@ export default function EmployerDashboardNewAdapter() {
   const dashJobs = useMemo<DashJobNew[]>(
     () =>
       filtered.map(({ job, total, filled }) => {
-        const left = computePositionsLeft(total, filled);
         return {
           id: job.id,
           title: job.title?.trim() || "Untitled job",
           dateLabel: postedOn(job.created_at),
-          positionsLeft: left,
+          imageUri: bannerUri(job),
+          // Hidden on the card when the listing has no position count.
+          positions: total > 0 ? { total, filled: Math.min(filled, total) } : null,
           positionsLeftLabel: formatPositionsLabel(filled, total),
-          positionsLabel: total > 0 ? `${filled}/${total} accepted` : "Positions open",
-          employerInitials: ownerInitials,
+          boost: activeBoost(job),
         };
       }),
-    [filtered, ownerInitials],
+    [filtered],
   );
 
   const manage = useMemo<ManageItemNew[]>(
     () => [
-      { key: "applications", icon: "file", label: "Applications", count: stats.totalApplications, series: [] },
-      { key: "jobsPosted", icon: "brief", label: "Closed jobs", count: stats.closedJobs, series: [] },
-      { key: "liveNow", icon: "trend", label: "Live jobs", count: stats.liveNow, series: [] },
-      { key: "newApplicants", icon: "users", label: "New applicants", count: stats.newApplicants, series: [] },
+      { key: "applications", label: "Applications", count: stats.totalApplications },
+      { key: "jobsPosted", label: "Closed jobs", count: stats.closedJobs },
+      { key: "liveNow", label: "Live jobs", count: stats.liveNow },
+      { key: "newApplicants", label: "New applicants", count: stats.newApplicants },
     ],
     [stats],
   );
@@ -141,22 +150,6 @@ export default function EmployerDashboardNewAdapter() {
       router.push(target as never);
     },
     [router],
-  );
-
-  const selectTab = useCallback(
-    (key: string) => {
-      const target = ROUTES[key] ?? "/";
-      const alreadyThere =
-        key === "post"
-          ? pathname === "/employer" || pathname.startsWith("/employer")
-          : pathname === target;
-      if (alreadyThere) return;
-      const now = Date.now();
-      if (now < lockUntilRef.current) return;
-      lockUntilRef.current = now + 400;
-      go(target);
-    },
-    [go, pathname],
   );
 
   const onRefresh = useCallback(() => {
@@ -175,8 +168,8 @@ export default function EmployerDashboardNewAdapter() {
         }}
         initials={ownerInitials}
         hasUnread={count > 0}
-        onPressBell={() => go(ROUTES.alerts)}
-        onPressSearch={() => go(ROUTES.search)}
+        onPressBell={() => { haptic.light(); tabNav.select("alerts"); }}
+        onPressSearch={() => { haptic.light(); tabNav.select("search"); }}
         onAddJob={() => go("/employer/post-job")}
         manage={manage}
         onPressManage={(key) => {
@@ -190,10 +183,11 @@ export default function EmployerDashboardNewAdapter() {
                   : "/employer/new-applicants";
           go(route);
         }}
-        tabs={TABS.map((t) => ({ key: t, label: dashboardLoading ? t : `${t} ${tabCounts[t]}` }))}
+        tabs={TABS.map((t) => ({ key: t, label: t, count: dashboardLoading ? undefined : tabCounts[t] }))}
         activeTab={activeTab}
         onChangeTab={(k) => setActiveTab(k as TabKey)}
         jobs={dashJobs}
+        onBoostExpire={() => void jobsQuery.refetch()}
         onPressJob={(id) => go(`/employer/job/${id}`)}
         onPressJobMenu={(id) => {
           haptic.selection();
@@ -202,13 +196,19 @@ export default function EmployerDashboardNewAdapter() {
         }}
         onRefresh={onRefresh}
         refreshing={refreshing}
-        bottomInset={64}
         loading={dashboardLoading}
+        // BUGFIX: an empty tab (or a signed-out visitor) used to see a blank area.
+        empty={
+          !user
+            ? { title: "Sign in to post and manage jobs", actionLabel: "Sign in", onAction: () => router.push("/login" as never) }
+            : activeTab === "Live"
+              ? { title: "No live jobs yet", actionLabel: "Add a new job", onAction: () => go("/employer/post-job") }
+              : { title: `No ${activeTab.toLowerCase()} jobs` }
+        }
+        // From the /employer stack page this goes back to the mounted tabs
+        // (see useTabNavigation) instead of stacking a new copy of them.
+        nav={inTabs ? undefined : { activeKey: "post", onSelect: tabNav.select, badgeCount: count }}
       />
-
-      <View style={styles.navLayer} pointerEvents="box-none">
-        <BottomTabBar activeKey="post" onSelect={selectTab} badgeCount={count} />
-      </View>
 
       <Modal
         animationType="slide"
@@ -251,7 +251,6 @@ export default function EmployerDashboardNewAdapter() {
 }
 
 const styles = StyleSheet.create({
-  navLayer: { position: "absolute", left: 0, right: 0, bottom: 0 },
   sheetOverlay: { flex: 1, backgroundColor: "rgba(6,32,36,0.35)", justifyContent: "flex-end" },
   sheetDismiss: { flex: 1 },
   actionSheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 28, paddingTop: 10 },

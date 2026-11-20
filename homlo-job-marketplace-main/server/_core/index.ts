@@ -5,13 +5,17 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerSupabaseAuthRoutes } from "./supabase-auth";
 import { registerEventLogRoutes } from "./eventLogRoutes";
-import { registerFeedRoutes } from "../feed-routes";
+import { registerRevenueCatRoutes } from "../revenuecatWebhook";
+import { registerTrustRoutes, startTrustBackgroundJobs } from "../trust/routes";
+import { registerFeedRoutes, invalidateFeedCache } from "../feed-routes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { validateProductionEnv } from "./envValidation";
 import { createCorsMiddleware } from "./cors";
 import { configureTrustProxy } from "./requestIp";
 import { createApiRateLimiters } from "./apiRateLimit";
+import { getHomloDirectService } from "../homlo-direct-service";
+import { shouldInvalidatePublicCaches } from "./write-invalidation";
 
 validateProductionEnv();
 
@@ -66,6 +70,30 @@ export function createApp() {
   app.use(express.json({ limit: DEFAULT_LIMIT }));
   app.use(express.urlencoded({ limit: DEFAULT_LIMIT, extended: true }));
 
+  // PERF: server-side read caches (session, public jobs, search) are cleared
+  // whenever a write request finishes, so posts/edits/applies/boosts appear
+  // on the very next read. Analytics and auth endpoints are skipped so they
+  // don't wipe the caches constantly.
+  // PERF: only writes that can change a listing clear the shared public
+  // caches (see write-invalidation.ts); chat, notifications, uploads and
+  // consent writes used to wipe them for everyone.
+  app.use((req, res, next) => {
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+    if (req.path.startsWith("/api/events") || req.path.startsWith("/events") || req.path.startsWith("/api/supabase-auth")) return next();
+    const path = req.path;
+    res.on("finish", () => {
+      if (res.statusCode >= 400) return;
+      const service = getHomloDirectService();
+      if (shouldInvalidatePublicCaches(path)) {
+        service.invalidateAfterWrite(service.getAccessToken(req));
+        invalidateFeedCache();
+      } else {
+        service.invalidateSessionAfterWrite(service.getAccessToken(req));
+      }
+    });
+    next();
+  });
+
   // Auth responses must never be cached by browsers or intermediate proxies.
   app.use("/api/supabase-auth/*", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -74,6 +102,8 @@ export function createApp() {
 
   registerSupabaseAuthRoutes(app);
   registerEventLogRoutes(app);
+  registerRevenueCatRoutes(app);
+  registerTrustRoutes(app);
 
   // Rate limit feed endpoints (same shape as other API routes)
   app.use("/feed/*", feed);
@@ -82,6 +112,19 @@ export function createApp() {
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
+  });
+
+  // Readiness: unlike /api/health (process is up), this checks the database.
+  // 503 when the DB is unreachable or slower than 2s.
+  app.get("/api/health/ready", async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    let database: { ok: boolean; latencyMs: number };
+    try {
+      database = await getHomloDirectService().checkDatabase();
+    } catch {
+      database = { ok: false, latencyMs: 0 };
+    }
+    res.status(database.ok ? 200 : 503).json({ ok: database.ok, database, timestamp: Date.now() });
   });
 
   app.use("/api/trpc", trpcPublic);
@@ -110,6 +153,8 @@ export function createApp() {
 export const app = createApp();
 
 export async function startServer() {
+  // Refuses to boot in production without the encryption / hashing secrets.
+  startTrustBackgroundJobs();
   const server = createServer(app);
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
@@ -118,5 +163,6 @@ export async function startServer() {
   }
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+    void getHomloDirectService().warmUp();
   });
 }

@@ -14,6 +14,10 @@ export default function JobsMapScreen() {
       jobs.map((job) => ({
         id: job.id,
         title: job.title,
+        category: job.category ?? null,
+        subtitle: `${job.employerName} · ${job.locationLabel.split(",")[0]}`,
+        // "$180 / hour" -> "$180": the pin shows the amount, the card the rest.
+        label: job.salaryLabel.split(" / ")[0],
         latitude: job.lat,
         longitude: job.lng,
       })),
@@ -24,7 +28,7 @@ export default function JobsMapScreen() {
     <View style={{ flex: 1 }}>
       <NearbyJobsMap
         jobs={pins}
-        radiusKm={10}
+        onBack={() => router.back()}
         maxPins={50}
         onViewJob={(job) => {
           router.push({

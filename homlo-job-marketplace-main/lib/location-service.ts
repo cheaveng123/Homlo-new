@@ -45,6 +45,8 @@ function toState(loc: Location.LocationObject): LocationState | null {
   };
 }
 
+const FRESH_FIX_MS = 30_000;
+
 class LocationService {
   private watchSubscription: Location.LocationSubscription | null = null;
   private watchRefCount = 0;
@@ -96,16 +98,31 @@ class LocationService {
     }
   }
 
+  // PERF: ~20 screens/components mount useUserLocation and each asked the OS
+  // for a brand-new GPS fix on mount (slow: often 1–5s, and battery-heavy).
+  // Concurrent callers now share ONE in-flight request, and a fix younger than
+  // FRESH_FIX_MS is reused instead of asking the GPS again.
+  private currentInflight: Promise<LocationState | null> | null = null;
+  private lastFixAt = 0;
+
   async getCurrentPosition(options?: Location.LocationOptions): Promise<LocationState | null> {
-    try {
-      const pos = await Location.getCurrentPositionAsync(options);
-      const state = toState(pos);
-      if (!state) return null;
-      this.lastLocation = state;
-      return state;
-    } catch {
-      return null;
-    }
+    if (this.lastLocation && Date.now() - this.lastFixAt < FRESH_FIX_MS) return this.lastLocation;
+    if (this.currentInflight) return this.currentInflight;
+    this.currentInflight = (async () => {
+      try {
+        const pos = await Location.getCurrentPositionAsync(options);
+        const state = toState(pos);
+        if (!state) return null;
+        this.lastLocation = state;
+        this.lastFixAt = Date.now();
+        return state;
+      } catch {
+        return null;
+      } finally {
+        this.currentInflight = null;
+      }
+    })();
+    return this.currentInflight;
   }
 
   async getLastKnownPosition(
@@ -143,6 +160,7 @@ class LocationService {
         const state = toState(loc);
         if (!state) return;
         this.lastLocation = state;
+        this.lastFixAt = Date.now();
         this.listeners.forEach((cb) => cb(state));
       },
     );

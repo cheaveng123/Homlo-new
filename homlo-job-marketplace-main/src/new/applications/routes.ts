@@ -18,7 +18,8 @@ export function openApplicationChat(router: ImperativeRouter, applicationId: str
 }
 
 export function openExplore(router: ImperativeRouter): void {
-  router.push("/explore" as never);
+  // Back to the mounted Search tab; `push` stacked a new copy of the tabs.
+  router.dismissTo("/explore" as never);
 }
 
 export function openLogin(router: ImperativeRouter): void {

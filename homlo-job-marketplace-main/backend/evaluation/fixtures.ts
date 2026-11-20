@@ -25,25 +25,9 @@ export type FixtureSeed = {
   historyHours?: number;
 };
 
-const REF = new Date("2026-08-01T12:00:00.000Z");
-
-function hoursAfter(date: Date, hours: number): Date {
-  return new Date(date.getTime() + hours * 3_600_000);
-}
-
 function kmLatOffsetLatitude(km: number, latitude: number): number {
   // ≈ 1° lat ≈ 111 km
   return latitude + km / 111;
-}
-
-function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
-  const R = 6371;
-  const dLat = ((bLat - aLat) * Math.PI) / 180;
-  const dLng = ((bLng - aLng) * Math.PI) / 180;
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
 }
 
 /**
@@ -218,7 +202,7 @@ export function buildEvalFixture(seed: {
   const newEmp = "emp-new";
   users.set(newEmp, { id: newEmp, status: "active", createdAt: at(-0.1) });
   profiles.set(newEmp, { userId: newEmp, fullName: `Employer ${newEmp}`, latitude: null, longitude: null, deleted: false });
-  const fresh = addJob("job-fresh-explore", newEmp, {
+  addJob("job-fresh-explore", newEmp, {
     categoryId: catA,
     payAmount: 19,
     latitude: nearHz(0.5).latitude,
@@ -287,10 +271,10 @@ export function buildEvalFixture(seed: {
   applications.push({ jobId: applied.id, workerId: userId, status: "applied" });
 
   // Own job (employer is the worker themselves) → must be excluded
-  const own = addJob("job-own", userId, { latitude: nearHz(1).latitude, longitude: nearHz(1).longitude });
+  addJob("job-own", userId, { latitude: nearHz(1).latitude, longitude: nearHz(1).longitude });
 
   // Expired (start date in the past) → excluded
-  const expired = addJob("job-expired", empTrusted, {
+  addJob("job-expired", empTrusted, {
     startDate: "2026-07-01",
     startTime: "09:00:00",
     latitude: nearHz(1).latitude,
@@ -298,7 +282,7 @@ export function buildEvalFixture(seed: {
   });
 
   // Filled → excluded
-  const filled = addJob("job-filled", empTrusted, { workersHired: 2, workersNeeded: 2 });
+  addJob("job-filled", empTrusted, { workersHired: 2, workersNeeded: 2 });
 
   // Deleted → excluded
   addJob("job-deleted", empTrusted, { deleted: true });

@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useIsFocused } from "expo-router";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {
@@ -28,11 +28,9 @@ import { JOB_TYPE_IMAGES } from "@/components/shared/jobTypeImage";
 import { ShimmerIcon } from "@/components/shared/ShimmerIcon";
 import { SectionHeader } from "@/components/home/SectionHeader";
 import AnimatedPlaceholder from "@/components/search/AnimatedPlaceholder";
-import { jobSeekerWords } from "@/components/search/searchPlaceholderWords";
 import { vistaKeyForField } from "@/components/vista/vistaCategoryData";
-import { Colors, SchemeColors } from "@/constants/theme";
+import { SchemeColors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useIsFocused } from "expo-router";
 import { RowScrollIndicator, useRowIndicator } from "@/components/home/RowScrollIndicator";
 import { colors, fontFamily, radii, spacing } from "@/components/home/theme";
 import { useAuth } from "@/hooks/use-auth";

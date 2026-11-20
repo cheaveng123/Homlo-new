@@ -4,16 +4,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 import { AppIconNameNew } from '../icons/AppIconNew';
 import { TextNew } from '../components/TextNew';
-import { AvatarNew, ChipNew, EmptyStateNew, FieldNew, IconDiscNew, PressableScaleNew, RoundButtonNew, SectionTitleNew, SkeletonNew, TicketNew, UnderlineTabsNew } from '../components/PrimitivesNew';
+import { AvatarNew, ChipNew, EmptyStateNew, IconDiscNew, PressableScaleNew, RoundButtonNew, SectionTitleNew, SkeletonNew, TicketNew, UnderlineTabsNew } from '../components/PrimitivesNew';
 import Avatar from '../../../components/chat/Avatar';
-import { colorsNew } from '../theme/tokensNew';
+import { colorsNew, layoutNew, shadowNew, spaceNew } from '../theme/tokensNew';
 import { useCopyNew } from '../theme/copyNew';
 import { useEnterNew } from '../theme/motionNew';
 import { ScreenStateNew } from '../types/jobNew';
+import { SearchPillNew } from '../components/SearchPillNew';
+import { StatusBadge } from '../applications/StatusBadge';
 
 export type NotificationNew = { id: string; icon: AppIconNameNew; title: string; body: string; timeLabel: string; unread?: boolean };
 export type NotificationGroupNew = { title: string; items: NotificationNew[] }; // Today / Yesterday ...
-export type ConversationNew = { id: string; name: string; initials: string; color?: string; photo?: string | null; preview: string; timeLabel: string; unreadCount?: number };
+export type ConversationNew = { id: string; name: string; initials: string; color?: string; photo?: string | null; preview: string; timeLabel: string; unreadCount?: number; /** Raw application status; rendered as a status pill instead of plain text. */ applicationStatus?: string | null };
 export type UpcomingNew = { eyebrow: string; title: string; subtitle?: string; stubTop: string; stubBottom?: string; onPress?: () => void }; // only render when the app has this data
 
 type Props = {
@@ -40,7 +42,7 @@ export function InboxScreenNew(p: Props) {
     <View style={{ flex: 1, backgroundColor: colorsNew.white, paddingTop: insets.top + 8 }}>
       <Animated.View entering={enter(0)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 }}>
         <TextNew variant="hero">{copy.inbox.title}</TextNew>
-        {p.onPressSearch && <RoundButtonNew icon="search" onPress={p.onPressSearch} />}
+        {p.onPressSearch && p.tab !== 'messages' && <RoundButtonNew icon="search" onPress={p.onPressSearch} />}
       </Animated.View>
       <View style={{ marginTop: 8 }}>
         <UnderlineTabsNew tabs={tabs} active={p.tab} onChange={(k) => p.onChangeTab(k)} />
@@ -72,7 +74,7 @@ export function InboxScreenNew(p: Props) {
             {p.upcoming && <Animated.View entering={enter(1)} style={{ marginTop: 16 }}><TicketNew {...p.upcoming} /></Animated.View>}
             {!!p.active?.length && (
               <Animated.View entering={enter(2)}>
-                <SectionTitleNew title={copy.inbox.active} />
+                <SectionTitleNew title={copy.inbox.active} glyph="conversations" />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
                   {p.active.map((a) => (
                     <PressableScaleNew key={a.id} onPress={() => p.onPressActive?.(a.id)} style={{ width: 64, alignItems: 'center', gap: 4 }}>
@@ -114,9 +116,23 @@ export function InboxScreenNew(p: Props) {
 
         {p.state === 'ready' && p.tab !== 'notifications' && p.tab !== 'applications' && (
           <Animated.View entering={enter(1)} style={{ paddingHorizontal: 0 }}>
-            <View style={{ paddingHorizontal: 16 }}>
-              <FieldNew leftIcon="search" value={p.contactQuery} onChangeText={p.onChangeContactQuery} placeholder={copy.inbox.searchContacts} />
+            <View style={{ paddingHorizontal: layoutNew.screenX, paddingTop: spaceNew.lg, paddingBottom: spaceNew.sm }}>
+              <SearchPillNew
+                editable
+                height={48}
+                value={p.contactQuery}
+                onChangeText={p.onChangeContactQuery}
+                inputPlaceholder={copy.inbox.searchContacts}
+                right={p.contactQuery ? 'clear' : 'none'}
+                onRightPress={() => p.onChangeContactQuery('')}
+                style={[shadowNew.sm, { borderWidth: 1, borderColor: colorsNew.border }]}
+              />
             </View>
+            {p.conversations.length === 0 && !!p.contactQuery.trim() && (
+              <TextNew variant="meta" color={colorsNew.muted} style={{ textAlign: 'center', marginTop: spaceNew.xl, paddingHorizontal: layoutNew.screenX }}>
+                {copy.inbox.noMatches}
+              </TextNew>
+            )}
             {p.conversations.map((c) => (
               <PressableScaleNew key={c.id} onPress={() => p.onPressConversation(c.id)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 72 }}>
                 <Avatar photo={c.photo} style={{ width: 52, height: 52, borderRadius: 26 }}>
@@ -125,6 +141,7 @@ export function InboxScreenNew(p: Props) {
                 <View style={{ flex: 1 }}>
                   <TextNew variant="title" weight="semibold">{c.name}</TextNew>
                   <TextNew variant="meta" color={colorsNew.muted} numberOfLines={1}>{c.preview}</TextNew>
+                  {c.applicationStatus ? <View style={{ marginTop: 4 }}><StatusBadge status={c.applicationStatus} size="sm" /></View> : null}
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 6 }}>
                   <TextNew variant="meta" color={colorsNew.muted}>{c.timeLabel}</TextNew>

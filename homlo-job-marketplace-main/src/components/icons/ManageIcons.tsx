@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import Animated, { useAnimatedProps, type SharedValue } from 'react-native-reanimated';
-import { around, FADE, kf, POP, useLoop } from './loop';
+import { around, FADE, kf, POP, softFade, useLoop } from './loop';
 
 const AG = Animated.createAnimatedComponent(G);
 const AP = Animated.createAnimatedComponent(Path);
@@ -65,7 +65,7 @@ function useBarProps(p: SharedValue<number>, i: number) {
   return useAnimatedProps(() => {
     const q = (p.value + i * 0.024) % 1;
     return {
-      opacity: kf(q, [[0, 0], [0.08, 1], [0.78, 1], [0.92, 0], [1, 0]]),
+      opacity: softFade(kf(q, [[0, 0], [0.08, 1], [0.78, 1], [0.92, 0], [1, 0]])),
       transform: [{ translateY: 36 }, { scaleY: kf(q, [[0, 0.2], [0.26, 1], [1, 1]]) }, { translateY: -36 }],
     };
   });
@@ -98,11 +98,11 @@ export function LiveJobsIcon({ size = 48, delay = 0, replayKey = 0, active = tru
 export function NewApplicantsIcon({ size = 48, surface = '#fff', delay = 0, replayKey = 0, active = true }: ManageIconProps) {
   const p = useLoop(delay, replayKey, active);
   const back = useAnimatedProps(() => ({
-    opacity: kf(p.value, FADE),
+    opacity: softFade(kf(p.value, FADE)),
     transform: [{ translateX: kf(p.value, [[0, 9], [0.06, 9], [0.26, 0], [1, 0]]) }],
   }));
   const front = useAnimatedProps(() => ({
-    opacity: kf(p.value, FADE),
+    opacity: softFade(kf(p.value, FADE)),
     transform: [{ translateX: kf(p.value, [[0, -9], [0.06, -9], [0.26, 0], [1, 0]]) }],
   }));
   const badge = useAnimatedProps(() => ({

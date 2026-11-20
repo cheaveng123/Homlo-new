@@ -21,6 +21,8 @@ function loadConfig(): NativeConfig {
   }
 
   try {
+    // Optional native module: loaded lazily so the app runs without it.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const loaded = require("react-native-config") as
       | (NativeConfig & { default?: NativeConfig })
       | undefined;

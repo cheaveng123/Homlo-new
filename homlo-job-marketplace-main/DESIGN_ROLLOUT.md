@@ -22,7 +22,8 @@ Say "continue" to resume from **Next**. Each batch: typecheck, lint, tests, comm
 | Section-title + fact icons (tier B, two-tone, one-shot entrance): jobField, jobType, recommended, nearby, popular, explore, recent, suggestions, trending, conversations, location, details, employer, pay, positions | `src/components/icons/SectionIcons.tsx`, `SectionTitleNew glyph=` (right of the title, `tone="mono"` slate) |
 | Ads label: shaded amber tab flush to the photo's bottom-left (rounded top-right), animated megaphone; matching pill on small thumbnails | `AdTabNew` / `AdBadgeNew` in `JobPartsNew.tsx`, `BoostBadge` |
 | jobs-v2 icon set redrawn (1.8 outline, one custom detail each) + per-category glyphs | `components/jobs-v2/AppIcon.tsx`, `categories.ts` |
-| Map job pin: flat cyan pin replaces the glossy briefcase image | `src/components/map/assets/job-suitcase*` |
+| Map job pins: one animated pin everywhere (white capsule, the secondary job-field icon from `components/shared/JobFieldGlyphs.tsx` on a light disc, optional pay; navy when selected; icon-only when zoomed out). Every job is its own pin (no grouping). Entrance 220ms fade/rise, selection 180ms, no bounce | `src/components/map/JobMapPin.tsx`, `JobFieldGlyph.tsx`, `JobPinMarkers.tsx`, `useMarkerTracking.ts` |
+| Map pages (`/jobs-map`, `/jobs/near-you`): ride-hailing layout on design tokens: full-screen map, floating search pill, locate button, draggable job sheet; fixed 10 km radius (`NEARBY_RADIUS_KM`) | `src/components/map/MapChrome.tsx` |
 | Bottom nav (all tab screens) | `components/home/BottomTabBar.tsx`: no pill, cyan icon + 16x3 bar, amber dot on active Post (**uncommitted**, see below) |
 
 ### Motion rule (no bounce)
@@ -57,7 +58,7 @@ Legend: ✅ done (restyled) · 🎨 repainted via shared layer only (tokens/prim
 | 7 | `/employer/job/[id]`, `/employer/job/[id]/edit*`, `/employer/post-job` | Detail/Form | `NewJobManager`, `NewEditJob`, `app/employer/post-job.tsx` | 🎨 |
 | 7 | `/employer/[employerId]`, `/employer/[employerId]/jobs` | Detail/List | `NewEmployerProfile`, `NewEmployerJobs` | 🎨 |
 | 8 | `/boost/*`, `/employer/boost/[id]`, `/checkout`, `/account-plans` | Form/Modal | `NewBoost`, `app/boost/*`, `app/checkout.tsx` | 🎨 |
-| 9 | `/jobs-map`, `/job/[id]/location`, `/employer/job/[id]/edit/location` | Map | map components | ⏭ |
+| 9 | `/jobs-map`, `/jobs/near-you` map, `/job/[id]` map, `/job/[id]/location` | Map | `NearbyJobsMap`, `JobsMap.native`, `JobDetailMap`, `job-location-map.native` | ✅ job pins (uncommitted); `/employer/job/[id]/edit/location` ⏭ |
 | 9 | `/discover/[kind]`, `/vista/[categoryKey]`, `/guided-*`, `/category-listing` | List | various | 🎨 |
 | — | `/dev/theme-lab`, `/messages/stub`, `/oauth/callback` | Dev/utility | — | ⏭ |
 

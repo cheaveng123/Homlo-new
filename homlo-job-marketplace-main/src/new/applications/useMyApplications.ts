@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
+import { isAwaitingData } from "@/lib/useFirstLoadSkeletonFlag";
 import { formatAppliedDate, formatArrangement, formatPay } from "./format";
 import { labelForState, stateForStatus, type ApplicationState } from "./statusMap";
 
@@ -59,8 +60,11 @@ export function useMyApplications() {
     user,
     authLoading,
     applications,
-    isLoading: authLoading || (Boolean(user) && query.isLoading),
-    isRefreshing: query.isRefetching && !query.isLoading,
+    // isAwaitingData, not `isLoading`: right after sign-in the cache is cleared
+    // and the list query can be pending without fetching yet; `isLoading` is
+    // false then and the screen flashed "No applications".
+    isLoading: authLoading || (Boolean(user) && isAwaitingData(query)),
+    isRefreshing: query.isRefetching && !isAwaitingData(query),
     error: query.isError ? "Couldn't load your applications." : null,
     refetch: query.refetch,
   };

@@ -1,9 +1,10 @@
-import React,{useEffect,useState} from 'react';
-import {Pressable,Text,View,ViewStyle,StyleProp} from 'react-native';
-import Svg,{Path} from 'react-native-svg';
-import Animated,{FadeInDown,FadeIn,FadeOut,LinearTransition,useSharedValue,useAnimatedStyle,withSpring,withRepeat,withSequence,withTiming,withDelay,useReducedMotion,Easing} from 'react-native-reanimated';
-import {c,f,sh} from './NewTheme';
+import React, { useEffect, useState } from 'react';
+import { Pressable, Text, View, ViewStyle, StyleProp } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import Animated, { FadeInDown, FadeIn, FadeOut, LinearTransition, useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withDelay, useReducedMotion, Easing } from 'react-native-reanimated';
+import { c, f } from './NewTheme';
 
+import { smooth } from '@/src/design/motion';
 const ci=(x:number,y:number,r:number)=>`M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0`;
 const P={back:'M15 5l-7 7 7 7M8.5 12H20',more:ci(5,12,1)+ci(12,12,1)+ci(19,12,1),pin:'M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0113 0c0 5.4-6.5 11-6.5 11z'+ci(12,10,2.3),
 bag:'M6 7.5h12a2.5 2.5 0 012.5 2.5v7a2.5 2.5 0 01-2.5 2.5H6A2.5 2.5 0 013.5 17v-7A2.5 2.5 0 016 7.5zM9 7.5V6a2 2 0 012-2h2a2 2 0 012 2v1.5M3.5 13h17',
@@ -24,14 +25,14 @@ export class Boundary extends React.Component<{children:React.ReactNode},{e?:Err
 }
 export function Press({children,onPress,style,label}:{children:React.ReactNode;onPress?:()=>void;style?:StyleProp<ViewStyle>;label?:string}){
   const k=useSharedValue(1);const a=useAnimatedStyle(()=>({transform:[{scale:k.value}]}));
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onPressIn={()=>{k.value=withSpring(0.975)}} onPressOut={()=>{k.value=withSpring(1)}}><Animated.View style={[a,style]}>{children}</Animated.View></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onPressIn={()=>{k.set(smooth(0.975))}} onPressOut={()=>{k.set(smooth(1))}}><Animated.View style={[a,style]}>{children}</Animated.View></Pressable>;
 }
 export const Circ=({n,onPress,label}:{n:IconName;onPress?:()=>void;label:string})=>
   <Press label={label} onPress={onPress} style={{width:44,height:44,borderRadius:22,backgroundColor:'#fff',borderWidth:1,borderColor:c.line,alignItems:'center',justifyContent:'center'}}><Icon n={n}/></Press>;
 // Light sweep (used on at most 3 buttons)
 export function Shimmer({children}:{children:React.ReactNode}){
   const x=useSharedValue(-60);const rm=useReducedMotion();const [w,setW]=useState(300);
-  useEffect(()=>{if(rm)return;x.value=-60;x.value=withRepeat(withSequence(withDelay(1800,withTiming(w+60,{duration:900,easing:Easing.inOut(Easing.quad)})),withTiming(-60,{duration:0})),-1)},[w,rm]);
+  useEffect(()=>{if(rm)return;x.value=-60;x.value=withRepeat(withSequence(withDelay(1800,withTiming(w+60,{duration:900,easing:Easing.inOut(Easing.quad)})),withTiming(-60,{duration:0})),-1)},[w, rm, x]);
   const a=useAnimatedStyle(()=>({transform:[{translateX:x.value}]}));
   return <View onLayout={e=>setW(e.nativeEvent.layout.width)} style={{borderRadius:999,overflow:'hidden'}}>{children}<Animated.View pointerEvents="none" style={[{position:'absolute',top:0,bottom:0,width:40,backgroundColor:'rgba(255,255,255,0.3)'},a]}/></View>;
 }
@@ -52,7 +53,7 @@ export function Chip({t,on,onPress,icon}:{t:string;on:boolean;onPress:()=>void;i
 }
 export function Tabs({keys,v,on}:{keys:string[];v:string;on:(k:string)=>void}){
   const [w,setW]=useState(0);const x=useSharedValue(0);
-  useEffect(()=>{x.value=withSpring(keys.indexOf(v)*w,{damping:18,stiffness:220})},[v,w]);
+  useEffect(()=>{x.value=smooth(keys.indexOf(v)*w)},[keys, v, w, x]);
   const a=useAnimatedStyle(()=>({transform:[{translateX:x.value}]}));
   return <View onLayout={e=>setW(e.nativeEvent.layout.width/keys.length)} style={{flexDirection:'row',backgroundColor:'#fff',borderBottomWidth:1,borderColor:c.line}}>
     {keys.map(k=><Pressable key={k} accessibilityRole="tab" onPress={()=>on(k)} style={{flex:1,height:48,alignItems:'center',justifyContent:'center'}}><Text style={{fontFamily:v===k?f.s:f.m,fontSize:14,color:v===k?c.deep:c.mu}}>{k}</Text></Pressable>)}
@@ -60,11 +61,12 @@ export function Tabs({keys,v,on}:{keys:string[];v:string;on:(k:string)=>void}){
 }
 export function CountUp({to,dec=0,pre='',suf='',style}:{to:number;dec?:number;pre?:string;suf?:string;style?:any}){
   const [v,setV]=useState(0);const rm=useReducedMotion();
-  useEffect(()=>{if(rm){setV(to);return}let st=0,id=0;const run=(t:number)=>{if(!st)st=t;const p=Math.min(1,(t-st)/700);setV(to*(1-Math.pow(1-p,3)));if(p<1)id=requestAnimationFrame(run)};id=requestAnimationFrame(run);return()=>cancelAnimationFrame(id)},[to,rm]);
-  return <Text style={style}>{pre}{v.toFixed(dec)}{suf}</Text>;
+  useEffect(()=>{if(rm)return;let st=0,id=0;const run=(t:number)=>{if(!st)st=t;const p=Math.min(1,(t-st)/700);setV(to*(1-Math.pow(1-p,3)));if(p<1)id=requestAnimationFrame(run)};id=requestAnimationFrame(run);return()=>cancelAnimationFrame(id)},[to,rm]);
+  // Reduce Motion: show the final number directly (no count-up).
+  return <Text style={style}>{pre}{(rm?to:v).toFixed(dec)}{suf}</Text>;
 }
 export function Acc({title,children}:{title:string;children:React.ReactNode}){
-  const [o,setO]=useState(true);const r=useSharedValue(1);useEffect(()=>{r.value=withTiming(o?1:0,{duration:250})},[o]);
+  const [o,setO]=useState(true);const r=useSharedValue(1);useEffect(()=>{r.value=withTiming(o?1:0,{duration:250})},[o, r]);
   const a=useAnimatedStyle(()=>({transform:[{rotate:`${r.value*180}deg`}]}));
   return <Animated.View layout={LinearTransition.duration(250)} style={{marginHorizontal:16,borderWidth:1,borderColor:c.line,borderRadius:20,paddingHorizontal:16,overflow:'hidden'}}>
     <Pressable onPress={()=>setO(!o)} accessibilityRole="button" accessibilityState={{expanded:o}} style={{height:56,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}><Text style={{fontFamily:f.hb,fontSize:16,color:c.tx}}>{title}</Text><Animated.View style={a}><Icon n="dn"/></Animated.View></Pressable>

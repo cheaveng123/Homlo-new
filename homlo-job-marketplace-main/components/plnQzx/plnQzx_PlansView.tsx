@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,11 @@ export type PlnQzxPlansViewProps = {
   onPrimary: () => void;                // existing upgrade / change handler
   formatPrice: (n: number) => string;   // existing price formatter
   copy: PlnQzxPlansCopy;
+  /** Optional banner shown above the title (e.g. "you've reached your plan's limit"). */
+  notice?: ReactNode;
+  /** Plan that lifts the employer's current limit: gets a "Needed to continue" tag. */
+  requiredPlanId?: string;
+  requiredTag?: string;
 };
 
 function Switcher({ plans, selectedId, currentId, onSelect, fmt, current }: { plans: PlnQzxPlan[]; selectedId: string; currentId: string; onSelect: (id: string) => void; fmt: (n: number) => string; current: string }) {
@@ -65,6 +70,7 @@ export function PlnQzxPlansView(p: PlnQzxPlansViewProps) {
         <View style={st.top}>
           <QzPress onPress={p.onBack} label={c.backLabel} style={st.back}><QzIcon name="back" color={QZ.c.deep} size={20} /></QzPress>
         </View>
+        {p.notice}
         <QzText v="h1" style={{ marginBottom: QZ.sp.sm }}>{c.title}</QzText>
         <QzText style={{ marginBottom: QZ.sp.xl }}>{c.subtitle}</QzText>
 
@@ -75,6 +81,9 @@ export function PlnQzxPlansView(p: PlnQzxPlansViewProps) {
             <QzText v="lead">{sel.name}</QzText>
             {sel.popular ? <View style={st.tag}><QzText v="tiny" color={QZ.c.primary}>{c.popularTag}</QzText></View> : null}
             {same ? <View style={st.tag}><QzText v="tiny" color={QZ.c.primary}>{c.currentTag}</QzText></View> : null}
+            {p.requiredPlanId === sel.id && p.requiredTag ? (
+              <View style={[st.tag, st.tagNeeded]}><QzText v="tiny" color={QZ.c.white}>{p.requiredTag}</QzText></View>
+            ) : null}
           </View>
           <QzText v="body" color={QZ.c.creamInk}>{sel.tagline}</QzText>
           <View style={st.priceRow}>
@@ -134,6 +143,7 @@ const st = StyleSheet.create({
   ticket: { backgroundColor: QZ.c.cream, borderRadius: QZ.r.card, borderWidth: 1, borderColor: '#F3DFAE', padding: QZ.sp.xl },
   rowWrap: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: QZ.sp.sm },
   tag: { backgroundColor: QZ.c.white, borderRadius: QZ.r.pill, paddingHorizontal: QZ.sp.md, paddingVertical: 2 },
+  tagNeeded: { backgroundColor: QZ.c.deep },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: QZ.sp.sm, marginTop: QZ.sp.sm },
   limits: { flexDirection: 'row', gap: QZ.sp.md, marginTop: QZ.sp.lg },
   limit: { flex: 1, backgroundColor: QZ.c.white, borderRadius: QZ.r.tile, padding: QZ.sp.md, gap: QZ.sp.xs },

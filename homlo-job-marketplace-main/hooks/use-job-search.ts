@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { isAwaitingData } from "@/lib/useFirstLoadSkeletonFlag";
 import { resolveSearchTypos } from "@/lib/fuzzy-match";
 import { resolveJobImage } from "@/lib/job-banner";
 import { computePositionsLeft } from "@/lib/positions";
@@ -114,7 +115,10 @@ export function useJobSearch(params: JobSearchParams, options?: { enabled?: bool
 
   return {
     jobs,
-    loading: query.isLoading,
+    // Loading until results (or an error) arrive. `isLoading` alone is false
+    // for a pending query that isn't fetching yet, which screens read as "no
+    // results". A disabled search is idle, not loading.
+    loading: enabled && isAwaitingData(query),
     error: query.error,
     refetch: query.refetch,
     isFetching: query.isFetching,

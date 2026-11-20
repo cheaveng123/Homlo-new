@@ -2,9 +2,10 @@ import { copy } from './copy';
 import type { ApplicationStatus, DateInput } from './types';
 
 // ONE place for the status mapping. Never rename backend statuses.
-const WAITING = ['applied', 'reviewed'];
-const ACCEPTED = ['interview', 'hired'];
-const DECLINED = ['declined', 'withdrawn'];
+// The mapped state names are accepted too, so already-mapped values pass through.
+const WAITING = ['applied', 'reviewed', 'waiting'];
+const ACCEPTED = ['interview', 'hired', 'accepted'];
+const DECLINED = ['declined', 'withdrawn', 'rejected'];
 
 export function mapBackendStatus(raw: string | null | undefined): ApplicationStatus {
   const s = (raw ?? '').toLowerCase();

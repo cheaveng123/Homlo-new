@@ -32,11 +32,11 @@ export const copyNew = {
     viewApplications: 'View my applications', backToJobs: 'Back to jobs',
   },
   post: {
-    title: 'Dashboard', liveNow: (n: number) => `${n} live now`, live: 'Live now', posted: 'Jobs posted',
+    title: 'Dashboard', liveNow: (n: number) => `${n} live now`, live: 'Live now', liveShort: 'Live', posted: 'Jobs posted',
     applications: 'Applications', newApplicants: 'New applicants', add: 'Add a New Job', manage: 'Manage',
   },
   addJob: { step: (i: number, n: number) => `Step ${i} of ${n}`, next: 'Continue', submit: 'Submit job', preview: 'Live preview' },
-  inbox: { title: 'Inbox', notifications: 'Notifications', messages: 'Messages', searchContacts: 'Search contacts or conversations', active: 'Active conversations', empty: 'Nothing here yet', emptyMessages: 'No messages yet' },
+  inbox: { title: 'Inbox', notifications: 'Notifications', messages: 'Messages', searchContacts: 'Search contacts or conversations', active: 'Active conversations', empty: 'Nothing here yet', emptyMessages: 'No messages yet', noMatches: 'No conversations match your search', clearSearch: 'Clear search' },
   chat: { message: 'Message', online: 'Online', empty: 'No messages yet' },
 };
 

@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,TextInput,Pressable,KeyboardAvoidingView,Platform,ScrollView,Alert,Image} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect,useLocalSearchParams,router} from 'expo-router';
-import Animated,{FadeIn,FadeOut,ZoomIn,ZoomOut,LinearTransition,useSharedValue,useAnimatedStyle,withSpring,withSequence,withTiming,interpolateColor} from 'react-native-reanimated';
+import Animated,{FadeIn,FadeOut,ZoomIn,ZoomOut,LinearTransition,useSharedValue,useAnimatedStyle,withSequence,withTiming,interpolateColor} from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import {c,f,sh} from './NewTheme';
 import {Icon,Circ,Btn,Pill,Sec,Reveal,Press,Boundary} from './NewUI';
@@ -16,25 +16,26 @@ import type {JobStatus} from '@/backend/domain/models';
 import {EmployerEditJobSkeleton} from '@/src/new/components/NewSkeletons';
 import {useFirstLoadSkeletonFlag} from '@/lib/useFirstLoadSkeletonFlag';
 
+import { smooth } from '@/src/design/motion';
 const PER=['Hourly','Daily','Monthly'];const SUF:Record<string,string>={Hourly:'/hr',Daily:'/day',Monthly:'/mo'};
 function payTypeLabel(p:string){return p==='hourly'?'Hourly':p==='daily'?'Daily':'Monthly'}
 function payTypeValue(l:string):'hourly'|'daily'|'fixed'{return l==='Hourly'?'hourly':l==='Daily'?'daily':'fixed'}
 function payableStatus(s:JobStatus):PayableJobStatus{return s==='draft'||s==='open'||s==='closed'||s==='cancelled'?s:'closed'}
 
 function Field({label,multi,...p}:any){
-  const [on,setOn]=useState(false);const k=useSharedValue(0);useEffect(()=>{k.value=withTiming(on?1:0,{duration:180})},[on]);
+  const [on,setOn]=useState(false);const k=useSharedValue(0);useEffect(()=>{k.value=withTiming(on?1:0,{duration:180})},[k, on]);
   const a=useAnimatedStyle(()=>({borderColor:interpolateColor(k.value,[0,1],[c.line,c.teal])}));
   return <Animated.View style={[{borderRadius:16,borderWidth:1.5,backgroundColor:'#fff',paddingHorizontal:16,paddingTop:8,paddingBottom:multi?8:4},a]}><Text style={{fontFamily:f.b,fontSize:12,color:c.mu}}>{label}</Text>
     <TextInput {...p} multiline={multi} onFocus={()=>setOn(true)} onBlur={()=>setOn(false)} placeholderTextColor={c.mu} style={{fontFamily:f.m,fontSize:15,color:c.tx,minHeight:multi?80:36,textAlignVertical:multi?'top':'center',padding:0}}/></Animated.View>;
 }
 function Seg({v,on}:{v:string;on:(k:string)=>void}){
-  const [w,setW]=useState(0);const x=useSharedValue(0);useEffect(()=>{x.value=withSpring(PER.indexOf(v)*w,{damping:18,stiffness:220})},[v,w]);const a=useAnimatedStyle(()=>({transform:[{translateX:x.value}]}));
+  const [w,setW]=useState(0);const x=useSharedValue(0);useEffect(()=>{x.value=smooth(PER.indexOf(v)*w)},[v, w, x]);const a=useAnimatedStyle(()=>({transform:[{translateX:x.value}]}));
   return <View onLayout={e=>setW((e.nativeEvent.layout.width-8)/3)} style={{flexDirection:'row',padding:4,borderRadius:14,backgroundColor:c.bg}}>
     <Animated.View style={[{position:'absolute',left:4,top:4,bottom:4,width:w,borderRadius:12,backgroundColor:'#fff'},sh,a]}/>
     {PER.map(k=><Pressable key={k} accessibilityRole="tab" onPress={()=>on(k)} style={{flex:1,height:44,alignItems:'center',justifyContent:'center'}}><Text style={{fontFamily:f.s,fontSize:14,color:v===k?c.deep:c.mu}}>{k}</Text></Pressable>)}</View>;
 }
 function Switch({v,on}:{v:boolean;on:(b:boolean)=>void}){
-  const x=useSharedValue(v?1:0);useEffect(()=>{x.value=withSpring(v?1:0,{damping:14,stiffness:220})},[v]);
+  const x=useSharedValue(v?1:0);useEffect(()=>{x.value=smooth(v?1:0)},[v, x]);
   const tr=useAnimatedStyle(()=>({backgroundColor:interpolateColor(x.value,[0,1],[c.track,c.teal])}));const th=useAnimatedStyle(()=>({transform:[{translateX:x.value*20}]}));
   return <Pressable accessibilityRole="switch" accessibilityState={{checked:v}} onPress={()=>on(!v)} hitSlop={8}><Animated.View style={[{width:48,height:28,borderRadius:14,justifyContent:'center'},tr]}><Animated.View style={[{marginLeft:3,width:22,height:22,borderRadius:11,backgroundColor:'#fff'},th]}/></Animated.View></Pressable>;
 }
@@ -78,7 +79,7 @@ function Screen(){
     try{const dataUrl=await pickerImageToJpegDataUrl(res.assets[0],{maxWidth:1600});const {url}=await uploadJobImage(id,dataUrl);setImage(url)}catch{Alert.alert("Couldn't upload image",'Try again in a moment.')}finally{setUploading(false)}
   }
   const bump=useSharedValue(1);const bs=useAnimatedStyle(()=>({transform:[{scale:bump.value}]}));
-  const step=(d:number)=>{setPos(p=>Math.max(1,Math.min(99,p+d)));bump.value=withSequence(withTiming(1.4,{duration:100}),withSpring(1,{damping:8}))};
+  const step=(d:number)=>{setPos(p=>Math.max(1,Math.min(99,p+d)));bump.set(withSequence(withTiming(1.4,{duration:100}),smooth(1)))};
   const [saving,setSaving]=useState(false);
   async function save(){
     if(!job||saving)return;

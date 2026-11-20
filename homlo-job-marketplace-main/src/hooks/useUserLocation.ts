@@ -19,6 +19,8 @@ const LOCATION_UNAVAILABLE_MESSAGE =
 let Geolocation: GeolocationApi | null = null;
 
 try {
+  // Optional native module: loaded lazily so the app runs without it.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const loaded = require("@react-native-community/geolocation") as
     (GeolocationApi & { default?: GeolocationApi }) | undefined;
 

@@ -8,6 +8,7 @@ import {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -27,8 +28,16 @@ export function useLoop(delay = 0, replayKey = 0, active = true) {
       p.value = LOOP_REST;
       return;
     }
-    p.value = 0;
-    p.value = withDelay(delay, withRepeat(withTiming(1, { duration: 5000, easing: Easing.linear }), -1, false));
+    // BUGFIX: progress 0 is the fully faded-out frame, so during the start
+    // delay icons were invisible. Show the resting frame until the loop starts.
+    p.value = LOOP_REST;
+    p.value = withDelay(
+      delay,
+      withSequence(
+        withTiming(0, { duration: 0 }),
+        withRepeat(withTiming(1, { duration: 5000, easing: Easing.linear }), -1, false),
+      ),
+    );
     return () => cancelAnimation(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replayKey, reduce, active]);
@@ -53,5 +62,15 @@ export const around = (s: number, x: number, y: number) => {
 };
 
 export const FADE = [[0, 0], [0.06, 0], [0.24, 1], [0.8, 1], [0.92, 0], [1, 0]];
+
+/**
+ * BUGFIX: icons whose every part fades with FADE vanished completely for
+ * ~1.3s of each 5s loop (e.g. "New applicants" looked missing). Use this for
+ * those parts: same motion, but they dim to 30% instead of disappearing.
+ */
+export const softFade = (opacity: number) => {
+  'worklet';
+  return 0.3 + 0.7 * opacity;
+};
 // Badges settle in smoothly (no overshoot).
 export const POP = [[0, 0.6], [0.24, 0.6], [0.4, 1], [1, 1]];

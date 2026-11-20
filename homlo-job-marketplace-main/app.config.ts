@@ -98,7 +98,11 @@ const config: ExpoConfig = {
     "expo-font",
     "expo-asset",
     "expo-image",
-    "expo-secure-store",
+    [
+      "expo-secure-store",
+      // Face ID is never used; keep the (never shown) purpose string honest.
+      { faceIDPermission: "Homlo Jobs doesn't use Face ID, so it never asks for this access." },
+    ],
     "expo-status-bar",
     "expo-web-browser",
     [
@@ -106,20 +110,30 @@ const config: ExpoConfig = {
       {
         locationWhenInUsePermission:
           "Allow Homlo Jobs to use your location to show your position, nearby jobs, and driving routes.",
+        // App Store 5.1.1: every purpose string must be specific. Background
+        // location is never used.
+        locationAlwaysPermission:
+          "Homlo Jobs only uses your location while you're using the app, to show nearby jobs and driving routes. It never tracks you in the background.",
+        motionPermission: "Homlo Jobs doesn't use motion or fitness data, so it never asks for this access.",
+        locationAlwaysAndWhenInUsePermission:
+          "Homlo Jobs only uses your location while you're using the app, to show nearby jobs and driving routes. It never tracks you in the background.",
       },
     ],
     [
       "expo-audio",
       {
+        // Nothing in the app records audio; keep the (never shown) string honest.
         microphonePermission:
-          "Allow $(PRODUCT_NAME) to access your microphone.",
+          "Homlo Jobs doesn't record audio, so it never asks for microphone access.",
       },
     ],
     [
       "expo-video",
       {
-        supportsBackgroundPlayback: true,
-        supportsPictureInPicture: true,
+        // App Store 2.5.4: no background-audio mode — the only video is a muted,
+        // in-app loop, so background playback is not needed.
+        supportsBackgroundPlayback: false,
+        supportsPictureInPicture: false,
       },
     ],
     [
@@ -138,9 +152,9 @@ const config: ExpoConfig = {
       "expo-image-picker",
       {
         photosPermission:
-          "Allow $(PRODUCT_NAME) to access your photos so you can add a banner or photo to your job listing.",
+          "Homlo Jobs opens your photos only when you choose a picture for your profile, banner or a job listing.",
         cameraPermission:
-          "Allow $(PRODUCT_NAME) to use your camera to take a photo for your job listing.",
+          "Homlo Jobs uses your camera only when you choose to take a photo for your profile or a job listing.",
         microphonePermission: false,
       },
     ],

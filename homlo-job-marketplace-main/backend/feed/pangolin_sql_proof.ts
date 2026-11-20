@@ -13,6 +13,8 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// Opt-in Postgres proof run (needs `pg` installed separately); not part of the app build.
+// eslint-disable-next-line import/no-unresolved
 import pg from 'pg';
 import { feedConfig, refreshConfigJson, refreshJobStatsSql } from './marmot_tuning_knobs';
 import { createPostgresFeedStore } from './badger_postgres_store';

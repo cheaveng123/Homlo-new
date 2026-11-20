@@ -150,7 +150,7 @@ describe("structured location database + gateway contract", () => {
   });
 
   it("keeps the gateway payload field names aligned with the RPC parameters", () => {
-    const pairs: Array<[string, string]> = [
+    const pairs: [string, string][] = [
       ["payload.addressLine", "p_address_line"],
       ["payload.city", "p_city"],
       ["payload.district", "p_district"],

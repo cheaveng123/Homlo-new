@@ -1,18 +1,18 @@
 // EmployerApplicantDetailView.jsx
 // Employer side > Post a job > New applicants tab > tap an applicant card > this page.
 // Bare React Native. No Expo packages. Needs: react-native-svg, react-native-safe-area-context.
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  View, Text, Animated, Pressable, ScrollView, StyleSheet, Platform, AccessibilityInfo,
+  View,Text,Animated,Pressable,StyleSheet,AccessibilityInfo
 } from 'react-native';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /* ---------- Tokens ---------- */
 const C = {
-  teal: '#0E7C86', deep: '#073B42', tint: '#D8F0EE', bg: '#FFFFFF', text: '#14272B',
-  muted: '#58696B', line: '#E4ECEC', holder: '#EAEFEF', holderIcon: '#8A9A9C',
-  clay: '#C4531F', cream: '#FFF1D2', creamInk: '#7A4300', danger: '#C0392B', dangerBg: '#FBEAE6',
+  teal: '#0891B2', deep: '#14324A', tint: '#DCF1F6', bg: '#FFFFFF', text: '#12303C',
+  muted: '#6A7C84', line: '#E6EDEF', holder: '#EAEFEF', holderIcon: '#8A9A9C',
+  clay: '#E8870F', cream: '#FFF1D2', creamInk: '#7A4300', danger: '#C0392B', dangerBg: '#FBEAE6',
 };
 // Change these to your real font names.
 const F = { head: 'PlusJakartaSans_800ExtraBold', headB: 'PlusJakartaSans_700Bold', ui: 'Inter_400Regular', uiM: 'Inter_500Medium', uiB: 'Inter_600SemiBold' };
@@ -47,11 +47,11 @@ function useReduceMotion() {
 }
 
 function Rise({ index = 0, reduce, style, children }) {
-  const v = useRef(new Animated.Value(reduce ? 1 : 0)).current;
+  const [v] = useState(() => new Animated.Value(reduce ? 1 : 0));
   useEffect(() => {
     if (reduce) { v.setValue(1); return; }
     Animated.timing(v, { toValue: 1, duration: 420, delay: index * 70, useNativeDriver: true }).start();
-  }, [reduce]);
+  }, [index, reduce, v]);
   return (
     <Animated.View style={[style, { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
       {children}
@@ -60,7 +60,7 @@ function Rise({ index = 0, reduce, style, children }) {
 }
 
 function Press({ onPress, style, children, label, reduce }) {
-  const k = useRef(new Animated.Value(1)).current;
+  const [k] = useState(() => new Animated.Value(1));
   const to = (x) => !reduce && Animated.timing(k, { toValue: x, duration: 90, useNativeDriver: true }).start();
   return (
     <Animated.View style={{ transform: [{ scale: k }] }}>
@@ -115,7 +115,7 @@ export default function EmployerApplicantDetailView({
   const top = topInset !== undefined ? topInset : insets.top;
   const bottom = bottomInset !== undefined ? bottomInset : insets.bottom;
   const reduce = useReduceMotion();
-  const y = useRef(new Animated.Value(0)).current;
+  const [y] = useState(() => new Animated.Value(0));
   const onScroll = Animated.event([{ nativeEvent: { contentOffset: { y } } }], { useNativeDriver: true });
   const barTitle = y.interpolate({ inputRange: [60, 100], outputRange: [0, 1], extrapolate: 'clamp' });
   const barLine = y.interpolate({ inputRange: [0, 12], outputRange: [0, 1], extrapolate: 'clamp' });

@@ -237,7 +237,7 @@ export default function ChatThreadScreen({ onBack }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, opponentPhoto]);
 
   const loadEarlier = useCallback(async () => {
     if (!conversationId || loadingEarlier) return;

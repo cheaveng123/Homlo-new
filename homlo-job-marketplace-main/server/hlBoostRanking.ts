@@ -24,12 +24,34 @@ export type RankedFeedCandidate = FeedCandidate & {
   boostMultiplier: number;
 };
 
+/**
+ * Boost rules (docs/FEED_RANKING.md, "Boost term").
+ * - A boost multiplies the organic score by its package multiplier, clamped to [1, maxMultiplier],
+ *   only inside its half-open window [startsAt, endsAt). After expiry the job is purely organic.
+ * - Each page of `pageSize` reserves `sponsoredRanks` for boosted jobs, at most `maxBoostedPerPage`
+ *   boosted jobs per page in total (sponsored or not), so boosts can never fill every slot.
+ * - Relevance gate: a boosted job only takes a sponsored rank when its organic score is at least
+ *   `minRelevanceRatio` x the organic score of the job it pushes down. A clearly more relevant organic
+ *   job (more than 1 / minRelevanceRatio = 2x the score) is never buried by a sponsored placement.
+ * - Jobs below `qualityFloor` employer quality cannot be boosted at all.
+ */
 export const BOOST_RANKING = {
   pageSize: 10,
   sponsoredRanks: [2, 6] as readonly number[],
   maxBoostedPerPage: 2,
   qualityFloor: 0.35,
+  maxMultiplier: 1.15,
+  minRelevanceRatio: 0.5,
 } as const;
+
+export type RerankOptions = {
+  /**
+   * Keep the caller's order for non-sponsored slots instead of re-sorting by boosted score.
+   * The feed pipeline uses this: it already sorted by (organic x boost), mixed in cold-start
+   * slots and variety, and only needs the sponsored placement + per-page cap on top.
+   */
+  preserveOrder?: boolean;
+};
 
 type Entry = {
   candidate: FeedCandidate;
@@ -50,17 +72,40 @@ export function resolveActiveBoost(
   if (!(startsAt.getTime() <= now.getTime() && now.getTime() < endsAt.getTime())) return null;
   const packageId = boost.packageId ?? boost.package ?? null;
   const explicit = boost.multiplier;
-  const multiplier =
+  const raw =
     explicit != null && Number.isFinite(explicit) && explicit > 0
       ? explicit
       : boostMultiplierForPackage(packageId);
+  const multiplier = Math.min(BOOST_RANKING.maxMultiplier, Math.max(1, raw));
   return { packageId, multiplier };
+}
+
+/** True when an employer-quality value is allowed to carry a boost (unknown quality passes). */
+export function passesBoostQuality(quality: number | null | undefined): boolean {
+  return quality == null || !Number.isFinite(quality) || quality >= BOOST_RANKING.qualityFloor;
+}
+
+/** Active boosts keyed by job id (expired / not-yet-started / inactive ones are dropped). */
+export function activeBoostsByJob(
+  boosts: readonly ActiveBoostLike[],
+  now: Date,
+): Map<string, { packageId: string | null; multiplier: number }> {
+  const out = new Map<string, { packageId: string | null; multiplier: number }>();
+  for (const boost of boosts) {
+    if (!boost || typeof boost.jobId !== "string") continue;
+    const active = resolveActiveBoost(boost, now);
+    if (!active) continue;
+    const prev = out.get(boost.jobId);
+    if (!prev || active.multiplier > prev.multiplier) out.set(boost.jobId, active);
+  }
+  return out;
 }
 
 export function rerankFeedWithBoosts(
   candidates: readonly FeedCandidate[],
   boosts: readonly ActiveBoostLike[],
   now: Date = new Date(),
+  options: RerankOptions = {},
 ): RankedFeedCandidate[] {
   const seen = new Set<string>();
   const unique: FeedCandidate[] = [];
@@ -72,19 +117,11 @@ export function rerankFeedWithBoosts(
   }
   if (unique.length === 0) return [];
 
-  const activeByJob = new Map<string, { packageId: string | null; multiplier: number }>();
-  for (const boost of boosts) {
-    if (!boost || typeof boost.jobId !== "string") continue;
-    const active = resolveActiveBoost(boost, now);
-    if (active) activeByJob.set(boost.jobId, active);
-  }
+  const activeByJob = activeBoostsByJob(boosts, now);
 
   const entries: Entry[] = unique.map((candidate) => {
     const boost = activeByJob.get(candidate.jobId) ?? null;
-    const quality = candidate.quality;
-    const passesQuality =
-      quality == null || !Number.isFinite(quality) || quality >= BOOST_RANKING.qualityFloor;
-    const isBoosted = boost !== null && passesQuality;
+    const isBoosted = boost !== null && passesBoostQuality(candidate.quality);
     const multiplier = isBoosted ? boost.multiplier : 1;
     return {
       candidate,
@@ -95,8 +132,8 @@ export function rerankFeedWithBoosts(
     };
   });
 
-  const sorted = [...entries].sort(compareEntries);
-  const boostedPool = sorted.filter((entry) => entry.isBoosted);
+  const sorted = options.preserveOrder ? entries : [...entries].sort(compareEntries);
+  const boostedPool = sorted.filter((entry) => entry.isBoosted).sort(compareEntries);
   const used = new Set<string>();
   const ordered: RankedFeedCandidate[] = [];
   let organicCursor = 0;
@@ -108,6 +145,7 @@ export function rerankFeedWithBoosts(
     const sponsoredIds = new Set<string>();
     let boostedInPage = 0;
 
+    let sponsoredBefore = 0;
     for (const rank of BOOST_RANKING.sponsoredRanks) {
       if (boostedInPage >= BOOST_RANKING.maxBoostedPerPage) break;
       const index = rank - 1;
@@ -116,8 +154,23 @@ export function rerankFeedWithBoosts(
         boostCursor += 1;
       }
       if (boostCursor >= boostedPool.length) break;
-      const boosted = boostedPool[boostCursor];
-      boostCursor += 1;
+      // Relevance gate: compare with the organic job this placement pushes down (the one that would
+      // otherwise sit at this rank). Try boosted jobs in boosted-score order until one qualifies.
+      let boosted: Entry | null = null;
+      for (let k = boostCursor; k < boostedPool.length; k += 1) {
+        const option = boostedPool[k];
+        if (used.has(option.candidate.jobId)) continue;
+        const displaced = organicAt(sorted, used, option, index - sponsoredBefore);
+        if (
+          displaced === null ||
+          option.candidate.baseScore >= BOOST_RANKING.minRelevanceRatio * displaced.candidate.baseScore
+        ) {
+          boosted = option;
+          break;
+        }
+      }
+      if (!boosted) continue;
+      sponsoredBefore += 1;
       used.add(boosted.candidate.jobId);
       slots.set(index, boosted);
       sponsoredIds.add(boosted.candidate.jobId);
@@ -170,6 +223,17 @@ export function rerankFeedWithBoosts(
   }
 
   return ordered;
+}
+
+/** The `position`-th unused entry in organic order, ignoring `skip` (the boosted job being placed). */
+function organicAt(sorted: readonly Entry[], used: ReadonlySet<string>, skip: Entry, position: number): Entry | null {
+  let seenCount = 0;
+  for (const entry of sorted) {
+    if (entry === skip || used.has(entry.candidate.jobId)) continue;
+    if (seenCount === position) return entry;
+    seenCount += 1;
+  }
+  return null;
 }
 
 function compareEntries(a: Entry, b: Entry): number {

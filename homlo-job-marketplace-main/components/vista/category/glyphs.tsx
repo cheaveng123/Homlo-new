@@ -50,3 +50,18 @@ export const PinGlyph = (p: G) => (
 );
 
 export const CheckGlyph = (p: G) => <Base {...p}><Path d="M5 12l4 4 10-10" /></Base>;
+
+export const SearchGlyph = (p: G) => (
+  <Base {...p}>
+    <Circle cx={11} cy={11} r={6.5} />
+    <Path d="M16 16l4 4" />
+  </Base>
+);
+
+export const FilterGlyph = (p: G) => (
+  <Base {...p}>
+    <Path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+    <Circle cx={16} cy={7} r={2} />
+    <Circle cx={8} cy={17} r={2} />
+  </Base>
+);

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+import { coarsenCoordinate, getHomloDirectService } from "../server/homlo-direct-service";
+
 const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 
 vi.mock("../backend/infrastructure/database/SupabaseAdapter", () => ({
@@ -10,8 +12,6 @@ vi.mock("../backend/infrastructure/database/SupabaseAdapter", () => ({
 
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "dummy-not-a-real-key";
-
-import { coarsenCoordinate, getHomloDirectService } from "../server/homlo-direct-service";
 
 const ROW = {
   user_id: "11111111-2222-3333-4444-555555555555",
@@ -26,7 +26,12 @@ const ROW = {
 };
 
 describe("public employer profile privacy", () => {
-  beforeEach(() => queryMock.mockReset());
+  beforeEach(() => {
+    queryMock.mockReset();
+    // The service is a shared singleton and employer profiles are cached;
+    // start each test from an empty cache.
+    getHomloDirectService().invalidateAfterWrite(null);
+  });
 
   it("does not return userId and coarsens coordinates", async () => {
     queryMock.mockResolvedValue({ rows: [ROW] });

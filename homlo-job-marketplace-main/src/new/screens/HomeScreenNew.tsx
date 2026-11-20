@@ -1,17 +1,25 @@
-import React, { ReactNode, useCallback, useRef } from 'react';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
-import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { ReactNode, useState } from 'react';
+import { ScrollView, StyleProp, StyleSheet, View, ViewStyle, useWindowDimensions } from 'react-native';
+import Animated, { Extrapolation, interpolate, runOnJS, type SharedValue, useAnimatedReaction, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppIconNew } from '../icons/AppIconNew';
 import { TextNew } from '../components/TextNew';
-import { PressableScaleNew, RoundButtonNew, SectionTitleNew, TagNew } from '../components/PrimitivesNew';
-import { SearchPillNew } from '../components/SearchPillNew';
-import { JobCardTallNew, JobRowNew } from '../components/JobPartsNew';
+import { PressableScaleNew } from '../components/PrimitivesNew';
+import { HERO_SHEET_OVERLAP, HomeHeroNew, SearchBarHome } from '../components/home/HomeHeaderNew';
+import { RevealOnScroll, ScrollRevealProvider } from '../components/home/ScrollRevealNew';
 import { HomeExploreGridSkeleton, HomeRecommendedSkeleton, HomeRowsSkeleton } from '@/src/new/components/NewSkeletons';
-import { colorsNew, radiusNew } from '../theme/tokensNew';
+import {
+  HiringCardHome,
+  JobCardHome,
+  JobRowHome,
+  JobTypeCardHome,
+  SectionHeaderHome,
+  homeInk,
+} from '../components/home/HomePartsNew';
 import { useCopyNew } from '../theme/copyNew';
 import { useEnterNew } from '../theme/motionNew';
 import { JobSummaryNew } from '../types/jobNew';
+import type { SectionLoadState } from '@/lib/useFirstLoadSkeletonFlag';
 
 export type JobFieldNew = { id: string; label: string; icon: ReactNode }; // icon = your EXISTING custom artwork
 export type JobTypeNew = { id: string; label: string; tagline?: string; countLabel?: string };
@@ -24,229 +32,275 @@ type Props = {
   searchPlaceholderSlot?: ReactNode; // pass the existing animated placeholder to keep it
   jobFields: JobFieldNew[]; selectedFieldId?: string; onSelectField: (id: string) => void;
   jobTypes: JobTypeNew[]; onSelectJobType: (id: string) => void;
+  /**
+   * Per-section load state (see sectionLoadState): 'loading' keeps the title
+   * and shows a skeleton, 'ready' shows the cards, 'empty' hides the section.
+   * Omitted means 'ready' when there are jobs and 'empty' otherwise.
+   */
   recommended: JobSummaryNew[]; onSeeAllRecommended: () => void;
-  recommendedLoading?: boolean;
+  recommendedState?: SectionLoadState;
   nearby: JobSummaryNew[];
-  nearbyLoading?: boolean;
+  nearbyState?: SectionLoadState;
   onPressJob: (id: string) => void; onToggleLike: (id: string) => void;
   // Optional impression tracking for FlatList sections
-  onViewableItemsChanged?: (info: { viewableItems: Array<{ item?: any; isViewable?: boolean }> }) => void;
+  onViewableItemsChanged?: (info: { viewableItems: { item?: any; isViewable?: boolean }[] }) => void;
   viewabilityConfig?: any;
   // Sections retained from the pre-redesign Home (approved extension).
-  popularJobs?: JobSummaryNew[]; popularLoading?: boolean; onSeePopular?: () => void;
-  exploreJobs?: JobSummaryNew[]; exploreLoading?: boolean; onSeeExplore?: () => void;
+  popularJobs?: JobSummaryNew[]; popularState?: SectionLoadState; onSeePopular?: () => void;
+  exploreJobs?: JobSummaryNew[]; exploreState?: SectionLoadState; onSeeExplore?: () => void;
   onPostJob?: () => void;
 };
 
-const PROMO = [
-  { bg: colorsNew.cream, ink: colorsNew.creamStrong, sub: colorsNew.creamInk, tagBg: colorsNew.deep, tagInk: colorsNew.white },
-  { bg: colorsNew.deep, ink: colorsNew.white, sub: 'rgba(255,255,255,0.85)', tagBg: colorsNew.sun, tagInk: colorsNew.deep },
-  { bg: colorsNew.clayTint, ink: colorsNew.clayInk, sub: colorsNew.clayInk, tagBg: colorsNew.clay, tagInk: colorsNew.white },
-];
-const LOC_ROW = 56;
+/** Floating search bar block: 12 gap + 52 pill + 16 fade. */
+const SBAR_H = 80;
 const PILL_H = 52;
-const FIELD_ICON = 56;
-const FIELD_ITEM_W = 80;
-const FIELD_ITEM_H = 94;
+const FIELD_COL_W = 84;
+const FIELD_ITEM_H = 98;
 const FIELD_ROW_GAP = 16;
+
+/**
+ * One of the two search pills. Shown on one side of the pin point and hidden on the other,
+ * and takes touches only while shown. The pinned/unpinned flag lives here rather than in
+ * the screen so crossing the pin point re-renders just this wrapper, not the whole feed
+ * (that full re-render landed mid-scroll and was a visible hitch).
+ * Both copies hide/show on the same test, so the frame of lag between the native scroll
+ * and these opacities can never put both on screen at once.
+ */
+function PinSide({ y, pinAt, showWhenPinned, style, children }: {
+  y: SharedValue<number>; pinAt: number; showWhenPinned: boolean; style: StyleProp<ViewStyle>; children: ReactNode;
+}) {
+  const [pinned, setPinned] = useState(false);
+  useAnimatedReaction(() => y.value >= pinAt - 0.5, (now, prev) => { if (now !== prev) runOnJS(setPinned)(now); }, [pinAt]);
+  const fade = useAnimatedStyle(() => {
+    const isPinned = y.value >= pinAt - 0.5;
+    return { opacity: isPinned === showWhenPinned ? 1 : 0 };
+  });
+  const shown = pinned === showWhenPinned;
+  return (
+    <Animated.View pointerEvents={shown ? 'box-none' : 'none'} style={[style, fade]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+function stateOf(state: SectionLoadState | undefined, jobs: readonly unknown[] | undefined): SectionLoadState {
+  return state ?? (jobs?.length ? 'ready' : 'empty');
+}
+
+function pairs<T>(list: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += 2) out.push(list.slice(i, i + 2));
+  return out;
+}
 
 export function HomeScreenNew(p: Props) {
   const copy = useCopyNew();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const enter = useEnterNew();
+  const [heroH, setHeroH] = useState(0);
   const y = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => { y.value = e.contentOffset.y; });
-  const travel = LOC_ROW + 8 + 40;
-  
-  // Track impressions for horizontal scroll views
-  const recommendedScrollX = useSharedValue(0);
-  const popularScrollX = useSharedValue(0);
-  const exploreScrollX = useSharedValue(0);
-  
-  const handleRecommendedScroll = useAnimatedScrollHandler((e) => {
-    recommendedScrollX.value = e.contentOffset.x;
+  const top = insets.top;
+  // The pill's centre sits on the sheet's top edge; once scrolled it pins under the status bar.
+  const restY = heroH - HERO_SHEET_OVERLAP - PILL_H / 2 - 12;
+  const pinY = top - 4;
+  const pinAt = restY - pinY;
+  // The real search pill scrolls with the page; a fixed copy takes over under the status bar
+  // (see PinSide for the handoff).
+  const backing = useAnimatedStyle(() => ({ opacity: interpolate(y.value, [pinAt - 12, pinAt], [0, 1], Extrapolation.CLAMP) }));
+  // Sheet corners flatten as the search bar reaches its pinned spot, so the header hands over seamlessly.
+  const cap = useAnimatedStyle(() => {
+    const r = interpolate(y.value, [pinAt - 90, pinAt], [HERO_SHEET_OVERLAP, 0], Extrapolation.CLAMP);
+    return { borderTopLeftRadius: r, borderTopRightRadius: r };
   });
-  const handlePopularScroll = useAnimatedScrollHandler((e) => {
-    popularScrollX.value = e.contentOffset.x;
-  });
-  const handleExploreScroll = useAnimatedScrollHandler((e) => {
-    exploreScrollX.value = e.contentOffset.x;
-  });
-  
-  // Floating search
-  const pill = useAnimatedStyle(() => ({
-    transform: [{ translateY: -Math.min(y.value, travel) }],
-    shadowOpacity: interpolate(y.value, [0, travel], [0.14, 0.28], Extrapolation.CLAMP),
-  }));
-
-  // Nearby jobs render item for FlatList
-  const renderNearbyItem = useCallback(({ item }: { item: JobSummaryNew }) => (
-    <JobRowNew key={item.id} job={item} onPress={() => p.onPressJob(item.id)} divider={false} />
-  ), [p.onPressJob]);
+  const { height: viewportH } = useWindowDimensions();
+  const recommendedState = stateOf(p.recommendedState, p.recommended);
+  const nearbyState = stateOf(p.nearbyState, p.nearby);
+  const popularState = stateOf(p.popularState, p.popularJobs);
+  const exploreState = stateOf(p.exploreState, p.exploreJobs);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colorsNew.white }}>
-      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 32 }}>
-        {/* Main screen heading */}
-        <Animated.View entering={enter(0)} style={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 }}>
-          <TextNew variant="title" weight="bold" color={colorsNew.deep}>Find Your Next Job</TextNew>
-        </Animated.View>
-        {/* location indicator */}
-        <Animated.View entering={enter(1)} style={{ height: LOC_ROW, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <PressableScaleNew onPress={p.onPressLocation} accessibilityLabel={p.locationLabel} style={{ minHeight: 44, justifyContent: 'center' }}>
-            <TextNew variant="caption" color={colorsNew.muted}>{copy.home.location}</TextNew>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <AppIconNew name="pin" color={colorsNew.clayInk} />
-              <TextNew variant="header">{p.locationLabel}</TextNew>
-              <AppIconNew name="down" size={18} />
-            </View>
-          </PressableScaleNew>
-          <RoundButtonNew icon="heart" onPress={p.onPressBell} badgeCount={p.savedCount} accessibilityLabel="Saved jobs" />
-        </Animated.View>
-        <View style={{ height: PILL_H + 24 }} />
+    <View style={s.root}>
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <ScrollRevealProvider scrollY={y} viewportH={viewportH}>
+        {/* cyan hero, same family as the Post page */}
+        <View onLayout={(e) => setHeroH(e.nativeEvent.layout.height)}>
+          <HomeHeroNew topInset={top} scrollY={y} title="Find Your Next Job" locationCaption={copy.home.location}
+            locationLabel={p.locationLabel} onPressLocation={p.onPressLocation}
+            savedCount={p.savedCount} onPressSaved={p.onPressBell} />
+        </View>
 
-        {/* Job field: locked to two rows, scrolls sideways, no tile background */}
-        <Animated.View entering={enter(3)}>
-          <SectionTitleNew title={copy.home.jobField} style={{ marginTop: 0 }} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-            <View style={{ flexDirection: 'column', flexWrap: 'wrap', height: FIELD_ITEM_H * 2 + FIELD_ROW_GAP, columnGap: 16, rowGap: FIELD_ROW_GAP }}>
-              {p.jobFields.map((f) => {
-                const on = f.id === p.selectedFieldId;
-                return (
-                  <PressableScaleNew key={f.id} onPress={() => p.onSelectField(f.id)} accessibilityState={{ selected: on }} style={{ width: FIELD_ITEM_W, height: FIELD_ITEM_H, alignItems: 'center' }}>
-                    <View style={{ width: FIELD_ICON, height: FIELD_ICON, alignItems: 'center', justifyContent: 'center' }}>
-                      {f.icon}
-                      {on && (
-                        <View style={{ position: 'absolute', right: -3, top: -3, width: 20, height: 20, borderRadius: 10, backgroundColor: colorsNew.sun, alignItems: 'center', justifyContent: 'center' }}>
-                          <AppIconNew name="chk" size={12} color={colorsNew.deep} strokeWidth={3} />
-                        </View>
-                      )}
-                    </View>
-                    <TextNew variant="caption" weight="bold" align="center" numberOfLines={2} style={{ marginTop: 6 }}>{f.label}</TextNew>
-                  </PressableScaleNew>
-                );
-              })}
-            </View>
-          </ScrollView>
-        </Animated.View>
+        {/* white sheet with rounded corners; the search pill sits on its edge and the hero slides under it */}
+        <Animated.View style={[s.sheet, cap]}>
+        <View style={{ height: PILL_H / 2 }} />
 
-        {/* Job type: ticket-style promo cards */}
-        <Animated.View entering={enter(4)}>
-          <SectionTitleNew title={copy.home.jobType} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-            {p.jobTypes.map((t, i) => {
-              const c = PROMO[i % PROMO.length];
-              return (
-                <PressableScaleNew key={t.id} onPress={() => p.onSelectJobType(t.id)} scaleTo={0.985}
-                  style={{ width: 200, borderRadius: radiusNew.hero, padding: 16, backgroundColor: c.bg, overflow: 'hidden' }}>
-                  {!!t.tagline && <TagNew label={t.tagline} bg={c.tagBg} color={c.tagInk} />}
-                  <TextNew variant="section" color={c.ink} style={{ marginTop: 12, marginBottom: 4 }}>{t.label}</TextNew>
-                  {!!t.countLabel && <TextNew variant="meta" color={c.sub}>{t.countLabel}</TextNew>}
-                  <View style={{ position: 'absolute', right: -8, top: '50%', marginTop: -8, width: 16, height: 16, borderRadius: 8, backgroundColor: colorsNew.white }} />
+        {/* Job field: two rows, scrolls sideways */}
+        <Animated.View entering={enter(1)} style={s.sec}>
+          <SectionHeaderHome title={copy.home.jobField} glyph="jobField" />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 2, paddingBottom: 6 }}>
+            <View style={{ flexDirection: 'column', flexWrap: 'wrap', height: FIELD_ITEM_H * 2 + FIELD_ROW_GAP, columnGap: 8, rowGap: FIELD_ROW_GAP }}>
+              {p.jobFields.map((f) => (
+                <PressableScaleNew key={f.id} onPress={() => p.onSelectField(f.id)} scaleTo={0.93}
+                  accessibilityState={{ selected: f.id === p.selectedFieldId }} accessibilityLabel={f.label}
+                  style={{ width: FIELD_COL_W, height: FIELD_ITEM_H, alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 58, height: 58, alignItems: 'center', justifyContent: 'center' }}>{f.icon}</View>
+                  <TextNew variant="meta" weight="medium" color={homeInk.navy} align="center" numberOfLines={2} style={{ fontSize: 13, lineHeight: 16 }}>{f.label}</TextNew>
                 </PressableScaleNew>
-              );
-            })}
+              ))}
+            </View>
           </ScrollView>
         </Animated.View>
+
+        {/* Job type: 2x2 illustrated cards */}
+        {p.jobTypes.length > 0 && (
+          <Animated.View entering={enter(2)} style={s.sec}>
+            <SectionHeaderHome title={copy.home.jobType} glyph="jobType" />
+            <View style={{ gap: 12, paddingTop: 2, paddingBottom: 4 }}>
+              {pairs(p.jobTypes).map((row, r) => (
+                <View key={r} style={{ flexDirection: 'row', gap: 12 }}>
+                  {row.map((t, c) => (
+                    <RevealOnScroll key={t.id} index={c} style={{ flex: 1 }}>
+                      <JobTypeCardHome id={t.id} label={t.label} index={r * 2 + c} onPress={() => p.onSelectJobType(t.id)} />
+                    </RevealOnScroll>
+                  ))}
+                  {row.length === 1 && <View style={{ flex: 1 }} />}
+                </View>
+              ))}
+            </View>
+          </Animated.View>
+        )}
 
         {/* Recommended */}
-        <Animated.View entering={enter(5)}>
-          <SectionTitleNew title={copy.home.recommended} actionLabel={copy.home.seeAll} onAction={p.onSeeAllRecommended} />
-          {p.recommendedLoading ? (
+        {recommendedState !== 'empty' && (
+        <View style={s.sec}>
+          <RevealOnScroll>
+            <SectionHeaderHome title={copy.home.recommended} glyph="recommended" actionLabel={copy.home.seeAll} onAction={p.onSeeAllRecommended} />
+          </RevealOnScroll>
+          {recommendedState === 'loading' ? (
             <HomeRecommendedSkeleton />
           ) : (
-            <Animated.ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleRecommendedScroll}
-              scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-            >
-              {p.recommended.map((j) => <JobCardTallNew key={j.id} job={j} onPress={() => p.onPressJob(j.id)} onToggleLike={() => p.onToggleLike(j.id)} />)}
-            </Animated.ScrollView>
-          )}
-        </Animated.View>
-
-        {/* Jobs near you - using ScrollView to avoid nested VirtualizedList warning */}
-        <Animated.View entering={enter(6)}>
-          <SectionTitleNew title={copy.home.nearby} />
-          {p.nearbyLoading ? (
-            <HomeRowsSkeleton />
-          ) : p.nearby.length > 0 ? (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 16 }}
-            >
-              {p.nearby.map((item) => renderNearbyItem({ item }))}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={s.hs}>
+              {p.recommended.map((j, i) => (
+                <RevealOnScroll key={j.id} index={i}>
+                  <JobCardHome job={j} onPress={() => p.onPressJob(j.id)} onToggleLike={() => p.onToggleLike(j.id)} />
+                </RevealOnScroll>
+              ))}
             </ScrollView>
-          ) : null}
-        </Animated.View>
+          )}
+        </View>
+        )}
 
-        {/* Popular (retained from the pre-redesign Home) */}
-        {(p.popularLoading || !!p.popularJobs?.length) && (
-          <Animated.View entering={enter(7)}>
-            <SectionTitleNew title={copy.home.popular} actionLabel={copy.home.seeAll} onAction={p.onSeePopular} />
-            {p.popularLoading ? (
+        {/* Jobs near you */}
+        {nearbyState !== 'empty' && (
+          <View style={s.sec}>
+            <RevealOnScroll>
+              <SectionHeaderHome title={copy.home.nearby} glyph="nearby" />
+            </RevealOnScroll>
+            {nearbyState === 'loading' ? (
               <HomeRowsSkeleton />
             ) : (
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 16 }}
-              >
-                {p.popularJobs?.map((item) => <JobRowNew key={item.id} job={item} onPress={() => p.onPressJob(item.id)} divider={false} />)}
-              </ScrollView>
+              <View style={s.list}>
+                {p.nearby.map((j) => (
+                  <RevealOnScroll key={j.id}><JobRowHome job={j} onPress={() => p.onPressJob(j.id)} /></RevealOnScroll>
+                ))}
+              </View>
             )}
-          </Animated.View>
+          </View>
         )}
 
-        {/* Explore grid (retained from the pre-redesign Home) */}
-        {(p.exploreLoading || !!p.exploreJobs?.length) && (
-          <Animated.View entering={enter(8)}>
-            <SectionTitleNew title={copy.home.explore} actionLabel={copy.home.seeAll} onAction={p.onSeeExplore} />
-            {p.exploreLoading ? (
+        {/* Popular */}
+        {popularState !== 'empty' && (
+          <View style={s.sec}>
+            <RevealOnScroll>
+              <SectionHeaderHome title={copy.home.popular} glyph="popular" actionLabel={copy.home.seeAll} onAction={p.onSeePopular} />
+            </RevealOnScroll>
+            {popularState === 'loading' ? (
+              <HomeRowsSkeleton />
+            ) : (
+              <View style={s.list}>
+                {p.popularJobs?.map((j) => (
+                  <RevealOnScroll key={j.id}><JobRowHome job={j} onPress={() => p.onPressJob(j.id)} /></RevealOnScroll>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Explore */}
+        {exploreState !== 'empty' && (
+          <View style={s.sec}>
+            <RevealOnScroll>
+              <SectionHeaderHome title={copy.home.explore} glyph="explore" actionLabel={copy.home.seeAll} onAction={p.onSeeExplore} />
+            </RevealOnScroll>
+            {exploreState === 'loading' ? (
               <HomeExploreGridSkeleton />
             ) : (
-              <Animated.ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                onScroll={handleExploreScroll}
-                scrollEventThrottle={16}
-                contentContainerStyle={{ paddingHorizontal: 16, columnGap: 12, rowGap: 20 }}
-              >
-                {p.exploreJobs?.map((j) => (
-                  <JobCardTallNew key={j.id} job={j} width={(width - 32 - 12) / 2} onPress={() => p.onPressJob(j.id)} onToggleLike={() => p.onToggleLike(j.id)} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={s.hs}>
+                {p.exploreJobs?.map((j, i) => (
+                  <RevealOnScroll key={j.id} index={i}>
+                    <JobCardHome big job={j} onPress={() => p.onPressJob(j.id)} onToggleLike={() => p.onToggleLike(j.id)} />
+                  </RevealOnScroll>
                 ))}
-              </Animated.ScrollView>
+              </ScrollView>
             )}
-          </Animated.View>
+          </View>
         )}
 
-        {/* Employer CTA (retained) */}
+        {/* Employer CTA */}
         {!!p.onPostJob && (
-          <Animated.View entering={enter(8)}>
-            <PressableScaleNew onPress={p.onPostJob} scaleTo={0.985}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 24, padding: 16, borderRadius: radiusNew.card, backgroundColor: colorsNew.deep }}>
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' }}>
-                <AppIconNew name="users" color={colorsNew.white} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <TextNew variant="title" weight="semibold" color={colorsNew.white}>{copy.home.hiringTitle}</TextNew>
-                <TextNew variant="meta" color="rgba(255,255,255,0.85)">{copy.home.hiringBody}</TextNew>
-              </View>
-              <View style={{ backgroundColor: colorsNew.sun, borderRadius: radiusNew.pill, paddingHorizontal: 14, minHeight: 40, justifyContent: 'center' }}>
-                <TextNew variant="meta" weight="semibold" color={colorsNew.deep}>{copy.home.hiringCta}</TextNew>
-              </View>
-            </PressableScaleNew>
-          </Animated.View>
+          <RevealOnScroll>
+            <HiringCardHome title={copy.home.hiringTitle} body={copy.home.hiringBody} onPress={p.onPostJob} />
+          </RevealOnScroll>
         )}
+        </Animated.View>
+
+        {/* search pill in its resting place, on the edge where the hero meets the sheet */}
+        {heroH > 0 && (
+          <PinSide y={y} pinAt={pinAt} showWhenPinned={false} style={[s.inlineSearch, { top: restY + 12 }]}>
+            <SearchBarHome prefix={copy.home.searchPrefix} words={copy.home.searchWords} placeholder={p.searchPlaceholderSlot}
+              onPress={p.onPressSearch} onFilter={p.onPressFilter} />
+          </PinSide>
+        )}
+        </ScrollRevealProvider>
       </Animated.ScrollView>
 
-      <Animated.View style={[{ position: 'absolute', left: 16, right: 16, top: insets.top + 8 + 40 + LOC_ROW + 8, zIndex: 10, borderRadius: 999, shadowColor: colorsNew.deep, shadowOffset: { width: 0, height: 10 }, shadowRadius: 28, elevation: 8 }, pill]}>
-        <SearchPillNew floating onPress={p.onPressSearch} onRightPress={p.onPressFilter} right="filter"
-          prefix={copy.home.searchPrefix} words={copy.home.searchWords} placeholder={p.searchPlaceholderSlot} />
+      {/* search bar: rides with the header, then pins under the status bar */}
+      {/* status-bar strip: content fades out underneath it */}
+      <Animated.View pointerEvents="none" style={[s.statusStrip, { height: top + 8 }, backing]}>
+        <LinearGradient colors={['#FFFFFF', '#FFFFFF', 'rgba(255,255,255,0)']} locations={[0, top / (top + 8), 1]} style={StyleSheet.absoluteFill} />
       </Animated.View>
+
+      {heroH > 0 && (
+        <PinSide y={y} pinAt={pinAt} showWhenPinned style={[s.sbar, { top: pinY }]}>
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <View style={s.sbarSolid} />
+            <LinearGradient colors={['#FFFFFF', 'rgba(255,255,255,0)']} style={s.sbarFade} />
+          </View>
+          <SearchBarHome prefix={copy.home.searchPrefix} words={copy.home.searchWords} placeholder={p.searchPlaceholderSlot}
+            onPress={p.onPressSearch} onFilter={p.onPressFilter} />
+        </PinSide>
+      )}
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  statusStrip: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
+  sheet: {
+    flexGrow: 1, marginTop: -HERO_SHEET_OVERLAP, paddingTop: HERO_SHEET_OVERLAP, paddingBottom: 40, backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: HERO_SHEET_OVERLAP, borderTopRightRadius: HERO_SHEET_OVERLAP,
+  },
+  inlineSearch: { position: 'absolute', left: 16, right: 16, zIndex: 5 },
+  sbar: { position: 'absolute', left: 0, right: 0, height: SBAR_H, paddingTop: 12, paddingHorizontal: 16, zIndex: 10, elevation: 10 },
+  sbarSolid: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 28, backgroundColor: '#FFFFFF' },
+  sbarFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 28 },
+  sec: { paddingHorizontal: 16, marginTop: 10 },
+  hs: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 8, gap: 14 },
+  list: { gap: 18, paddingBottom: 6 },
+});

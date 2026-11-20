@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { PlnQzxPlansView } from "@/components/plnQzx/plnQzx_PlansView";
+import { PlansShowcaseView } from "@/components/plans/PlansShowcaseView";
 import { QzCta, QzText } from "@/components/plnQzx/plnQzx_bits";
 import { QZ, qzShadow } from "@/components/plnQzx/plnQzx_tokens";
 import type { PlnQzxPlan, PlnQzxPlansCopy } from "@/components/plnQzx/plnQzx_types";
 import { AppIcon } from "@/components/ui/AppIcon";
+import { PlanLimitNotice } from "@/components/plnQzx/plnQzx_LimitNotice";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 
@@ -34,17 +35,25 @@ function featureLimit(features: readonly string[], pattern: RegExp): number | nu
 
 const formatPrice = (value: number) => (value === 0 ? "$0" : `$${value.toFixed(2)}`);
 
+const isPlanId = (v: unknown): v is PlanId => v === "free" || v === "pro" || v === "enterprise";
+
 export default function AccountPlansScreen() {
   const router = useRouter();
+  // Set when an employer is sent here after hitting a plan limit while publishing.
+  const params = useLocalSearchParams<{ required?: string; reason?: string; limit?: string; from?: string }>();
+  const requiredPlan = isPlanId(params.required) ? params.required : undefined;
   const { user, loading: authLoading } = useAuth();
   const accountQuery = trpc.homlo.account.get.useQuery(undefined, { enabled: Boolean(user) });
   const account = accountQuery.data as { account?: { plan?: PlanId; plan_status?: string } | null } | undefined;
   const currentPlan = account?.account?.plan ?? "free";
-  const [selected, setSelected] = useState<PlanId>("free");
+  const [selected, setSelected] = useState<PlanId>(requiredPlan ?? "free");
   const [prevPlan, setPrevPlan] = useState<string>("free");
-  if (currentPlan && currentPlan !== prevPlan) {
-    setPrevPlan(currentPlan);
-    setSelected(currentPlan);
+  // Re-sync when either the account's plan loads/changes or a new "required" plan arrives.
+  const syncKey = `${currentPlan}|${requiredPlan ?? ""}`;
+  if (currentPlan && syncKey !== prevPlan) {
+    setPrevPlan(syncKey);
+    // Keep the plan that lifts the limit selected; otherwise show the current plan.
+    setSelected(requiredPlan && requiredPlan !== currentPlan ? requiredPlan : currentPlan);
   }
 
   const goToCheckout = () => {
@@ -108,8 +117,23 @@ export default function AccountPlansScreen() {
     ctaChange: (planName) => (selected === "enterprise" ? "Contact Homlo" : `Choose ${planName}`),
   };
 
+  const limitPlanName = plans.find((x) => x.id === (isPlanId(params.from) ? params.from : currentPlan))?.name ?? "Free";
+  const requiredName = plans.find((x) => x.id === requiredPlan)?.name;
+  const notice =
+    requiredPlan && requiredName && requiredPlan !== currentPlan ? (
+      <PlanLimitNotice
+        planName={limitPlanName}
+        requiredName={requiredName}
+        reason={params.reason === "posts" ? "posts" : "active"}
+        limit={Number(params.limit) || undefined}
+      />
+    ) : null;
+
   return (
-    <PlnQzxPlansView
+    <PlansShowcaseView
+      notice={notice}
+      requiredPlanId={requiredPlan && requiredPlan !== currentPlan ? requiredPlan : undefined}
+      requiredTag="Needed to continue"
       plans={viewPlans}
       currentPlanId={currentPlan}
       selectedPlanId={selected}

@@ -33,18 +33,6 @@ const kinds = Object.keys(configs) as DiscoveryKind[];
 const locationOptions = ["All locations", "Phnom Penh", "Remote"];
 const payOptions = ["Any pay", "Under $400", "$400+"];
 const sortOptions: { label: string; value: SortMode }[] = [{ label: "Most recent", value: "Recent" }, { label: "Highest pay", value: "Pay" }];
-const localThumbs: Record<string, number> = {
-  "restaurant-server": require("../../assets/images/restaurant-server.jpg"),
-  "retail-assistant": require("../../assets/images/retail-assistant.jpg"),
-  "social-media-specialist": require("../../assets/images/social-media-specialist.jpg"),
-  "kitchen-assistant": require("../../assets/images/kitchen-assistant.jpg"),
-  "teaching-assistant": require("../../assets/images/teaching-assistant.jpg"),
-  "event-staff": require("../../assets/images/event-staff.jpg"),
-  "growth-marketing-intern": require("../../assets/images/growth-marketing-intern.jpg"),
-  "business-development-intern": require("../../assets/images/business-development-intern.jpg"),
-  "guest-relations-officer": require("../../assets/images/guest-relations-officer.jpg"),
-  "customer-support-rep": require("../../assets/images/customer-support-rep.jpg"),
-};
 const parsePay = (value: string) => Number(value.replace(/[^0-9]/g, "").slice(0, 4)) || 0;
 
 export default function DiscoverScreen() {
@@ -101,7 +89,7 @@ export default function DiscoverScreen() {
     <ScreenContainer className="flex-1" containerClassName="bg-[#FFFFFF]" edges={["left", "right", "bottom"]}>
       <View style={styles.screen}>
         {searchLoading && results.length === 0 ? (
-          <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#16803C" /></View>
+          <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#0891B2" /></View>
         ) : (
           <FlatList
             contentContainerStyle={[styles.content, { paddingBottom: 94 + Math.max(insets.bottom, 8) }]}
@@ -130,12 +118,12 @@ function FilterGroup({ label, onSelect, options, selected, valueMap }: { label: 
 }
 
 function EmptyState({ onReset }: { onReset: () => void }) {
-  return <View style={styles.emptyState}><View style={styles.emptyIcon}><AppIcon name="brief" size={24} color="#16803C" /></View><Text style={styles.emptyTitle}>No jobs found</Text><Text style={styles.emptyCopy}>Try widening your filters to see more opportunities.</Text><ScalePressable hapticFeedback onPress={onReset} style={styles.emptyButton}><Text style={styles.emptyButtonText}>Reset filters</Text></ScalePressable></View>;
+  return <View style={styles.emptyState}><View style={styles.emptyIcon}><AppIcon name="brief" size={24} color="#0891B2" /></View><Text style={styles.emptyTitle}>No jobs found</Text><Text style={styles.emptyCopy}>Try widening your filters to see more opportunities.</Text><ScalePressable hapticFeedback onPress={onReset} style={styles.emptyButton}><Text style={styles.emptyButtonText}>Reset filters</Text></ScalePressable></View>;
 }
 
 function DiscoveryTabBar({ insetsBottom, router }: { insetsBottom: number; router: ReturnType<typeof useRouter> }) {
   const tabs = [{ label: "Home", icon: "home" as const, route: "/" }, { label: "Jobs", icon: "search" as const, route: "/explore" }, { label: "Inbox", icon: "bell" as const, route: "/inbox" }, { label: "Profile", icon: "user" as const, route: "/profile" }];
-  return <View style={[styles.tabBar, { paddingBottom: insetsBottom }]}>{tabs.slice(0, 2).map((tab) => { const active = tab.label === "Jobs"; return <Pressable accessibilityLabel={tab.label} key={tab.label} onPress={() => router.replace(tab.route as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name={tab.icon} size={27} color={active ? "#16803C" : "#66736A"} /><Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text></Pressable>; })}<View style={styles.tabItem}><PostTabButton /></View><Pressable accessibilityLabel="Inbox" onPress={() => router.replace("/inbox" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name="bell" size={27} color="#66736A" /><Text style={styles.tabLabel}>Inbox</Text></Pressable><Pressable accessibilityLabel="Profile" onPress={() => router.replace("/profile" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name="user" size={27} color="#66736A" /><Text style={styles.tabLabel}>Profile</Text></Pressable></View>;
+  return <View style={[styles.tabBar, { paddingBottom: insetsBottom }]}>{tabs.slice(0, 2).map((tab) => { const active = tab.label === "Jobs"; return <Pressable accessibilityLabel={tab.label} key={tab.label} onPress={() => router.dismissTo(tab.route as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name={tab.icon} size={27} color={active ? "#0891B2" : "#66736A"} /><Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{tab.label}</Text></Pressable>; })}<View style={styles.tabItem}><PostTabButton /></View><Pressable accessibilityLabel="Inbox" onPress={() => router.dismissTo("/inbox" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name="bell" size={27} color="#66736A" /><Text style={styles.tabLabel}>Inbox</Text></Pressable><Pressable accessibilityLabel="Profile" onPress={() => router.dismissTo("/profile" as never)} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}><AppIcon name="user" size={27} color="#66736A" /><Text style={styles.tabLabel}>Profile</Text></Pressable></View>;
 }
 
 function matchesPrimary(kind: DiscoveryKind, selected: string, job: any) {
@@ -156,7 +144,7 @@ const styles = StyleSheet.create({
   topTitle: { color: "#17201A", fontSize: 16, fontWeight: "800", lineHeight: 20 },
   resultCount: { color: "#66736A", fontSize: 10.5, marginTop: 2 },
   filterButton: { alignItems: "center", backgroundColor: "#F4F8F5", borderRadius: 12, height: 42, justifyContent: "center", position: "relative", width: 42 },
-  filterBadge: { alignItems: "center", backgroundColor: "#16803C", borderColor: "#FFFFFF", borderRadius: 8, borderWidth: 1, height: 16, justifyContent: "center", minWidth: 16, position: "absolute", right: 0, top: 1 },
+  filterBadge: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 8, borderWidth: 1, height: 16, justifyContent: "center", minWidth: 16, position: "absolute", right: 0, top: 1 },
   filterBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800" },
   headerRule: { display: "none" },
   jobCard: { alignItems: "flex-start", borderBottomColor: "#E8ECEA", borderBottomWidth: 1, flexDirection: "row", minHeight: 124, paddingHorizontal: 1, paddingVertical: 13 },
@@ -169,7 +157,7 @@ const styles = StyleSheet.create({
   metaRow: { alignItems: "center", flexDirection: "row", gap: 3, marginTop: 5 },
   metaText: { color: "#66736A", flex: 1, fontSize: 10, lineHeight: 14 },
   payRow: { alignItems: "center", flexDirection: "row", gap: 7, marginTop: 5 },
-  payText: { color: "#16803C", fontSize: 11, fontWeight: "800" },
+  payText: { color: "#0891B2", fontSize: 11, fontWeight: "800" },
   jobTag: { backgroundColor: "#F1F4F2", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
   jobTagText: { color: "#526158", fontSize: 9.5, fontWeight: "600" },
   postedText: { color: "#7C8781", flex: 1, fontSize: 9.5, textAlign: "right" },
@@ -179,12 +167,12 @@ const styles = StyleSheet.create({
   emptyIcon: { alignItems: "center", backgroundColor: "#EDF7EF", borderRadius: 26, height: 52, justifyContent: "center", width: 52 },
   emptyTitle: { color: "#17201A", fontSize: 16, fontWeight: "800", marginTop: 12 },
   emptyCopy: { color: "#66736A", fontSize: 12.5, lineHeight: 18, marginTop: 6, textAlign: "center" },
-  emptyButton: { backgroundColor: "#16803C", borderRadius: 11, marginTop: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  emptyButton: { backgroundColor: "#0891B2", borderRadius: 11, marginTop: 16, paddingHorizontal: 14, paddingVertical: 10 },
   emptyButtonText: { color: "#FFFFFF", fontSize: 12.5, fontWeight: "800" },
   tabBar: { alignItems: "stretch", backgroundColor: "#FFFFFF", borderTopColor: "#E2E8E5", borderTopWidth: 1, bottom: 0, flexDirection: "row", left: 0, minHeight: 56, paddingTop: 8, position: "absolute", right: 0 },
   tabItem: { alignItems: "center", flex: 1, gap: 3 },
   tabLabel: { color: "#66736A", fontSize: 9.5, lineHeight: 12 },
-  tabLabelActive: { color: "#16803C", fontWeight: "800" },
+  tabLabelActive: { color: "#0891B2", fontWeight: "800" },
   sheetOverlay: { backgroundColor: "rgba(23,32,26,0.3)", flex: 1, justifyContent: "flex-end" },
   sheetDismiss: { flex: 1 },
   sheet: { backgroundColor: "#F7F8F6", borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: "82%" },
@@ -198,13 +186,13 @@ const styles = StyleSheet.create({
   filterLabel: { color: "#17201A", fontSize: 13, fontWeight: "800", marginBottom: 10 },
   filterOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   filterChoice: { backgroundColor: "#FFFFFF", borderColor: "#DCE5E0", borderRadius: 10, borderWidth: 1, minHeight: 44, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 10 },
-  filterChoiceSelected: { backgroundColor: "#16803C", borderColor: "#16803C" },
+  filterChoiceSelected: { backgroundColor: "#0891B2", borderColor: "#0891B2" },
   filterChoiceText: { color: "#526158", fontSize: 11.5, fontWeight: "600" },
   filterChoiceTextSelected: { color: "#FFFFFF", fontWeight: "800" },
   sheetFooter: { backgroundColor: "#FFFFFF", borderTopColor: "#E2E8E5", borderTopWidth: 1, flexDirection: "row", gap: 10, padding: 15 },
   resetButton: { alignItems: "center", borderColor: "#DCE5E0", borderRadius: 12, borderWidth: 1, justifyContent: "center", minHeight: 48, paddingHorizontal: 26 },
   resetText: { color: "#526158", fontSize: 13, fontWeight: "800" },
-  applyButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 12, flex: 1, justifyContent: "center", minHeight: 48, paddingHorizontal: 20 },
+  applyButton: { alignItems: "center", backgroundColor: "#0891B2", borderRadius: 12, flex: 1, justifyContent: "center", minHeight: 48, paddingHorizontal: 20 },
   applyText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: 80 },
 });

@@ -7,7 +7,7 @@ type StubResponse = Response & {
   statusCode: number;
   payload: { status: number; body: unknown } | null;
   headers: Record<string, string>;
-  listeners: Record<string, Array<() => void>>;
+  listeners: Record<string, (() => void)[]>;
   headersSent: boolean;
   setHeader: (name: string, value: string) => void;
   status: (code: number) => StubResponse;
@@ -21,7 +21,7 @@ function makeResponse(headersSent = false): StubResponse {
     payload: null as { status: number; body: unknown } | null,
     headers: {} as Record<string, string>,
     headersSent,
-    listeners: {} as Record<string, Array<() => void>>,
+    listeners: {} as Record<string, (() => void)[]>,
   };
   res.setHeader = (name: string, value: string) => {
     (res.headers as Record<string, string>)[name.toLowerCase()] = value;
@@ -36,7 +36,7 @@ function makeResponse(headersSent = false): StubResponse {
     return res;
   };
   res.on = (event: string, handler: () => void) => {
-    const listeners = res.listeners as Record<string, Array<() => void>>;
+    const listeners = res.listeners as Record<string, (() => void)[]>;
     listeners[event] = [...(listeners[event] ?? []), handler];
     return res;
   };

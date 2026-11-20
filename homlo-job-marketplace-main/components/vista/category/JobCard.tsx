@@ -8,7 +8,7 @@ import { haptic } from '@/lib/haptics';
 import type { VistaJob } from '../vistaCategoryData';
 import { BookmarkGlyph, BriefcaseGlyph, ClockGlyph, LaptopGlyph } from './glyphs';
 import { LogoMark } from './LogoMark';
-import { AP, F, LINE, agoLabel, isNew, payParts, placeLabel, scheduleLabel } from './tokens';
+import { AP, F, LINE, isNew, payParts, placeLabel, postedLabel, scheduleLabel } from './tokens';
 
 type Props = {
   job: VistaJob;
@@ -53,7 +53,7 @@ export const JobCard = memo(function JobCard({ job, index, revealed, saved, onOp
   }));
 
   const { amount, unit } = payParts(job);
-  const ago = agoLabel(job.postedAt);
+  const ago = postedLabel(job);
 
   return (
     <Animated.View style={[s.card, style]}>

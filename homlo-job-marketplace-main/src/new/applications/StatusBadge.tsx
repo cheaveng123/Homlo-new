@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue,
-  withDelay, withRepeat, withSequence, withTiming,
+  cancelAnimation, Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { Icon } from './Icon';
@@ -11,13 +10,23 @@ import { mapBackendStatus, statusLabel } from './status';
 import { colors, fonts, radii } from './theme';
 import type { ApplicationStatus } from './types';
 
-const TONES = {
-  waiting: { bg: colors.cream, fg: colors.ink, chip: '#FFFFFF', border: colors.cream },
-  accepted: { bg: colors.teal, fg: '#FFFFFF', chip: 'rgba(255,255,255,0.28)', border: colors.teal },
-  declined: { bg: colors.page, fg: colors.muted, chip: '#FFFFFF', border: colors.border },
+/**
+ * Status tones. Each state gets a soft tinted pill, a solid icon disc and a
+ * matching outline, so Waiting and Accepted read at a glance without relying on
+ * the label alone. Colours come from the Lagoon & Sunrise tokens only.
+ */
+export const STATUS_TONES: Record<ApplicationStatus, { bg: string; border: string; fg: string; disc: string; discFg: string }> = {
+  waiting: { bg: colors.cream, border: '#F6D9A0', fg: colors.ink, disc: colors.sun, discFg: colors.white },
+  accepted: { bg: colors.tint, border: colors.tint2, fg: colors.deep, disc: colors.teal, discFg: colors.white },
+  declined: { bg: colors.page, border: colors.border, fg: colors.muted, disc: colors.track, discFg: colors.muted },
+};
+
+const SIZES = {
+  md: { height: 28, disc: 18, icon: 11, font: 12, line: 16, padL: 4, padR: 10, gap: 6 },
+  sm: { height: 22, disc: 14, icon: 9, font: 11, line: 14, padL: 3, padR: 8, gap: 5 },
 } as const;
 
-function ClockFace({ rotate }: { rotate: boolean }) {
+function ClockFace({ size, color, rotate }: { size: number; color: string; rotate: boolean }) {
   const rot = useSharedValue(0);
   useEffect(() => {
     if (!rotate) return;
@@ -26,66 +35,59 @@ function ClockFace({ rotate }: { rotate: boolean }) {
     return () => cancelAnimation(rot);
   }, [rotate, rot]);
   const hand = useAnimatedStyle(() => ({ transform: [{ rotate: `${rot.value}deg` }] }));
+  const r = size / 2;
   return (
-    <View style={{ width: 12, height: 12 }}>
-      <Svg width={12} height={12} viewBox="0 0 12 12">
-        <Circle cx={6} cy={6} r={5} stroke={colors.ink} strokeWidth={1.3} fill="none" />
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <Circle cx={r} cy={r} r={r - 0.8} stroke={color} strokeWidth={1.3} fill="none" />
       </Svg>
       <Animated.View style={[StyleSheet.absoluteFill, hand]}>
-        <View style={{ position: 'absolute', left: 5.35, top: 2.2, width: 1.3, height: 4, borderRadius: 1, backgroundColor: colors.ink }} />
+        <View style={{ position: 'absolute', left: r - 0.65, top: size * 0.2, width: 1.3, height: r * 0.8, borderRadius: 1, backgroundColor: color }} />
       </Animated.View>
     </View>
   );
 }
 
-export function StatusBadge({ status }: { status: string }) {
+/** Icon for a status, drawn on its tone's disc colour. Shared by the pill and the filter chips. */
+export function StatusGlyph({ status, size, color, animate = true }: { status: ApplicationStatus; size: number; color: string; animate?: boolean }) {
   const reduced = useReducedMotion();
+  if (status === 'waiting') return <ClockFace size={size} color={color} rotate={animate && !reduced} />;
+  if (status === 'accepted') return <Icon name="check" size={size} color={color} strokeWidth={2.4} />;
+  return <Icon name="close" size={size} color={color} strokeWidth={2.2} />;
+}
+
+/**
+ * Application status pill: tinted capsule, solid icon disc, label. Accepts a
+ * raw backend status (`applied`, `hired`, ...) or an already-mapped state.
+ */
+export function StatusBadge({ status, size = 'md' }: { status: string; size?: keyof typeof SIZES }) {
   const mapped: ApplicationStatus = mapBackendStatus(status);
-  const t = TONES[mapped];
+  const t = STATUS_TONES[mapped];
+  const s = SIZES[size];
   const label = statusLabel(mapped);
-  const [w, setW] = useState(0);
-  const sweepX = useSharedValue(-40);
-  const sweeps = mapped !== 'declined' && !reduced;
-
-  useEffect(() => {
-    if (!sweeps || w === 0) return;
-    sweepX.value = -40;
-    sweepX.value = withRepeat(
-      withSequence(
-        withTiming(w + 40, { duration: 900, easing: Easing.inOut(Easing.quad) }),
-        withDelay(3200, withTiming(-40, { duration: 1 })),
-      ),
-      -1,
-    );
-    return () => cancelAnimation(sweepX);
-  }, [sweeps, w, sweepX]);
-
-  const sweepStyle = useAnimatedStyle(() => ({ transform: [{ translateX: sweepX.value }, { rotate: '20deg' }] }));
 
   return (
     <View
       accessible
+      accessibilityRole="text"
       accessibilityLabel={`${copy.statusPrefix}: ${label}`}
-      style={[styles.outer, mapped === 'accepted' && styles.acceptedShadow]}
+      style={[
+        styles.badge,
+        { height: s.height, paddingLeft: s.padL, paddingRight: s.padR, gap: s.gap, backgroundColor: t.bg, borderColor: t.border },
+      ]}
     >
-      <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={[styles.badge, { backgroundColor: t.bg, borderColor: t.border }]}>
-        <View style={[styles.chip, { backgroundColor: t.chip }]}>
-          {mapped === 'waiting' ? <ClockFace rotate={!reduced} />
-            : mapped === 'accepted' ? <Icon name="check" size={12} color="#FFFFFF" strokeWidth={2} />
-            : <Icon name="sunrise" size={12} color={colors.teal} strokeWidth={1.8} />}
-        </View>
-        <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.text, { color: t.fg }]}>{label}</Text>
-        {sweeps ? <Animated.View pointerEvents="none" style={[styles.sweep, sweepStyle]} /> : null}
+      <View style={[styles.disc, { width: s.disc, height: s.disc, borderRadius: s.disc / 2, backgroundColor: t.disc }]}>
+        <StatusGlyph status={mapped} size={s.icon} color={t.discFg} />
       </View>
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.text, { color: t.fg, fontSize: s.font, lineHeight: s.line }]}>
+        {label}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: { borderRadius: radii.badge, alignSelf: 'flex-start' },
-  acceptedShadow: { shadowColor: colors.teal, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  badge: { height: 28, borderRadius: radii.badge, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: 4, paddingRight: 9, gap: 6, overflow: 'hidden' },
-  chip: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  text: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
-  sweep: { position: 'absolute', top: -8, bottom: -8, left: 0, width: 16, backgroundColor: 'rgba(255,255,255,0.45)' },
+  badge: { alignSelf: 'flex-start', borderRadius: radii.pill, borderWidth: 1, flexDirection: 'row', alignItems: 'center' },
+  disc: { alignItems: 'center', justifyContent: 'center' },
+  text: { fontFamily: fonts.semibold, letterSpacing: 0.1 },
 });

@@ -23,7 +23,7 @@ export function useCountUpNew(target: number, duration = 1100) {
   const reduced = useReducedMotion();
   const [v, setV] = useState(reduced ? target : 0);
   useEffect(() => {
-    if (reduced) { setV(target); return; }
+    if (reduced) return;
     let raf = 0;
     const t0 = Date.now();
     const tick = () => {
@@ -34,5 +34,6 @@ export function useCountUpNew(target: number, duration = 1100) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target, duration, reduced]);
-  return v;
+  // Reduce Motion: the final number, no count-up.
+  return reduced ? target : v;
 }

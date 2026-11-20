@@ -158,21 +158,25 @@ export default function MyListingsScreen() {
   // live listings only (the only statuses still accepting applications).
   const liveJobs = useMemo(() => gatewayJobs.filter((j) => listingStatus(j) === 'live'), [gatewayJobs]);
 
-  const applicantResults = trpc.useQueries((t) =>
-    liveJobs.map((job) => t.homlo.employer.applications({ jobId: job.id })),
-  );
+  // PERF: one query for every job's applicants (was one query per live job).
+  const applicantsQuery = trpc.homlo.employer.allApplications.useQuery(undefined, {
+    enabled: liveJobs.length > 0,
+  });
 
   const stats = useMemo(() => {
     const active = liveJobs.length;
+    const liveIds = new Set(liveJobs.map((j) => j.id));
     let applicants = 0;
     let newApplicants = 0;
-    for (const res of applicantResults) {
-      const rows = (res.data as { applications?: unknown[] } | undefined)?.applications ?? [];
-      applicants += rows.length;
-      newApplicants += rows.filter((r) => (r as { status?: string })?.status === 'applied').length;
+    const rows = (applicantsQuery.data as { applications?: { job_id?: string; status?: string }[] } | undefined)
+      ?.applications ?? [];
+    for (const r of rows) {
+      if (!r.job_id || !liveIds.has(r.job_id)) continue;
+      applicants += 1;
+      if (r.status === 'applied') newApplicants += 1;
     }
     return { active, applicants, newApplicants };
-  }, [applicantResults, liveJobs.length]);
+  }, [applicantsQuery.data, liveJobs]);
 
   const initials = useMemo(() => {
     const name = user?.name?.trim() || '';
@@ -195,7 +199,7 @@ export default function MyListingsScreen() {
     const now = Date.now();
     if (now < lockUntilRef.current) return;
     lockUntilRef.current = now + 400;
-    haptic.light();
+    // Haptic feedback is played by BottomTabBar itself.
     router.push(target);
   };
 

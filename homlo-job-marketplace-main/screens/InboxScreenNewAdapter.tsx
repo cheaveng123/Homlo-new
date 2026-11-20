@@ -23,16 +23,6 @@ import { trpc } from "@/lib/trpc";
 const TABS = ["Applications", "Messages", "Updates"];
 const TAB_KEYS = ["applications", "messages", "updates"] as const;
 
-const STATUS_LABELS: Record<string, string> = {
-  applied: "applicant",
-  reviewed: "applicant",
-  interview: "interview",
-  hired: "hired",
-  rejected: "rejected",
-  declined: "rejected",
-  withdrawn: "withdrawn",
-};
-
 const UPDATE_STATUSES = new Set(["interview", "hired", "rejected", "declined", "withdrawn"]);
 
 function normalizeTab(tab?: string): string {
@@ -146,7 +136,7 @@ export default function InboxScreenNewAdapter({ initialTab = "messages" }: { ini
   );
 
   const notificationItems = useMemo<ConversationSummary[]>(() => {
-    const rows = (notificationsQuery.data as { notifications?: Array<{ id: string; type: string; title: string; body: string; read: boolean; created_at: string; job_id: string | null; data: unknown }> | undefined})?.notifications ?? [];
+    const rows = (notificationsQuery.data as { notifications?: { id: string; type: string; title: string; body: string; read: boolean; created_at: string; job_id: string | null; data: unknown }[] | undefined})?.notifications ?? [];
     return rows
       .filter((n) => n.type === 'boost_started' || n.type === 'boost_ended')
       .map((n) => ({
@@ -179,13 +169,14 @@ export default function InboxScreenNewAdapter({ initialTab = "messages" }: { ini
     () =>
       filtered.map((c) => {
         const isNotification = c.id.startsWith('notification-');
-        const statusLabel = c.applicationStatus ? STATUS_LABELS[c.applicationStatus] ?? c.applicationStatus : "";
         return {
           id: c.id,
           name: c.otherParticipant.name,
           initials: initialsOf(c.otherParticipant.name),
           photo: c.otherParticipant.photo ?? null,
-          preview: isNotification ? c.lastMessage ?? "" : [statusLabel, c.lastMessage ?? c.jobTitle].filter(Boolean).join(" · "),
+          // Status shows as a pill (Waiting / Accepted / Not selected), not as text in the preview.
+          preview: isNotification ? c.lastMessage ?? "" : c.lastMessage ?? c.jobTitle,
+          applicationStatus: isNotification ? null : c.applicationStatus ?? null,
           timeLabel: timeAgo(c.lastMessageAt),
           unreadCount: c.unreadCount,
         };
@@ -197,10 +188,13 @@ export default function InboxScreenNewAdapter({ initialTab = "messages" }: { ini
     (id: string) => {
       if (id.startsWith('notification-')) {
         const notificationId = id.slice('notification-'.length);
-        const row = (notificationsQuery.data as { notifications?: Array<{ id: string; data: unknown; job_id: string | null }> | undefined})?.notifications?.find((n) => n.id === notificationId);
+        const row = (notificationsQuery.data as { notifications?: { id: string; data: unknown; job_id: string | null }[] | undefined})?.notifications?.find((n) => n.id === notificationId);
         const jobId = typeof row?.data === 'object' && row?.data !== null && 'job_id' in row.data ? String((row.data as { job_id?: unknown }).job_id) : (row?.job_id ?? null);
         if (jobId) {
-          void markRead.mutateAsync({ notificationId });
+          // Best-effort: a failed read receipt must not interrupt navigation.
+          markRead.mutateAsync({ notificationId }).catch((err: unknown) => {
+            console.warn("[inbox] mark notification read failed", err);
+          });
           router.push({ pathname: "/employer/job/[id]", params: { id: jobId } } as never);
         }
         return;
@@ -220,7 +214,7 @@ export default function InboxScreenNewAdapter({ initialTab = "messages" }: { ini
         },
       } as never);
     },
-    [conversations, notificationsQuery.data, router, trpc, markRead],
+    [conversations, notificationsQuery.data, router, markRead],
   );
 
   const openApplication = useCallback(
@@ -250,7 +244,9 @@ export default function InboxScreenNewAdapter({ initialTab = "messages" }: { ini
   let state: ScreenStateNew = "ready";
   if (authLoading || (user && tabLoading)) state = "loading";
   else if (tab !== "applications" && error && items.length === 0) state = "error";
-  else if (tab !== "applications" && items.length === 0) state = "empty";
+  // A search with no matches keeps the list view (and its search bar) so the
+  // query can be edited or cleared; "empty" is only for having no messages.
+  else if (tab !== "applications" && items.length === 0 && !(tab === "messages" && contactQuery.trim())) state = "empty";
 
   const applicationsTab = (
     <ApplicationsList
@@ -293,7 +289,7 @@ export default function InboxScreenNewAdapter({ initialTab = "messages" }: { ini
       tab={tab}
       onChangeTab={setTab}
       tabs={TAB_KEYS.map((key, i) => ({ key, label: TABS[i] }))}
-      onPressSearch={() => haptic.selection()}
+      onPressSearch={() => { haptic.selection(); setTab("messages"); }}
       onPressNotification={() => {}}
       groups={[]}
       conversations={items}

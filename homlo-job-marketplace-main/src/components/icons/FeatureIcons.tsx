@@ -3,7 +3,7 @@
 import React from 'react';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import Animated, { useAnimatedProps } from 'react-native-reanimated';
-import { around, FADE, kf, POP, useLoop } from './loop';
+import { around, FADE, kf, POP, softFade, useLoop } from './loop';
 
 const AG = Animated.createAnimatedComponent(G);
 const AP = Animated.createAnimatedComponent(Path);
@@ -14,7 +14,7 @@ export type FeatureIconProps = { size?: number; surface?: string; delay?: number
 // No results: a job card slides under the magnifier, then an amber "?" pops.
 export function NoResultsIcon({ size = 56, surface = '#fff', delay = 0, replayKey = 0, active = true }: FeatureIconProps) {
   const p = useLoop(delay, replayKey, active);
-  const card = useAnimatedProps(() => ({ opacity: kf(p.value, FADE), transform: [{ translateX: kf(p.value, [[0, -8], [0.06, -8], [0.26, 0], [1, 0]]) }] }));
+  const card = useAnimatedProps(() => ({ opacity: softFade(kf(p.value, FADE)), transform: [{ translateX: kf(p.value, [[0, -8], [0.06, -8], [0.26, 0], [1, 0]]) }] }));
   const badge = useAnimatedProps(() => ({
     opacity: kf(p.value, [[0, 0], [0.26, 0], [0.36, 1], [0.8, 1], [0.92, 0], [1, 0]]),
     transform: around(kf(p.value, POP), 31, 9),
@@ -41,7 +41,7 @@ export function NoResultsIcon({ size = 56, surface = '#fff', delay = 0, replayKe
 // Empty inbox: a letter drops into the tray, then the amber dot pings.
 export function EmptyInboxIcon({ size = 56, surface = '#fff', delay = 0, replayKey = 0, active = true }: FeatureIconProps) {
   const p = useLoop(delay, replayKey, active);
-  const letter = useAnimatedProps(() => ({ opacity: kf(p.value, FADE), transform: [{ translateY: kf(p.value, [[0, -9], [0.06, -9], [0.26, 0], [1, 0]]) }] }));
+  const letter = useAnimatedProps(() => ({ opacity: softFade(kf(p.value, FADE)), transform: [{ translateY: kf(p.value, [[0, -9], [0.06, -9], [0.26, 0], [1, 0]]) }] }));
   const dot = useAnimatedProps(() => ({
     opacity: kf(p.value, [[0, 0], [0.26, 0], [0.36, 1], [0.8, 1], [0.92, 0], [1, 0]]),
     transform: around(kf(p.value, POP), 32, 8),
@@ -64,7 +64,7 @@ export function EmptyInboxIcon({ size = 56, surface = '#fff', delay = 0, replayK
 // Success: the circle fills, the check draws, then a soft settle.
 export function SuccessIcon({ size = 56, delay = 0, replayKey = 0, active = true }: FeatureIconProps) {
   const p = useLoop(delay, replayKey, active);
-  const ring = useAnimatedProps(() => ({ transform: around(kf(p.value, [[0, 0.6], [0.2, 1.06], [0.3, 1], [1, 1]]), 20, 20), opacity: kf(p.value, FADE) }));
+  const ring = useAnimatedProps(() => ({ transform: around(kf(p.value, [[0, 0.6], [0.2, 1.06], [0.3, 1], [1, 1]]), 20, 20), opacity: softFade(kf(p.value, FADE)) }));
   const check = useAnimatedProps(() => ({ strokeDashoffset: kf(p.value, [[0, 22], [0.24, 22], [0.42, 0], [1, 0]]) }));
   return (
     <Svg width={size} height={size} viewBox="0 0 40 40">
@@ -82,7 +82,7 @@ export function SuccessIcon({ size = 56, delay = 0, replayKey = 0, active = true
 // Error: a warning card tilts in, then the amber "!" pops.
 export function ErrorStateIcon({ size = 56, surface = '#fff', delay = 0, replayKey = 0, active = true }: FeatureIconProps) {
   const p = useLoop(delay, replayKey, active);
-  const card = useAnimatedProps(() => ({ opacity: kf(p.value, FADE), transform: [{ translateY: kf(p.value, [[0, 6], [0.06, 6], [0.26, 0], [1, 0]]) }] }));
+  const card = useAnimatedProps(() => ({ opacity: softFade(kf(p.value, FADE)), transform: [{ translateY: kf(p.value, [[0, 6], [0.06, 6], [0.26, 0], [1, 0]]) }] }));
   const badge = useAnimatedProps(() => ({
     opacity: kf(p.value, [[0, 0], [0.26, 0], [0.36, 1], [0.8, 1], [0.92, 0], [1, 0]]),
     transform: around(kf(p.value, POP), 29, 28),

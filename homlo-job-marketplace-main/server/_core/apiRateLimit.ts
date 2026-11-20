@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import rateLimit, { ipKeyGenerator, type Options, type RateLimitRequestHandler } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator, type Options, type RateLimitRequestHandler } from "express-rate-limit";
 
 const RATE_LIMIT_ERROR_MESSAGE = "Too many requests";
 
@@ -64,16 +64,22 @@ export function createApiRateLimiters(): ApiRateLimiters {
     statusCode: 429,
   };
 
+  // PERF: sized for real app use. One IP is often many phones (carrier NAT,
+  // office Wi-Fi), and a single user browsing Home → Explore → Search → Job
+  // easily made 60 public calls in 5 minutes, which returned 429s that the app
+  // showed as spinners/"lag". Public reads are now served from a short
+  // server cache (see homlo-direct-service.ts), so a higher ceiling is cheap
+  // while still stopping scraping/abuse.
   const trpcGeneral = rateLimit({
     ...baseOptions,
     windowMs: FIVE_MINUTES_MS,
-    limit: 300,
+    limit: 600,
   });
 
   const trpcPublicLimiter = rateLimit({
     ...baseOptions,
     windowMs: FIVE_MINUTES_MS,
-    limit: 60,
+    limit: 300,
   });
 
   const trpcPublic: RequestHandler = (req, res, next) => {

@@ -39,7 +39,7 @@ export interface JobCandidate {
 /** What the quick-search wizard saved. All optional. Used ONLY to compute the optional fitPercent. */
 export interface QuickSearchPrefs {
   /** 'remote' is allowed here because the wizard's first step lists it next to part/full/weekends. */
-  jobTypes?: Array<JobType | 'remote'>;
+  jobTypes?: (JobType | 'remote')[];
   payMin?: number | null;
   payMax?: number | null;
   payPeriod?: PayPeriod | null;

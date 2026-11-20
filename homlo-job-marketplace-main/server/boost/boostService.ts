@@ -198,3 +198,35 @@ export async function getOwnerBoostState(
     queued: Math.max(0, result.rows.length - 1),
   };
 }
+
+/**
+ * Employer cancels a job's boost: the running boost and any boosts queued
+ * after it stop immediately. Only boosts owned by `employerUserId` are touched,
+ * so the job id alone can never cancel someone else's boost. The matching
+ * purchase-ledger rows (job_boosts) are cancelled too, which also frees the
+ * job to be boosted again. Store purchases are not refunded here.
+ */
+export async function cancelOwnerBoosts(
+  db: BoostQueryable,
+  jobId: string,
+  employerUserId: string,
+): Promise<{ cancelled: number }> {
+  const result = await db.query<{ id: string }>(
+    `update public.boosts
+        set status = 'cancelled', updated_at = now()
+      where job_id = $1 and employer_id = $2
+        and status in ('active', 'scheduled')
+      returning id`,
+    [jobId, employerUserId],
+  );
+  if (result.rows.length === 0) return { cancelled: 0 };
+
+  await db.query(
+    `update public.job_boosts
+        set status = 'cancelled', updated_at = now()
+      where job_id = $1 and employer_id = $2
+        and status in ('pending', 'active')`,
+    [jobId, employerUserId],
+  );
+  return { cancelled: result.rows.length };
+}

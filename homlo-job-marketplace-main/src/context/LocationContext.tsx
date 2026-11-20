@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 
 import { type UseUserLocationResult, useUserLocation } from "../hooks/useUserLocation";
 
@@ -22,16 +22,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const retry = useCallback(() => requestPermission(), [requestPermission]);
 
-  const value: LocationContextValue = {
-    location,
-    accuracy,
-    permission,
-    permissionDenied,
-    error,
-    loading,
-    requestPermission,
-    retry,
-  };
+  // PERF: this provider wraps the whole app. A fresh object every render made
+  // every useLocation() consumer re-render whenever the root re-rendered.
+  const value = useMemo<LocationContextValue>(
+    () => ({ location, accuracy, permission, permissionDenied, error, loading, requestPermission, retry }),
+    [location, accuracy, permission, permissionDenied, error, loading, requestPermission, retry],
+  );
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }

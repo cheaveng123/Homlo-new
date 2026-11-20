@@ -1,131 +1,105 @@
-// Page 2 of 4: Part-time / Full-time / Weekends / Remote. One route, four v2 layouts.
-// Reads the `tab` param the home sends and renders the matching jobs-v2 layout with
-// live data: Part-time / Full-time from homlo.searchJobs, Weekends / Remote from the
-// home feed's server-composed sections.
-import React from 'react';
+// Page 2 of 4: Part-time / Full-time / Volunteer / Weekends. One route, one screen.
+// Reads the `tab` param the home sends and renders JobTypeScreen with live data:
+// Part-time / Full-time from homlo.searchJobs, Volunteer / Weekends from the home
+// feed's server-composed sections. The picker on the page switches the type in
+// place (local state), so the same hooks simply follow the selected type.
+import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import PartTimeScreen, { type PartTimeJob } from '@/components/jobs-v2/PartTimeScreen';
-import FullTimeScreen, { type FullTimeJob } from '@/components/jobs-v2/FullTimeScreen';
-import WeekendsScreen, { type WeekendJob } from '@/components/jobs-v2/WeekendsScreen';
-import RemoteScreen, { type RemoteJob } from '@/components/jobs-v2/RemoteScreen';
+import JobTypeScreen, { type ListedJob } from '@/components/jobs-v2/JobTypeScreen';
+import { HOME_JOB_TYPES } from '@/lib/job-types';
+import { useJobStore } from '@/components/job-store';
 import { useHomeFeed } from '@/hooks/use-home-feed';
 import { useJobSearch } from '@/hooks/use-job-search';
-import { useFirstLoadSkeletonFlag } from '@/lib/useFirstLoadSkeletonFlag';
+import { sectionLoadState, useFirstLoadSkeletonFlag } from '@/lib/useFirstLoadSkeletonFlag';
+import { employerIdForCompany } from '@/lib/mock/employerMockData';
 import { haptic } from '@/lib/haptics';
 
-const TAB_SLUGS = ['part-time', 'full-time', 'weekends', 'remote'];
+/** Picker order and labels follow the Home Job type cards. */
+const TYPES = HOME_JOB_TYPES.map((t) => ({ key: t.key, label: t.label }));
+const TAB_SLUGS: string[] = TYPES.map((t) => t.key);
 
-function monthlyAmount(pay: string): number {
-  return Number(String(pay).replace(/[^0-9.]/g, '')) || 0;
-}
+type FeedState = { jobs: ListedJob[]; loading: boolean; error: boolean; refetch: () => void };
 
-// Wrapper so useHomeFeed only runs when the weekends/remote tab is active.
-// useHomeFeed has no `enabled` option, so we conditionally mount this component.
-function FeedJobs({ tab, openJob, goBack, goSearch, goFilters }: {
-  tab: number; openJob: (id: string) => void; goBack: () => void;
-  goSearch: () => void; goFilters: () => void;
-}) {
-  const { weekend, remote, loading: feedLoading } = useHomeFeed();
+// Mounted only while weekends/volunteer is selected, because useHomeFeed has no
+// `enabled` option. It reports the selected section up to the screen.
+function FeedBridge({ type, onData }: { type: 'weekends' | 'volunteer'; onData: (s: FeedState) => void }) {
+  const { weekend, volunteer, ready, error, refetch } = useHomeFeed();
 
-  // Hook calls are unconditional within this component (React hook rules).
-  const weekendLoading = useFirstLoadSkeletonFlag({ loading: feedLoading, data: weekend });
-  const remoteLoading = useFirstLoadSkeletonFlag({ loading: feedLoading, data: remote });
+  // Skeleton until the feed and its job records are in (`ready`); an error
+  // settles it so the page can show its retry state.
+  const settled = ready || !!error;
+  const weekendLoading = sectionLoadState({ settled, count: weekend.length }) === 'loading';
+  const volunteerLoading = sectionLoadState({ settled, count: volunteer.length }) === 'loading';
 
-  if (tab === 2) {
-    const jobs: WeekendJob[] = weekend.map((j) => {
-      const sched = j.schedule?.toLowerCase() ?? '';
-      const day = sched.includes('sunday') ? 'SUN' : sched.includes('saturday') ? 'SAT' : 'WEEKEND';
-      return { id: j.id, day, hours: j.schedule || 'Flexible hours', title: j.title, company: j.company, pay: j.pay };
-    });
-    return <WeekendsScreen jobs={jobs} onBack={goBack} onJobPress={openJob} loading={weekendLoading} />;
-  }
-
-  if (tab === 3) {
-    const jobs: RemoteJob[] = remote.map((j) => ({
-      id: j.id, title: j.title, company: j.company, pay: j.pay,
-      photo: j.image ? { uri: j.image } : undefined,
-    }));
-    return (
-      <RemoteScreen
-        jobs={jobs}
-        countLabel={`${jobs.length} work-from-anywhere roles`}
-        onBack={goBack} onSearch={goSearch} onFilters={goFilters}
-        onJobPress={openJob} loading={remoteLoading}
-      />
-    );
-  }
+  const jobs = type === 'weekends' ? weekend : volunteer;
+  const loading = type === 'weekends' ? weekendLoading : volunteerLoading;
+  useEffect(() => {
+    onData({ jobs, loading, error: !!error, refetch });
+    // refetch is a new function each render; the data fields drive updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, loading, error, onData]);
   return null;
 }
 
 export default function WaysToWorkScreen() {
   const router = useRouter();
+  const { isSaved, toggleSaved } = useJobStore();
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
-  const tab = Math.max(0, TAB_SLUGS.indexOf(String(tabParam ?? '')));
-
-  // Only the active type's hook fires; disabled hooks never load.
-  const partTime = useJobSearch({ employmentType: 'Part-time', limit: 50, sort: 'recommended' }, { enabled: tab === 0 });
-  const fullTime = useJobSearch({ employmentType: 'Full-time', limit: 50, sort: 'recommended' }, { enabled: tab === 1 });
-
-  const partTimeLoading = useFirstLoadSkeletonFlag({ loading: partTime.loading, data: partTime.jobs });
-  const fullTimeLoading = useFirstLoadSkeletonFlag({ loading: fullTime.loading, data: fullTime.jobs });
-
-  const openJob = (id: string) => {
-    haptic.light();
-    router.push({ pathname: '/job/[id]', params: { id } } as never);
-  };
-  const goBack = () => router.back();
-  const goSearch = () => router.push('/search-detail' as never);
-  const goFilters = () => router.push('/explore/filters' as never);
-
-  if (tab === 1) {
-    const jobs: FullTimeJob[] = fullTime.jobs.map((j) => {
-      const amount = monthlyAmount(j.pay);
-      const big = `$${amount.toLocaleString()}`;
-      return {
-        id: j.id,
-        title: j.title,
-        company: j.company,
-        arrangement: j.arrangement ?? 'On-site',
-        pay: big,
-        rangeLabel: `${big} / month`,
-        min: amount,
-        max: amount,
-      };
-    });
-    return (
-      <FullTimeScreen
-        jobs={jobs}
-        subtitle={`${jobs.length} steady roles with monthly pay`}
-        onBack={goBack}
-        onJobPress={openJob}
-        onFilters={goFilters}
-        loading={fullTimeLoading}
-      />
-    );
+  const initial = TAB_SLUGS[Math.max(0, TAB_SLUGS.indexOf(String(tabParam ?? '')))];
+  const [type, setType] = useState(initial);
+  const [feed, setFeed] = useState<FeedState | null>(null);
+  // A new `tab` param (e.g. a deep link while this page is open) wins over the picker.
+  const [lastParam, setLastParam] = useState(initial);
+  if (initial !== lastParam) {
+    setLastParam(initial);
+    setType(initial);
   }
 
-  if (tab >= 2) {
-    return <FeedJobs tab={tab} openJob={openJob} goBack={goBack} goSearch={goSearch} goFilters={goFilters} />;
-  }
+  // Only the selected type's hook fires; disabled hooks never load.
+  const partTime = useJobSearch({ employmentType: 'Part-time', limit: 50, sort: 'recommended' }, { enabled: type === 'part-time' });
+  const fullTime = useJobSearch({ employmentType: 'Full-time', limit: 50, sort: 'recommended' }, { enabled: type === 'full-time' });
 
-  const jobs = partTime.jobs.map((j) => ({
-    id: j.id,
-    title: j.title,
-    company: j.company,
-    pay: j.pay,
-    location: j.location,
-    photo: j.image ? { uri: j.image } : undefined,
-  }));
+  // useJobSearch returns [] while loading; an empty array counts as data to the
+  // flag, which hid the skeleton and flashed the empty state. Treat [] as none.
+  const partTimeLoading = useFirstLoadSkeletonFlag({ loading: partTime.loading, data: partTime.jobs.length ? partTime.jobs : undefined });
+  const fullTimeLoading = useFirstLoadSkeletonFlag({ loading: fullTime.loading, data: fullTime.jobs.length ? fullTime.jobs : undefined });
+
+  const isFeed = type === 'weekends' || type === 'volunteer';
+  const search = type === 'full-time' ? fullTime : partTime;
+  const jobs: ListedJob[] = isFeed ? feed?.jobs ?? [] : search.jobs;
+  const loading = isFeed ? feed?.loading ?? true : type === 'full-time' ? fullTimeLoading : partTimeLoading;
+  const error = isFeed ? !!feed?.error : !!search.error;
+
   return (
-    <PartTimeScreen
-      jobs={jobs}
-      countLabel={`${jobs.length} part-time jobs near you`}
-      onBack={goBack}
-      onSearch={goSearch}
-      onFilters={goFilters}
-      onJobPress={openJob}
-        loading={partTimeLoading}
-    />
+    <>
+      {isFeed ? <FeedBridge type={type as 'weekends' | 'volunteer'} onData={setFeed} /> : null}
+      <JobTypeScreen
+        types={TYPES}
+        type={type}
+        onSelectType={(key) => {
+          if (key === 'weekends' || key === 'volunteer') setFeed(null);
+          setType(key);
+        }}
+        jobs={jobs}
+        loading={loading}
+        error={error}
+        onRetry={() => (isFeed ? feed?.refetch() : void search.refetch())}
+        onBack={() => router.back()}
+        onSearch={() => router.push('/search-detail' as never)}
+        onFilters={() => router.push('/explore/filters' as never)}
+        onNearMe={() => router.push('/jobs/near-you' as never)}
+        onOpenJob={(id) => {
+          haptic.light();
+          router.push({ pathname: '/job/[id]', params: { id } } as never);
+        }}
+        onOpenEmployer={(company) => {
+          haptic.light();
+          router.push({ pathname: '/employer/[employerId]', params: { employerId: employerIdForCompany(company) } } as never);
+        }}
+        isSaved={isSaved}
+        onToggleSave={(id) => toggleSaved(id)}
+      />
+    </>
   );
 }

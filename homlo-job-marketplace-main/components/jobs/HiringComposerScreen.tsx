@@ -39,7 +39,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   interpolateColor,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -58,6 +57,7 @@ import OptionPickerSheet from '@/components/employer-job/OptionPickerSheet';
 import { JobLocationPicker, type PickedAddress } from '@/components/JobLocationPicker';
 import { pickerImageToJpegDataUrl } from '@/lib/profile-photo';
 
+import { smooth } from '@/src/design/motion';
 /* ───────────── tokens ─────────────
  * Mint/forest/gutter and the muted/line pair come from the job-card token files
  * so this screen stays in lockstep with the home feed. The three values marked
@@ -131,8 +131,6 @@ const STEPS = [
   ['Salary', 'How much does this job pay?'],
 ];
 const TOTAL_STEPS = STEPS.length;
-const MIN_POSITIONS = 1;
-const MAX_POSITIONS = 50;
 
 /** Tiles rendered before the "More" tile; the rest live in the picker sheet. */
 const VISIBLE_FIELDS = JOB_FIELDS.slice(0, 11);
@@ -222,10 +220,10 @@ function Selectable({
   return (
     <Pressable
       onPressIn={() => {
-        s.set(withSpring(0.95, { damping: 15, stiffness: 300 }));
+        s.set(smooth(0.95));
       }}
       onPressOut={() => {
-        s.set(withSpring(1, { damping: 12, stiffness: 220 }));
+        s.set(smooth(1));
       }}
       onPress={onPress}
     >
@@ -284,31 +282,13 @@ function PressScale({ onPress, disabled, style, children }: any) {
       disabled={disabled}
       onPress={onPress}
       onPressIn={() => {
-        s.set(withSpring(0.94, { damping: 15, stiffness: 300 }));
+        s.set(smooth(0.94));
       }}
       onPressOut={() => {
-        s.set(withSpring(1, { damping: 12, stiffness: 220 }));
+        s.set(smooth(1));
       }}
     >
       <Animated.View style={[a, style]}>{children}</Animated.View>
-    </Pressable>
-  );
-}
-
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  const p = useSharedValue(on ? 1 : 0);
-  useEffect(() => {
-    p.set(withSpring(on ? 1 : 0, { damping: 16, stiffness: 220 }));
-  }, [on, p]);
-  const track = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(p.value, [0, 1], [C.line, C.mint]),
-  }));
-  const knob = useAnimatedStyle(() => ({ transform: [{ translateX: p.value * 22 }] }));
-  return (
-    <Pressable onPress={() => onChange(!on)} hitSlop={8} accessibilityRole="switch" accessibilityState={{ checked: on }}>
-      <Animated.View style={[styles.tgTrack, track]}>
-        <Animated.View style={[styles.tgKnob, knob]} />
-      </Animated.View>
     </Pressable>
   );
 }
@@ -354,26 +334,26 @@ function RangeSlider({
   const gA = Gesture.Pan()
     .onBegin(() => {
       sa.value = a.value;
-      ka.value = withSpring(1.2);
+      ka.value = smooth(1.2);
     })
     .onUpdate((e) => {
       a.value = Math.min(Math.max(sa.value + e.translationX / w.value, 0), b.value - gap);
       report();
     })
     .onFinalize(() => {
-      ka.value = withSpring(1);
+      ka.value = smooth(1);
     });
   const gB = Gesture.Pan()
     .onBegin(() => {
       sb.value = b.value;
-      kb.value = withSpring(1.2);
+      kb.value = smooth(1.2);
     })
     .onUpdate((e) => {
       b.value = Math.min(Math.max(sb.value + e.translationX / w.value, a.value + gap), 1);
       report();
     })
     .onFinalize(() => {
-      kb.value = withSpring(1);
+      kb.value = smooth(1);
     });
 
   const fill = useAnimatedStyle(() => ({
@@ -478,7 +458,7 @@ function ExitSheet({
         />
       </Animated.View>
       <Animated.View
-        entering={SlideInDown.springify().damping(20).stiffness(190)}
+        entering={SlideInDown}
         exiting={SlideOutDown.duration(200)}
         style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
       >

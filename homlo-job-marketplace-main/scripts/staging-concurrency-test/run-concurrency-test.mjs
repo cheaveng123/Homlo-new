@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import postgres from "postgres";
 import { createInterface } from "readline";
 import { once } from "events";
@@ -252,7 +253,7 @@ async function main() {
       try {
         appBefore = await countApplications(jid);
         notifBefore = await countNotifications(eid);
-        const [r1, r2] = await Promise.all([
+        await Promise.all([
           sql2`select * from public.homlo_submit_application(${wid}, ${jid}, 'msg')`,
           sql1`select * from public.homlo_submit_application(${wid}, ${jid}, 'msg')`,
         ]);
@@ -284,7 +285,7 @@ async function main() {
       let appAfter, notifBefore, notifAfter;
       try {
         notifBefore = await countNotifications(eid);
-        const [r1, r2] = await Promise.all([
+        await Promise.all([
           sql2`select * from public.homlo_submit_application(${wid}, ${jid}, 'reapply-msg')`,
           sql1`select * from public.homlo_submit_application(${wid}, ${jid}, 'reapply-msg')`,
         ]);
@@ -319,7 +320,7 @@ async function main() {
       const errors = [];
       let appAfter, notifAfter;
       try {
-        const [r1, r2] = await Promise.all([
+        await Promise.all([
           sql2`select * from public.homlo_submit_application(${w1}, ${jid}, 'msg-1')`,
           sql1`select * from public.homlo_submit_application(${w2}, ${jid}, 'msg-2')`,
         ]);
