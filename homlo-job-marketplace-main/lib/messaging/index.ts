@@ -7,7 +7,7 @@
 import type { MessagingService } from "./service";
 import { MessagingProvider } from "./provider";
 
-const MESSAGING_PROVIDER = process.env.EXPO_PUBLIC_MESSAGING_PROVIDER ?? "supabase";
+const MESSAGING_PROVIDER = process.env.PUBLIC_MESSAGING_PROVIDER ?? "supabase";
 
 let instance: MessagingService | null = null;
 

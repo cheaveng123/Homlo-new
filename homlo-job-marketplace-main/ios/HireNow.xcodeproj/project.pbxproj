@@ -1,0 +1,634 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C80B921A6F3F58F76C31292 /* libPods-HireNow.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-HireNow.a */; };
+		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		1546C2D51415FA3037872840 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		31867CA945764C5F82D40EB6 /* PlusJakartaSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 015686A8FC7E41C4B9C66448 /* PlusJakartaSans-Bold.ttf */; };
+		39129A64BCCD4B3AAAEDDA46 /* NotoSansKhmer_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E12A9455030C4E288FBA9748 /* NotoSansKhmer_400Regular.ttf */; };
+		3B02B436781447799DB5CBF2 /* Figtree_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B5B74BC7CD834404B91A6A57 /* Figtree_700Bold.ttf */; };
+		3BEA6FB240304B1F9F8AC280 /* PlusJakartaSans_800ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C9EA85CD9DAF43FCA7D3702F /* PlusJakartaSans_800ExtraBold.ttf */; };
+		42E103FB672C4064A86F52C0 /* PlusJakartaSans_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DB941C766D4E443097B05937 /* PlusJakartaSans_600SemiBold.ttf */; };
+		44AA7173692A48EBAE5A3058 /* PlusJakartaSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0238F5539DC74215A182CE7F /* PlusJakartaSans-Medium.ttf */; };
+		4796FB1CC3B5415BB73B2C49 /* PlusJakartaSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8FEF033C1D46480B89BC8692 /* PlusJakartaSans-SemiBold.ttf */; };
+		4DDDB026DA924C9698F42F68 /* Inter_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 49A42E59E33B4B2291F182F9 /* Inter_600SemiBold.ttf */; };
+		5019C8E859AC4F6CB27B9B2A /* Figtree_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 803E8B421DED445EA298A516 /* Figtree_400Regular.ttf */; };
+		63DBB799240447D7949B3ADE /* PlusJakartaSans_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D01521CC6FBA4EECA2425FB1 /* PlusJakartaSans_400Regular.ttf */; };
+		669E2FE32ECD478F80956CC3 /* PlusJakartaSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BADD283FA66A4C4B988AF7A3 /* PlusJakartaSans-Regular.ttf */; };
+		677F9DE591B8454381C8FADA /* Figtree_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 06999D951A8F497BA2769591 /* Figtree_600SemiBold.ttf */; };
+		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		7FEE39F046884371A204F1DF /* PlusJakartaSans-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 518577DF7ED5440890E36299 /* PlusJakartaSans-ExtraBold.ttf */; };
+		803225EAA13541BD88DE1CB6 /* NotoSansKhmer_600SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D3F474052D1041C2A83BB860 /* NotoSansKhmer_600SemiBold.ttf */; };
+		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		92B5820DBE7143ED8FA2DAE5 /* NotoSansKhmer_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2835A983F1364CAF8C6E47BC /* NotoSansKhmer_700Bold.ttf */; };
+		931416FAAC9142C08BEF334A /* BricolageGrotesque_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 069FC3C4368A4629B04B4411 /* BricolageGrotesque_700Bold.ttf */; };
+		9CC7EDC2AA0345F48F34AAD9 /* PlusJakartaSans_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 449CAB5D152D49D58DAF8E94 /* PlusJakartaSans_700Bold.ttf */; };
+		AD71D40BF5704B7BBA44A863 /* Inter_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BDF1ADC5B0E444A985861E9B /* Inter_500Medium.ttf */; };
+		B463734B92E94458A6A16517 /* Figtree_800ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 182183F31DAB4F35A1A777B7 /* Figtree_800ExtraBold.ttf */; };
+		BCC52DB8C9944F2E91F0F99D /* NotoSansKhmer_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5E649B28D08445B0A51CAD81 /* NotoSansKhmer_500Medium.ttf */; };
+		C7AB3E4C2681452095B993C2 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 529818F7DEBF4935889C69F7 /* BootSplash.storyboard */; };
+		CB8638B7241547B2B4B779A3 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C1C3EDDD0E064F82A3A88131 /* Colors.xcassets */; };
+		D502800B090B40E69AAB279D /* Figtree_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6960F68D912145FDB73ABB62 /* Figtree_500Medium.ttf */; };
+		E0108BEA1310466B99868DC1 /* Inter_700Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F738313653D94D0EB82186A3 /* Inter_700Bold.ttf */; };
+		ECD59C88750E4AA6B8914A2C /* PlusJakartaSans_500Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3A5AC7DCDF384B02BA654F69 /* PlusJakartaSans_500Medium.ttf */; };
+		F5875C94CBDD4CE791BBD5C6 /* Inter_400Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8E41D423C08D43F497B9C894 /* Inter_400Regular.ttf */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		015686A8FC7E41C4B9C66448 /* PlusJakartaSans-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-Bold.ttf"; path = "../assets/fonts/PlusJakartaSans-Bold.ttf"; sourceTree = "<group>"; };
+		0238F5539DC74215A182CE7F /* PlusJakartaSans-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-Medium.ttf"; path = "../assets/fonts/PlusJakartaSans-Medium.ttf"; sourceTree = "<group>"; };
+		06999D951A8F497BA2769591 /* Figtree_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Figtree_600SemiBold.ttf; path = ../assets/fonts/Figtree_600SemiBold.ttf; sourceTree = "<group>"; };
+		069FC3C4368A4629B04B4411 /* BricolageGrotesque_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BricolageGrotesque_700Bold.ttf; path = ../assets/fonts/BricolageGrotesque_700Bold.ttf; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* HireNow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HireNow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = HireNow/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = HireNow/Info.plist; sourceTree = "<group>"; };
+		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = HireNow/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		182183F31DAB4F35A1A777B7 /* Figtree_800ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Figtree_800ExtraBold.ttf; path = ../assets/fonts/Figtree_800ExtraBold.ttf; sourceTree = "<group>"; };
+		2835A983F1364CAF8C6E47BC /* NotoSansKhmer_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NotoSansKhmer_700Bold.ttf; path = ../assets/fonts/NotoSansKhmer_700Bold.ttf; sourceTree = "<group>"; };
+		3A5AC7DCDF384B02BA654F69 /* PlusJakartaSans_500Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PlusJakartaSans_500Medium.ttf; path = ../assets/fonts/PlusJakartaSans_500Medium.ttf; sourceTree = "<group>"; };
+		3B4392A12AC88292D35C810B /* Pods-HireNow.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HireNow.debug.xcconfig"; path = "Target Support Files/Pods-HireNow/Pods-HireNow.debug.xcconfig"; sourceTree = "<group>"; };
+		449CAB5D152D49D58DAF8E94 /* PlusJakartaSans_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PlusJakartaSans_700Bold.ttf; path = ../assets/fonts/PlusJakartaSans_700Bold.ttf; sourceTree = "<group>"; };
+		49A42E59E33B4B2291F182F9 /* Inter_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Inter_600SemiBold.ttf; path = ../assets/fonts/Inter_600SemiBold.ttf; sourceTree = "<group>"; };
+		518577DF7ED5440890E36299 /* PlusJakartaSans-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-ExtraBold.ttf"; path = "../assets/fonts/PlusJakartaSans-ExtraBold.ttf"; sourceTree = "<group>"; };
+		529818F7DEBF4935889C69F7 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = HireNow/BootSplash.storyboard; sourceTree = "<group>"; };
+		5709B34CF0A7D63546082F79 /* Pods-HireNow.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HireNow.release.xcconfig"; path = "Target Support Files/Pods-HireNow/Pods-HireNow.release.xcconfig"; sourceTree = "<group>"; };
+		5DCACB8F33CDC322A6C60F78 /* libPods-HireNow.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HireNow.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E649B28D08445B0A51CAD81 /* NotoSansKhmer_500Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NotoSansKhmer_500Medium.ttf; path = ../assets/fonts/NotoSansKhmer_500Medium.ttf; sourceTree = "<group>"; };
+		6960F68D912145FDB73ABB62 /* Figtree_500Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Figtree_500Medium.ttf; path = ../assets/fonts/Figtree_500Medium.ttf; sourceTree = "<group>"; };
+		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = HireNow/AppDelegate.swift; sourceTree = "<group>"; };
+		803E8B421DED445EA298A516 /* Figtree_400Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Figtree_400Regular.ttf; path = ../assets/fonts/Figtree_400Regular.ttf; sourceTree = "<group>"; };
+		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = HireNow/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		8E41D423C08D43F497B9C894 /* Inter_400Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Inter_400Regular.ttf; path = ../assets/fonts/Inter_400Regular.ttf; sourceTree = "<group>"; };
+		8FEF033C1D46480B89BC8692 /* PlusJakartaSans-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-SemiBold.ttf"; path = "../assets/fonts/PlusJakartaSans-SemiBold.ttf"; sourceTree = "<group>"; };
+		B5B74BC7CD834404B91A6A57 /* Figtree_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Figtree_700Bold.ttf; path = ../assets/fonts/Figtree_700Bold.ttf; sourceTree = "<group>"; };
+		BADD283FA66A4C4B988AF7A3 /* PlusJakartaSans-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "PlusJakartaSans-Regular.ttf"; path = "../assets/fonts/PlusJakartaSans-Regular.ttf"; sourceTree = "<group>"; };
+		BDF1ADC5B0E444A985861E9B /* Inter_500Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Inter_500Medium.ttf; path = ../assets/fonts/Inter_500Medium.ttf; sourceTree = "<group>"; };
+		C1C3EDDD0E064F82A3A88131 /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = HireNow/Colors.xcassets; sourceTree = "<group>"; };
+		C9EA85CD9DAF43FCA7D3702F /* PlusJakartaSans_800ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PlusJakartaSans_800ExtraBold.ttf; path = ../assets/fonts/PlusJakartaSans_800ExtraBold.ttf; sourceTree = "<group>"; };
+		D01521CC6FBA4EECA2425FB1 /* PlusJakartaSans_400Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PlusJakartaSans_400Regular.ttf; path = ../assets/fonts/PlusJakartaSans_400Regular.ttf; sourceTree = "<group>"; };
+		D3F474052D1041C2A83BB860 /* NotoSansKhmer_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NotoSansKhmer_600SemiBold.ttf; path = ../assets/fonts/NotoSansKhmer_600SemiBold.ttf; sourceTree = "<group>"; };
+		DB941C766D4E443097B05937 /* PlusJakartaSans_600SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PlusJakartaSans_600SemiBold.ttf; path = ../assets/fonts/PlusJakartaSans_600SemiBold.ttf; sourceTree = "<group>"; };
+		E12A9455030C4E288FBA9748 /* NotoSansKhmer_400Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = NotoSansKhmer_400Regular.ttf; path = ../assets/fonts/NotoSansKhmer_400Regular.ttf; sourceTree = "<group>"; };
+		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F738313653D94D0EB82186A3 /* Inter_700Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Inter_700Bold.ttf; path = ../assets/fonts/Inter_700Bold.ttf; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C80B921A6F3F58F76C31292 /* libPods-HireNow.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		13B07FAE1A68108700A75B9A /* HireNow */ = {
+			isa = PBXGroup;
+			children = (
+				13B07FB51A68108700A75B9A /* Images.xcassets */,
+				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				13B07FB61A68108700A75B9A /* Info.plist */,
+				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
+				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				529818F7DEBF4935889C69F7 /* BootSplash.storyboard */,
+				C1C3EDDD0E064F82A3A88131 /* Colors.xcassets */,
+			);
+			name = HireNow;
+			sourceTree = "<group>";
+		};
+		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
+				5DCACB8F33CDC322A6C60F78 /* libPods-HireNow.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		6BB90D16E9DC4005A080AD5F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				DB941C766D4E443097B05937 /* PlusJakartaSans_600SemiBold.ttf */,
+				3A5AC7DCDF384B02BA654F69 /* PlusJakartaSans_500Medium.ttf */,
+				0238F5539DC74215A182CE7F /* PlusJakartaSans-Medium.ttf */,
+				06999D951A8F497BA2769591 /* Figtree_600SemiBold.ttf */,
+				D01521CC6FBA4EECA2425FB1 /* PlusJakartaSans_400Regular.ttf */,
+				5E649B28D08445B0A51CAD81 /* NotoSansKhmer_500Medium.ttf */,
+				49A42E59E33B4B2291F182F9 /* Inter_600SemiBold.ttf */,
+				8FEF033C1D46480B89BC8692 /* PlusJakartaSans-SemiBold.ttf */,
+				BDF1ADC5B0E444A985861E9B /* Inter_500Medium.ttf */,
+				803E8B421DED445EA298A516 /* Figtree_400Regular.ttf */,
+				D3F474052D1041C2A83BB860 /* NotoSansKhmer_600SemiBold.ttf */,
+				2835A983F1364CAF8C6E47BC /* NotoSansKhmer_700Bold.ttf */,
+				BADD283FA66A4C4B988AF7A3 /* PlusJakartaSans-Regular.ttf */,
+				8E41D423C08D43F497B9C894 /* Inter_400Regular.ttf */,
+				C9EA85CD9DAF43FCA7D3702F /* PlusJakartaSans_800ExtraBold.ttf */,
+				069FC3C4368A4629B04B4411 /* BricolageGrotesque_700Bold.ttf */,
+				B5B74BC7CD834404B91A6A57 /* Figtree_700Bold.ttf */,
+				E12A9455030C4E288FBA9748 /* NotoSansKhmer_400Regular.ttf */,
+				F738313653D94D0EB82186A3 /* Inter_700Bold.ttf */,
+				449CAB5D152D49D58DAF8E94 /* PlusJakartaSans_700Bold.ttf */,
+				182183F31DAB4F35A1A777B7 /* Figtree_800ExtraBold.ttf */,
+				015686A8FC7E41C4B9C66448 /* PlusJakartaSans-Bold.ttf */,
+				6960F68D912145FDB73ABB62 /* Figtree_500Medium.ttf */,
+				518577DF7ED5440890E36299 /* PlusJakartaSans-ExtraBold.ttf */,
+			);
+			name = Resources;
+			path = "";
+			sourceTree = "<group>";
+		};
+		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Libraries;
+			sourceTree = "<group>";
+		};
+		83CBB9F61A601CBA00E9B192 = {
+			isa = PBXGroup;
+			children = (
+				13B07FAE1A68108700A75B9A /* HireNow */,
+				832341AE1AAA6A7D00B99B32 /* Libraries */,
+				83CBBA001A601CBA00E9B192 /* Products */,
+				2D16E6871FA4F8E400B85C8A /* Frameworks */,
+				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				6BB90D16E9DC4005A080AD5F /* Resources */,
+			);
+			indentWidth = 2;
+			sourceTree = "<group>";
+			tabWidth = 2;
+			usesTabs = 0;
+		};
+		83CBBA001A601CBA00E9B192 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				13B07F961A680F5B00A75B9A /* HireNow.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				3B4392A12AC88292D35C810B /* Pods-HireNow.debug.xcconfig */,
+				5709B34CF0A7D63546082F79 /* Pods-HireNow.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		13B07F861A680F5B00A75B9A /* HireNow */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "HireNow" */;
+			buildPhases = (
+				C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */,
+				13B07F871A680F5B00A75B9A /* Sources */,
+				13B07F8C1A680F5B00A75B9A /* Frameworks */,
+				13B07F8E1A680F5B00A75B9A /* Resources */,
+				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
+				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
+				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HireNow;
+			packageProductDependencies = (
+				A7DD799D84A4B2E0802A6586 /* MapLibre */,
+			);
+			productName = HireNow;
+			productReference = 13B07F961A680F5B00A75B9A /* HireNow.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		83CBB9F71A601CBA00E9B192 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1210;
+				TargetAttributes = {
+					13B07F861A680F5B00A75B9A = {
+						LastSwiftMigration = 1120;
+					};
+				};
+			};
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "HireNow" */;
+			compatibilityVersion = "Xcode 12.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 83CBB9F61A601CBA00E9B192;
+			packageReferences = (
+				62889F66EB665B15509B397E /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+			);
+			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				13B07F861A680F5B00A75B9A /* HireNow */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		13B07F8E1A680F5B00A75B9A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				C7AB3E4C2681452095B993C2 /* BootSplash.storyboard in Resources */,
+				CB8638B7241547B2B4B779A3 /* Colors.xcassets in Resources */,
+				42E103FB672C4064A86F52C0 /* PlusJakartaSans_600SemiBold.ttf in Resources */,
+				ECD59C88750E4AA6B8914A2C /* PlusJakartaSans_500Medium.ttf in Resources */,
+				44AA7173692A48EBAE5A3058 /* PlusJakartaSans-Medium.ttf in Resources */,
+				677F9DE591B8454381C8FADA /* Figtree_600SemiBold.ttf in Resources */,
+				63DBB799240447D7949B3ADE /* PlusJakartaSans_400Regular.ttf in Resources */,
+				BCC52DB8C9944F2E91F0F99D /* NotoSansKhmer_500Medium.ttf in Resources */,
+				4DDDB026DA924C9698F42F68 /* Inter_600SemiBold.ttf in Resources */,
+				4796FB1CC3B5415BB73B2C49 /* PlusJakartaSans-SemiBold.ttf in Resources */,
+				AD71D40BF5704B7BBA44A863 /* Inter_500Medium.ttf in Resources */,
+				5019C8E859AC4F6CB27B9B2A /* Figtree_400Regular.ttf in Resources */,
+				803225EAA13541BD88DE1CB6 /* NotoSansKhmer_600SemiBold.ttf in Resources */,
+				92B5820DBE7143ED8FA2DAE5 /* NotoSansKhmer_700Bold.ttf in Resources */,
+				669E2FE32ECD478F80956CC3 /* PlusJakartaSans-Regular.ttf in Resources */,
+				F5875C94CBDD4CE791BBD5C6 /* Inter_400Regular.ttf in Resources */,
+				3BEA6FB240304B1F9F8AC280 /* PlusJakartaSans_800ExtraBold.ttf in Resources */,
+				931416FAAC9142C08BEF334A /* BricolageGrotesque_700Bold.ttf in Resources */,
+				3B02B436781447799DB5CBF2 /* Figtree_700Bold.ttf in Resources */,
+				39129A64BCCD4B3AAAEDDA46 /* NotoSansKhmer_400Regular.ttf in Resources */,
+				E0108BEA1310466B99868DC1 /* Inter_700Bold.ttf in Resources */,
+				9CC7EDC2AA0345F48F34AAD9 /* PlusJakartaSans_700Bold.ttf in Resources */,
+				B463734B92E94458A6A16517 /* Figtree_800ExtraBold.ttf in Resources */,
+				31867CA945764C5F82D40EB6 /* PlusJakartaSans-Bold.ttf in Resources */,
+				D502800B090B40E69AAB279D /* Figtree_500Medium.ttf in Resources */,
+				7FEE39F046884371A204F1DF /* PlusJakartaSans-ExtraBold.ttf in Resources */,
+				1546C2D51415FA3037872840 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/.xcode.env",
+			);
+			name = "Bundle React Native code and images";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
+		};
+		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HireNow/Pods-HireNow-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HireNow/Pods-HireNow-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HireNow/Pods-HireNow-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-HireNow-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		E235C05ADACE081382539298 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HireNow/Pods-HireNow-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HireNow/Pods-HireNow-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HireNow/Pods-HireNow-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		13B07F871A680F5B00A75B9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		13B07F941A680F5B00A75B9A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-HireNow.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_BITCODE = NO;
+				INFOPLIST_FILE = HireNow/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hirenow.app;
+				PRODUCT_NAME = HireNow;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		13B07F951A680F5B00A75B9A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-HireNow.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = HireNow/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lc++",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.hirenow.app;
+				PRODUCT_NAME = HireNow;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		83CBBA201A601CBA00E9B192 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					/usr/lib/swift,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SDKROOT)/usr/lib/swift\"",
+					"\"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)\"",
+					"\"$(inherited)\"",
+				);
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(OTHER_CFLAGS)",
+					"-DFOLLY_NO_CONFIG",
+					"-DFOLLY_MOBILE=1",
+					"-DFOLLY_USE_LIBCPP=1",
+					"-DFOLLY_CFG_NO_COROUTINES=1",
+					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
+				PODFILE_DIR = "$(SRCROOT)";
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
+				USE_HERMES = true;
+			};
+			name = Debug;
+		};
+		83CBBA211A601CBA00E9B192 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					/usr/lib/swift,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"\"$(SDKROOT)/usr/lib/swift\"",
+					"\"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)\"",
+					"\"$(inherited)\"",
+				);
+				MTL_ENABLE_DEBUG_INFO = NO;
+				OTHER_CFLAGS = (
+					"$(inherited)",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(OTHER_CFLAGS)",
+					"-DFOLLY_NO_CONFIG",
+					"-DFOLLY_MOBILE=1",
+					"-DFOLLY_USE_LIBCPP=1",
+					"-DFOLLY_CFG_NO_COROUTINES=1",
+					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
+					"-DRCT_REMOVE_LEGACY_ARCH=1",
+				);
+				PODFILE_DIR = "$(SRCROOT)";
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
+				SDKROOT = iphoneos;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
+				USE_HERMES = true;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "HireNow" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				13B07F941A680F5B00A75B9A /* Debug */,
+				13B07F951A680F5B00A75B9A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "HireNow" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83CBBA201A601CBA00E9B192 /* Debug */,
+				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		62889F66EB665B15509B397E /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/maplibre/maplibre-gl-native-distribution";
+			requirement = {
+				kind = exactVersion;
+				version = 6.17.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A7DD799D84A4B2E0802A6586 /* MapLibre */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62889F66EB665B15509B397E /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
+			productName = MapLibre;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 83CBB9F71A601CBA00E9B192 /* Project object */;
+}

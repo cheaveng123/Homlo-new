@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import AgeTape from "@/components/auth/AgeTape";
 import AuthWash from "@/components/auth/AuthWash";

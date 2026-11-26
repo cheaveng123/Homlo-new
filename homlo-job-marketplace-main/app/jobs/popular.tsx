@@ -11,8 +11,8 @@
 // Motion: house no-bounce curve; cards fade up; Reduce Motion skips the carousel scaling.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from '@/lib/router';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Extrapolation,

@@ -10,7 +10,7 @@ import Animated, {
   useReducedMotion, useSharedValue, withTiming, type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale, SMOOTH } from '@/src/design/motion';
 import { durations, palette } from '@/src/design/tokens';

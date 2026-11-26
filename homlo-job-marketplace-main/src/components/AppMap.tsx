@@ -201,7 +201,7 @@ export function AppMap({
             <View style={styles.bannerText}>
               <Text style={styles.bannerTitle}>Map key missing</Text>
               <Text style={styles.bannerBody}>
-                Add MAPTILER_KEY to .env, then rebuild the native app.
+                Add PUBLIC_MAPTILER_KEY to .env, then restart Metro.
               </Text>
             </View>
           </View>

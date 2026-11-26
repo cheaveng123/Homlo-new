@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, StatusBar, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 
 import { getJob, useJobStore } from "@/components/job-store";
 import { mapJobToDetails } from "@/components/job-details/map-job-to-details";

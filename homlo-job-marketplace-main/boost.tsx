@@ -4,9 +4,9 @@
 // Never hard-code plan counts or prices in the UI. Steps 2/3 reuse the same step header with step=2|3.
 import React,{useEffect,useRef,useState} from 'react';
 import {View,Text,FlatList,ScrollView,Pressable,useWindowDimensions} from 'react-native';
-import {LinearGradient} from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useLocalSearchParams,router} from 'expo-router';
+import {useLocalSearchParams,router} from '@/lib/router';
 import Animated,{FadeInDown,FadeOut,useSharedValue,useAnimatedStyle,withSpring,withTiming,withRepeat,withDelay,withSequence,Easing,useReducedMotion} from 'react-native-reanimated';
 import {c,f,sh} from './NewTheme';
 import {Icon,Circ,Btn,CountUp,Shimmer} from './NewUI';

@@ -4,7 +4,7 @@
 // applications via homlo.applications.list, planner via homlo.account.get.
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from '@/lib/router';
 import {
   Button,DetailScreen,Field,Group,GroupLabel,Hint,OptionRow,Row,Tag,ToggleRow,
 } from '@/components/profile/ProfileUI';

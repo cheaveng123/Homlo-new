@@ -17,7 +17,7 @@ const SMS_MAX_SENDS_PER_HOUR = 5;
 const E164 = /^\+[1-9]\d{7,14}$/;
 
 function publicBaseUrl() {
-  return (process.env.HOMLO_PUBLIC_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
+  return (process.env.HOMLO_PUBLIC_BASE_URL || process.env.PUBLIC_API_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
 }
 
 // ---------------------------------------------------------------------------

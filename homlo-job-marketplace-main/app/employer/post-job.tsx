@@ -7,8 +7,8 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from '@/lib/router';
+import * as ImagePicker from '@/lib/native/image-picker';
 import { ErrorStateIcon, SuccessIcon } from '@/src/components/icons';
 import { PressableScale, Reveal } from '@/src/design/motion';
 import { Skeleton } from '@/src/design/primitives';

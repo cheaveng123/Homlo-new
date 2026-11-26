@@ -3,7 +3,7 @@
 // Open it with a starting tab: router.push('/jobs/ways-to-work?tab=weekends')  (part-time | full-time | weekends | remote)
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 import {
   SunriseHeader, HeaderLead, Segmented, SelectorCircle, SelectorText, SectionTitle, JobCard, DateBlock, LogoCircle,
   ClayTag, Ticket, HoursBar, RoleChip,

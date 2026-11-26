@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { BackHandler, Pressable, StyleSheet, Text, View } from "react-native";
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "@/lib/router";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { SafeAreaView } from "react-native-safe-area-context";
 

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale, SMOOTH } from '@/src/design/motion';
 import { durations, palette } from '@/src/design/tokens';

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";

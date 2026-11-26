@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect, useRouter } from "expo-router";
-import { setStatusBarStyle } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "@/lib/native/image-picker";
+import { useFocusEffect, useRouter } from "@/lib/router";
+import { setStatusBarStyle } from "@/lib/native/status-bar";
+import LinearGradient from "@/lib/native/linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/ui/AppIcon";
@@ -46,7 +46,7 @@ const BANNERS: [string, string, string][] = [
   ['#4C1D95', '#7C3AED', '#A78BFA'], ['#1F2937', '#4B5563', '#6B7280'],
 ];
 
-const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL?.trim() || "";
+const SUPPORT_EMAIL = process.env.PUBLIC_SUPPORT_EMAIL?.trim() || "";
 
 function looksLikeImage(value: string | null | undefined): value is string {
   return typeof value === "string" && value.length > 0 && (/^https?:\/\//i.test(value) || /^data:/i.test(value) || /^file:/i.test(value));

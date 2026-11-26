@@ -4,7 +4,7 @@
 // the field's aliases. There is deliberately no sample-job fallback here: an
 // empty field should say so rather than show jobs that are not in the DB.
 import React, { useMemo } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 
 import { logJobEvent } from '@/lib/event-logging';
 import { haptic } from '@/lib/haptics';

@@ -13,7 +13,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/lib/native/haptics";
 import Svg, { Path } from "react-native-svg";
 
 import { familyForWeight } from "@/lib/typography";

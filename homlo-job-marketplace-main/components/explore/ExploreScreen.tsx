@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from '@/lib/native/status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect, useRouter } from '@/lib/router';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, {
   Extrapolation,
   interpolate,

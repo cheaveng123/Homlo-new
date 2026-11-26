@@ -15,11 +15,10 @@
  * Anyone without a recorded age is sent back to /age first.
  */
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "@/lib/router";
+import * as ImagePicker from "@/lib/native/image-picker";
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -203,7 +202,7 @@ export default function CompleteProfileScreen() {
                 <View style={[styles.avatar, photo && styles.avatarFilled]}>
                   {photo ? (
                     <Animated.View entering={reduce ? undefined : FadeIn.duration(260).easing(SMOOTH)} style={StyleSheet.absoluteFill}>
-                      <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
+                      <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                     </Animated.View>
                   ) : (
                     <Text style={styles.initials}>{initials || "?"}</Text>

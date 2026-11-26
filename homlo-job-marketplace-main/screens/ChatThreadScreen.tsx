@@ -24,7 +24,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ChatHeader from '../components/chat/ChatHeader';
 import SystemMessageCard from '../components/chat/SystemMessageCard';

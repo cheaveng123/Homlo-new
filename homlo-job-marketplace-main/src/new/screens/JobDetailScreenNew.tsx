@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Image, RefreshControl, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Svg, { G, Path, Rect } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Extrapolation,

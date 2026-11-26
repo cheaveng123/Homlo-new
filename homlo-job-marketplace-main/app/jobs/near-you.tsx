@@ -2,8 +2,8 @@
 // job list in a draggable bottom sheet (ride-hailing layout, Homlo tokens).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Pressable } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { StatusBar } from '@/lib/native/status-bar';
+import { useRouter } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { JobsMap } from '@/components/jobs/JobsMap';

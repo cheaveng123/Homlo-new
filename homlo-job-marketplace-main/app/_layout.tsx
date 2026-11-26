@@ -1,18 +1,18 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter } from "@/lib/router";
+import { AppNavigationContainer, RootStack } from "@/lib/router/navigators";
+import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
+import TabLayout from "./(tabs)/_layout";
 
-import { StatusBar } from "expo-status-bar";
-import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
+import BootSplash from "react-native-bootsplash";
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform, View } from "react-native";
+import { Platform, StatusBar } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { JobProvider } from "@/components/job-store";
-import { fontAssets } from "@/lib/typography";
 import { ONBOARDING_COMPLETE_KEY } from "@/lib/onboarding";
 import { getLocalValue, getLocalValueSync } from "@/lib/local-persistence";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,6 +32,41 @@ import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-run
 import { ErrorBoundary } from "@/components/error-boundary";
 import { LocationProvider } from "@/src/context/LocationContext";
 import { WebLegalChrome } from "@/components/legal/WebLegalChrome";
+import { BrandLoadingScreen } from "@/components/BrandLoadingScreen";
+
+/** Native-stack options for every screen, then per screen (keyed by its app/ path). */
+const ROOT_SCREEN_OPTIONS: NativeStackNavigationOptions = { animation: "slide_from_right", animationDuration: 220, fullScreenGestureEnabled: false, gestureEnabled: true, gestureDirection: "horizontal", headerShown: false };
+
+const SCREEN_OPTIONS: Record<string, NativeStackNavigationOptions> = {
+  "(tabs)": { animation: "fade", animationDuration: 160 },
+  "onboarding/index": { animation: "fade", animationDuration: 220, gestureEnabled: false },
+  "search-results": { animation: "slide_from_right", animationDuration: 220 },
+  "detailed-search": { animation: "slide_from_right", animationDuration: 240 },
+  "discover/[kind]": { animation: "slide_from_right", animationDuration: 240 },
+  "job/[id]": { animation: "slide_from_right", animationDuration: 220 },
+  "job/[id]/apply": { animation: "slide_from_right", animationDuration: 220, presentation: "fullScreenModal" },
+  "employer/index": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/listings": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/post-job": { animation: "slide_from_right", animationDuration: 240 },
+  "post-job": { animation: "slide_from_right", animationDuration: 240 },
+  "employer/jobs": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/boost/[id]": { animation: "slide_from_right", animationDuration: 240 },
+  "oauth/callback": { animation: "fade", animationDuration: 160 },
+  "login": { animation: "fade", animationDuration: 180 },
+  "age": { animation: "slide_from_right", animationDuration: 220, gestureEnabled: false },
+  "complete-profile": { animation: "slide_from_right", animationDuration: 220, gestureEnabled: false },
+  "account-plans": { animation: "slide_from_right", animationDuration: 220 },
+  "checkout": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/enterprise-campaign": { animation: "slide_from_right", animationDuration: 220 },
+  "applications/[id]": { animation: "slide_from_right", animationDuration: 220 },
+  "applications/index": { animation: "slide_from_right", animationDuration: 220 },
+  "terms": { animation: "slide_from_right", animationDuration: 220 },
+  "privacy": { animation: "slide_from_right", animationDuration: 220 },
+  "appeal": { animation: "slide_from_right", animationDuration: 220 },
+  "account/verify": { animation: "slide_from_right", animationDuration: 220 },
+  "account/settings": { animation: "slide_from_right", animationDuration: 220 },
+  "admin/index": { animation: "slide_from_right", animationDuration: 220 },
+};
 
 /** Pages anyone can open at any time (legal text, appeals), even mid-sign-up. */
 const ALWAYS_OPEN_PATHS = new Set(["/terms", "/privacy", "/appeal"]);
@@ -39,11 +74,6 @@ const ALWAYS_OPEN_PATHS = new Set(["/terms", "/privacy", "/appeal"]);
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
-void SplashScreen.preventAutoHideAsync();
-
-export const unstable_settings = {
-  anchor: "(tabs)",
-};
 
 /**
  * Resolves the initial route once the persisted onboarding flag is known.
@@ -112,19 +142,24 @@ function LaunchGate({ children }: PropsWithChildren) {
   // white/blank screen and the navigator remounts, dumping the user back toward
   // the initial route. Screens handle their own `loading` states instead.
   if (status === "loading") {
-    return <View style={{ flex: 1, backgroundColor: "#F7F8F6" }} />;
+    return <BrandLoadingScreen />;
   }
 
   return <>{children}</>;
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontsError] = useFonts(fontAssets);
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
+  const [brandDelayElapsed, setBrandDelayElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBrandDelayElapsed(true), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
@@ -137,11 +172,11 @@ export default function RootLayout() {
     void initPurchases();
   }, []);
 
+  // Fonts ship inside the app binary now, so the native splash can hand over
+  // to the branded loading screen as soon as React has mounted.
   useEffect(() => {
-    if (fontsLoaded || fontsError) {
-      void SplashScreen.hideAsync();
-    }
-  }, [fontsError, fontsLoaded]);
+    void BootSplash.hide({ fade: true });
+  }, []);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
     setInsets(metrics.insets);
@@ -227,7 +262,7 @@ export default function RootLayout() {
     };
   }, [initialInsets, initialFrame]);
 
-  if (!fontsLoaded && !fontsError && Platform.OS !== "web") return <View style={{ flex: 1, backgroundColor: "#F7F8F6" }} />;
+  if (Platform.OS !== "web" && !brandDelayElapsed) return <BrandLoadingScreen />;
 
   const content = (
     <ErrorBoundary>
@@ -236,45 +271,15 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <JobProvider>
+          <AppNavigationContainer>
           <LaunchGate>
-          {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
-          {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
-          {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
-          <Stack screenOptions={{ animation: "slide_from_right", animationDuration: 220, fullScreenGestureEnabled: false, gestureEnabled: true, gestureDirection: "horizontal", headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ animation: "fade", animationDuration: 160 }} />
-            <Stack.Screen name="onboarding/index" options={{ animation: "fade", animationDuration: 220, gestureEnabled: false }} />
-            <Stack.Screen name="search-results" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="detailed-search" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="discover/[kind]" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="job/[id]" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="job/[id]/apply" options={{ animation: "slide_from_right", animationDuration: 220, presentation: "fullScreenModal" }} />
-
-            <Stack.Screen name="employer/index" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="employer/listings" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="employer/post-job" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="post-job" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="employer/jobs" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="employer/boost/[id]" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="oauth/callback" options={{ animation: "fade", animationDuration: 160 }} />
-            <Stack.Screen name="login" options={{ animation: "fade", animationDuration: 180 }} />
-            <Stack.Screen name="age" options={{ animation: "slide_from_right", animationDuration: 220, gestureEnabled: false }} />
-            <Stack.Screen name="complete-profile" options={{ animation: "slide_from_right", animationDuration: 220, gestureEnabled: false }} />
-            <Stack.Screen name="account-plans" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="checkout" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="employer/enterprise-campaign" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="applications/[id]" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="applications/index" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="terms" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="privacy" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="appeal" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="account/verify" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="account/settings" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="admin/index" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-          </Stack>
+          {/* Native headers are hidden by default (ROOT_SCREEN_OPTIONS); a screen that needs one enables it via <Stack.Screen options>. */}
+          <RootStack screenOptions={ROOT_SCREEN_OPTIONS} options={SCREEN_OPTIONS} tabs={TabLayout} />
           <WebLegalChrome />
           </LaunchGate>
+          </AppNavigationContainer>
           </JobProvider>
-          <StatusBar style="auto" />
+          <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
         </QueryClientProvider>
       </trpc.Provider>
     </GestureHandlerRootView>

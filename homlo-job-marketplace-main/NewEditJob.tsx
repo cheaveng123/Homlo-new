@@ -1,9 +1,9 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {View,Text,TextInput,Pressable,KeyboardAvoidingView,Platform,ScrollView,Alert,Image} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useFocusEffect,useLocalSearchParams,router} from 'expo-router';
+import {useFocusEffect,useLocalSearchParams,router} from '@/lib/router';
 import Animated,{FadeIn,FadeOut,ZoomIn,ZoomOut,LinearTransition,useSharedValue,useAnimatedStyle,withSequence,withTiming,interpolateColor} from 'react-native-reanimated';
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from '@/lib/native/image-picker';
 import {c,f,sh} from './NewTheme';
 import {Icon,Circ,Btn,Pill,Sec,Reveal,Press,Boundary} from './NewUI';
 import {R,go} from './NewRoutes';

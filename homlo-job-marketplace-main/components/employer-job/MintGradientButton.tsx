@@ -1,7 +1,7 @@
 // MintGradientButton: mint gradient pill (Boost job, Accept-confirm, Save changes, etc.)
 import React from 'react';
 import { Pressable, Text, StyleProp, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { colors, font, shadows } from './job-management-tokens';
 
 type Props = {

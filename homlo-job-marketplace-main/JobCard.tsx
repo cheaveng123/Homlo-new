@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, ImageSourcePropType, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '@react-native-community/blur';
 import { PhotoPlaceholder } from './PhotoPlaceholder';
 import { colors, radii, type } from './theme';
 
@@ -67,7 +67,7 @@ export function JobCard({ variant, job }: { variant: JobCardVariant; job: JobCar
       ]}
     >
       <Photo job={job} />
-      <BlurView intensity={40} tint="dark" style={[styles.overlay, { borderRadius: radii.overlay }]}>
+      <BlurView blurAmount={13} blurType="dark" style={[styles.overlay, { borderRadius: radii.overlay }]}>
         <Text style={type.jobTitle} numberOfLines={2}>{job.title}</Text>
         <View style={styles.metaRow}>
           <Text style={type.salary}>{job.salary}</Text>

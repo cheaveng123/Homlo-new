@@ -7,7 +7,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Animated, {
   useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { PressableScale, SMOOTH } from '@/src/design/motion';
 import { durations, palette } from '@/src/design/tokens';
 import { haptic } from '@/lib/haptics';

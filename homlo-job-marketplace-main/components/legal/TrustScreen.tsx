@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { colorsNew } from "@/src/new/theme/tokensNew";

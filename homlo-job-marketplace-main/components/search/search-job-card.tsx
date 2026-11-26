@@ -1,6 +1,6 @@
 import { memo as reactMemo, useMemo } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { useHeroTransitionStore } from "@/store/heroTransitionStore";
 

@@ -193,7 +193,7 @@ export function JobDetailMapInfo({
           <Text style={styles.infoTitle}>Routing unavailable</Text>
           <Text style={styles.infoText}>
             {formatDistanceKm(fallbackDistance)} straight line
-            {error === "missing-key" ? " · add ORS_API_KEY to .env" : ""}
+            {error === "missing-key" ? " · add PUBLIC_ORS_API_KEY to .env" : ""}
           </Text>
         </View>
         <Pressable

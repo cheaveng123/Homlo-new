@@ -1,4 +1,4 @@
-import * as Location from "expo-location";
+import * as Location from "@/lib/native/location";
 
 export type LocationPermissionStatus = "granted" | "denied" | "undetermined";
 

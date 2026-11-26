@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import MapView, { Marker, Circle, UrlTile } from 'react-native-maps';
-import { router } from 'expo-router';
+import { router } from '@/lib/router';
 import JobMapScreen, { PricePin } from '@/components/explore/JobMapScreen';
 import type { Job } from '@/components/explore/ExploreUI';
 import { MAP_TILE_URL } from '@/lib/map-config';

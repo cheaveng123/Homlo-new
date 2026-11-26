@@ -1,4 +1,4 @@
-import { useRouter, usePathname } from "expo-router";
+import { useRouter, usePathname } from "@/lib/router";
 
 type Router = ReturnType<typeof useRouter>;
 

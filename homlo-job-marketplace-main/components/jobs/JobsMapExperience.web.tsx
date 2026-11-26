@@ -1,7 +1,7 @@
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { router } from 'expo-router';
+import { router } from '@/lib/router';
 
 import JobMapScreen from '@/components/explore/JobMapScreen';
 import type { Job } from '@/components/explore/ExploreUI';

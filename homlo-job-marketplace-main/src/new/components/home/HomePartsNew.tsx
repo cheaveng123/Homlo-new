@@ -3,9 +3,8 @@
  * Pure UI: every component takes the same JobSummaryNew view-model the adapter already builds.
  */
 import { ReactNode, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image, StyleSheet, View } from 'react-native';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -464,8 +463,7 @@ function Photo({ job, width, height, radius, compact, children }: {
       {/* expo-image: decodes off the main thread and caches to memory + disk, so photos
           don't stall the scroll or re-download every time the screen mounts */}
       {!!job.imageUri && (
-        <Image source={{ uri: job.imageUri }} style={StyleSheet.absoluteFill} contentFit="cover"
-          cachePolicy="memory-disk" recyclingKey={job.id} transition={150} />
+        <Image key={job.id} source={{ uri: job.imageUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
       )}
       {children}
     </View>

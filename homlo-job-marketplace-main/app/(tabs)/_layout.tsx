@@ -1,4 +1,5 @@
-import { Tabs } from "expo-router";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { ROUTES } from "@/lib/router";
 import { useTabNavigation } from "@/lib/navigation";
 
 import { Animated, Easing } from "react-native";
@@ -35,9 +36,27 @@ function HomeTabBar() {
   return <BottomTabBar activeKey={activeKey} onSelect={select} badgeCount={count} />;
 }
 
+const TabsNav = createBottomTabNavigator();
+
+// Same order the tabs were declared in before; any other tab file follows.
+const TAB_ORDER = ["index", "explore", "post", "inbox", "saved", "profile"];
+const TAB_TITLES: Record<string, string> = {
+  index: "Home",
+  explore: "Explore",
+  post: "Post",
+  inbox: "Alerts",
+  profile: "Profile",
+};
+const TAB_ROUTES = ROUTES.filter((r) => r.inTabs).sort((a, b) => {
+  const ia = TAB_ORDER.indexOf(a.name);
+  const ib = TAB_ORDER.indexOf(b.name);
+  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+});
+
 export default function TabLayout() {
   return (
-    <Tabs
+    <TabsNav.Navigator
+      initialRouteName="index"
       screenOptions={{
         animation: "fade",
         headerShown: false,
@@ -53,12 +72,9 @@ export default function TabLayout() {
       }}
       tabBar={() => <HomeTabBar />}
     >
-      <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="explore" options={{ title: "Explore" }} />
-      <Tabs.Screen name="post" options={{ title: "Post" }} />
-      <Tabs.Screen name="inbox" options={{ title: "Alerts" }} />
-      <Tabs.Screen name="saved" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
-    </Tabs>
+      {TAB_ROUTES.map((r) => (
+        <TabsNav.Screen key={r.name} name={r.name} getComponent={r.getComponent} options={{ title: TAB_TITLES[r.name] }} />
+      ))}
+    </TabsNav.Navigator>
   );
 }

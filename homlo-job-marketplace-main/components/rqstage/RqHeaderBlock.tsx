@@ -18,7 +18,7 @@ import {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from '@/lib/native/status-bar';
 import { AppIcon, type IconName } from '@/components/ui/AppIcon';
 import {
   RQ_CLR,

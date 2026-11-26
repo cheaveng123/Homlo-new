@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/lib/native/haptics";
 
 import { type BoostPlan, priceFor } from "@/lib/boostData";
 import { colors, fonts } from "@/theme";

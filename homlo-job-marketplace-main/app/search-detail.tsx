@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppIcon } from "@/components/ui/AppIcon";
 

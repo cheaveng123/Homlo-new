@@ -37,19 +37,19 @@ describe("getProfilePhotoUrl", () => {
   });
 
   it("builds a public object URL for a storage key", () => {
-    process.env.EXPO_PUBLIC_SUPABASE_URL = SUPABASE_URL;
+    process.env.PUBLIC_SUPABASE_URL = SUPABASE_URL;
     expect(getProfilePhotoUrl("8e2b94c6-1234/user/avatar-1726100000000-abc.jpg")).toBe(
       `${SUPABASE_URL}/storage/v1/object/public/profile-photos/8e2b94c6-1234/user/avatar-1726100000000-abc.jpg`,
     );
   });
 
   it("does not build a URL when the Supabase URL env is missing", () => {
-    delete process.env.EXPO_PUBLIC_SUPABASE_URL;
+    delete process.env.PUBLIC_SUPABASE_URL;
     expect(getProfilePhotoUrl("8e2b94c6-1234/avatar.jpg")).toBeNull();
   });
 
   it("rejects malformed keys (path traversal, whitespace, oversized)", () => {
-    process.env.EXPO_PUBLIC_SUPABASE_URL = SUPABASE_URL;
+    process.env.PUBLIC_SUPABASE_URL = SUPABASE_URL;
     expect(getProfilePhotoUrl("../avatar.jpg")).toBeNull();
     expect(getProfilePhotoUrl("a/b/..%2Favatar.jpg")).toBeNull();
     expect(getProfilePhotoUrl("8e2b94c6-1234/a vatar.jpg")).toBeNull();

@@ -12,7 +12,7 @@
  *
  * The animation runs on the UI thread via Reanimated, so it never writes React
  * state and never re-renders a parent mid-flight. The gradient is
- * `expo-linear-gradient` rather than `react-native-linear-gradient`, and the
+ * `react-native-linear-gradient` (via lib/native/linear-gradient), and the
  * mask is a plain clipped box rather than `@react-native-masked-view`: the
  * illustrations are transparent PNGs on a near-white page, so a beam that runs
  * a little past the artwork is invisible, and this way the component needs no
@@ -34,7 +34,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import LinearGradient from "@/lib/native/linear-gradient";
 import Animated, {
   Easing,
   cancelAnimation,

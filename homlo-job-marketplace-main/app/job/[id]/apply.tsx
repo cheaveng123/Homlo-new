@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import * as DocumentPicker from "expo-document-picker";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
+import * as DocumentPicker from "@/lib/native/document-picker";
 
 import { getJob } from "@/components/job-store";
 import { usePublishedJobs } from "@/hooks/use-published-jobs";

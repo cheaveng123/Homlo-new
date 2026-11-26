@@ -1,4 +1,4 @@
-import { useIsFocused } from "expo-router";
+import { useIsFocused } from "@/lib/router";
 import { useCallback, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { AccessibilityInfo, View } from "react-native";

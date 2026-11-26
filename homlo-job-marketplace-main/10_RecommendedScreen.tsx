@@ -2,7 +2,7 @@
 // Page 1 of 4: Recommended. Hero "Top match", category selector circles, match-gauge list.
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { AppIcon, IconName } from '../../components/ui/AppIcon';
 import { Button } from '../../components/profile/ProfileUI';
 import {

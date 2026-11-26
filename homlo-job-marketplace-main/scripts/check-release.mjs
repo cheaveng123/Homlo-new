@@ -32,33 +32,33 @@ const check = (pass, good, bad, level = "fail") => {
 };
 
 // 4. IPv6 / reachable API: App Review runs on an IPv6-only (NAT64) network.
-const api = (env.EXPO_PUBLIC_API_BASE_URL || "").trim();
+const api = (env.PUBLIC_API_BASE_URL || "").trim();
 let apiHost = "";
 try { apiHost = new URL(api).hostname.replace(/^\[|\]$/g, ""); } catch { /* invalid */ }
-check(Boolean(api), "API base URL is set", "EXPO_PUBLIC_API_BASE_URL is not set — release builds fall back to http://localhost:3000 and nothing loads on the reviewer's phone.");
+check(Boolean(api), "API base URL is set", "PUBLIC_API_BASE_URL is not set — release builds fall back to http://localhost:3000 and nothing loads on the reviewer's phone.");
 if (api) {
-  check(api.startsWith("https://"), "API uses https", `EXPO_PUBLIC_API_BASE_URL must use https:// (got ${api}).`);
-  check(apiHost && isIP(apiHost) === 0, "API uses a hostname (works on IPv6/NAT64)", `EXPO_PUBLIC_API_BASE_URL must be a hostname, not an IP address (${apiHost}) — IP literals break on Apple's IPv6 review network.`);
-  check(!/^(localhost|127\.|10\.|192\.168\.|.*\.local$)/.test(apiHost), "API is not a local address", `EXPO_PUBLIC_API_BASE_URL points at a local address (${apiHost}).`);
+  check(api.startsWith("https://"), "API uses https", `PUBLIC_API_BASE_URL must use https:// (got ${api}).`);
+  check(apiHost && isIP(apiHost) === 0, "API uses a hostname (works on IPv6/NAT64)", `PUBLIC_API_BASE_URL must be a hostname, not an IP address (${apiHost}) — IP literals break on Apple's IPv6 review network.`);
+  check(!/^(localhost|127\.|10\.|192\.168\.|.*\.local$)/.test(apiHost), "API is not a local address", `PUBLIC_API_BASE_URL points at a local address (${apiHost}).`);
 }
 
 // In-app purchases must use the live App Store key, not RevenueCat's Test Store.
-const rcIos = (env.EXPO_PUBLIC_RC_IOS_KEY || "").trim();
-check(rcIos.startsWith("appl_"), "RevenueCat iOS key is a live App Store key", "EXPO_PUBLIC_RC_IOS_KEY is missing or not an appl_… key — the app would ship the Test Store key, which App Review rejects.");
+const rcIos = (env.PUBLIC_RC_IOS_KEY || "").trim();
+check(rcIos.startsWith("appl_"), "RevenueCat iOS key is a live App Store key", "PUBLIC_RC_IOS_KEY is missing or not an appl_… key — the app would ship the Test Store key, which App Review rejects.");
 
 // 5 / 20. No sample content or fake reviews.
-check(env.EXPO_PUBLIC_DEMO_CONTENT !== "true", "Demo content is off", "EXPO_PUBLIC_DEMO_CONTENT=true would show sample employers, ratings and reviews to real users.");
+check(env.PUBLIC_DEMO_CONTENT !== "true", "Demo content is off", "PUBLIC_DEMO_CONTENT=true would show sample employers, ratings and reviews to real users.");
 
 // 5 / 17. Real legal pages with contact details.
 const legal = readFileSync(`${root}lib/legal-content.ts`, "utf8");
 check(!/isPlaceholder:\s*true/.test(legal), "Privacy policy and terms are published", "lib/legal-content.ts still has placeholder Privacy policy / Terms (isPlaceholder: true). Add your real text and a support contact.");
 
 // 17. In-app contact (Profile → Contact support).
-const support = (env.EXPO_PUBLIC_SUPPORT_EMAIL || "").trim();
-check(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(support), "Support email is set", "EXPO_PUBLIC_SUPPORT_EMAIL is not set — the in-app \"Contact support\" option stays hidden.");
+const support = (env.PUBLIC_SUPPORT_EMAIL || "").trim();
+check(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(support), "Support email is set", "PUBLIC_SUPPORT_EMAIL is not set — the in-app \"Contact support\" option stays hidden.");
 
 // 7 / 2.5.4. Info.plist purpose strings and background modes.
-const plist = `${root}ios/HomloJobs/Info.plist`;
+const plist = `${root}ios/HireNow/Info.plist`;
 if (existsSync(plist)) {
   const json = JSON.parse(execFileSync("plutil", ["-convert", "json", "-o", "-", plist]).toString());
   for (const [key, value] of Object.entries(json)) {

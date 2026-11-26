@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 
 const supabaseUrl = (process.env.SUPABASE_URL ?? "").replace(/\/+$/, "");
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const anonKey = process.env.PUBLIC_SUPABASE_ANON_KEY ?? "";
 const databaseUrl = process.env.SUPABASE_DB_URL ?? "";
 const hasConfig = (() => {
   if (!/^https:\/\/.+\.supabase\.co$/.test(supabaseUrl)) return false;

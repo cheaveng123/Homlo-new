@@ -4,9 +4,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import { useLocalSearchParams, router } from '@/lib/router';
+import LinearGradient from '@/lib/native/linear-gradient';
+import { BlurView } from '@react-native-community/blur';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -132,7 +132,7 @@ function Screen() {
         <LinearGradient colors={['#FFF3DF', '#F4FAFC', '#FFFFFF']} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
         <View style={[st.blob, { width: 240, height: 240, top: -80, right: -60, backgroundColor: '#FFC765', opacity: 0.45 }]} />
         <View style={[st.blob, { width: 200, height: 200, top: 120, left: -90, backgroundColor: '#7FD8EA', opacity: 0.35 }]} />
-        <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView blurAmount={16} blurType="light" style={StyleSheet.absoluteFill} />
       </View>
 
       <View style={{ paddingTop: ins.top + 8, paddingHorizontal: 16, gap: 12 }}>
@@ -148,7 +148,7 @@ function Screen() {
         {/* glass hero: plan art + live price */}
         <Animated.View entering={FadeInDown.duration(420)} style={[st.heroWrap, liftShadow]}>
           <View style={st.heroClip}>
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView blurAmount={10} blurType="light" style={StyleSheet.absoluteFill} />
             <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.5)' }]} />
             <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0.9)', 'rgba(255,255,255,0)']} style={st.heroSheen} />
             <View style={{ flex: 1, gap: 4 }}>
@@ -175,7 +175,7 @@ function Screen() {
 
       {/* frosted action bar */}
       <View style={[st.bar, { paddingBottom: ins.bottom + 12 }]}>
-        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView blurAmount={20} blurType="light" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.72)' }]} />
         <View style={st.barRow}>
           <View style={{ flex: 1 }}>

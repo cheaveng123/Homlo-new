@@ -1,6 +1,6 @@
 import { RefreshControl, View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
-import { BlurView } from "expo-blur";
-import { useRouter } from "expo-router";
+import { BlurView } from "@react-native-community/blur";
+import { useRouter } from "@/lib/router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   Extrapolation,
@@ -225,7 +225,7 @@ export default function JobDetailsScreen({ job, saved = false, onToggleSaved, on
           buttons keep their own white circles. */}
       <Animated.View style={[styles.headerBar, { paddingTop: insets.top }]}>
         <Animated.View pointerEvents="none" style={[styles.headerBlur, blurStyle]}>
-          <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+          <BlurView blurAmount={10} blurType="light" style={StyleSheet.absoluteFill} />
         </Animated.View>
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.iconCircle} onPress={() => router.back()}>

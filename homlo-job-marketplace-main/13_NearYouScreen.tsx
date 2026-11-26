@@ -2,8 +2,8 @@
 // Page 3 of 4: Jobs near you. Map with price pins, 1 / 3 / 5 km radius circles, hill edge into the list.
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { StatusBar } from '@/lib/native/status-bar';
+import { useRouter } from '@/lib/router';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '../../components/ui/AppIcon';

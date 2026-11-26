@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Redirect } from "expo-router";
+import { Redirect } from "@/lib/router";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { ScreenContainer } from "@/components/screen-container";

@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import LinearGradient from "@/lib/native/linear-gradient";
 
 // Loading / error fallback shown under the real job photo — the shipped feed
 // always resolves a real photo, this is only visible while the image streams

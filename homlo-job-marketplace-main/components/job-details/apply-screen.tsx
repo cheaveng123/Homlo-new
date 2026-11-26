@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from "react-native";
 import { useSafeRouter } from "@/lib/navigation";
-import * as DocumentPicker from "expo-document-picker";
+import * as DocumentPicker from "@/lib/native/document-picker";
 
 import ImagePlaceholder from "./image-placeholder";
 import { AppIcon } from "@/components/ui/AppIcon";

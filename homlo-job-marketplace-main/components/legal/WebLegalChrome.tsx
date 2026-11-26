@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter } from "@/lib/router";
 
 import { getCookieChoice, setCookieChoice } from "@/lib/cookie-consent";
 import { colorsNew } from "@/src/new/theme/tokensNew";

@@ -1,9 +1,9 @@
-import * as Linking from "expo-linking";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect } from "@/lib/router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  Linking,
   Pressable,
   StyleSheet,
   Text,

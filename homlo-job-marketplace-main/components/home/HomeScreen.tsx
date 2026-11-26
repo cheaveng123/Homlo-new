@@ -1,4 +1,4 @@
-import { useRouter, useIsFocused } from "expo-router";
+import { useRouter, useIsFocused } from "@/lib/router";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, {

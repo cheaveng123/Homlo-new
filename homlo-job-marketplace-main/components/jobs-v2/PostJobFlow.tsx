@@ -3,7 +3,7 @@ import {
   BackHandler, Image, KeyboardAvoidingView, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View,
   useWindowDimensions,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from '@/lib/native/status-bar';
 import Animated, {
   FadeIn, FadeInLeft, FadeInRight, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming,
 } from 'react-native-reanimated';

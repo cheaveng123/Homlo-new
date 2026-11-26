@@ -8,7 +8,7 @@
  * jobs look like they still existed.
  *
  * It is OFF unless explicitly enabled for local design work:
- *   EXPO_PUBLIC_DEMO_CONTENT=true
+ *   PUBLIC_DEMO_CONTENT=true
  * Never set this in a TestFlight or App Store build.
  */
-export const DEMO_CONTENT_ENABLED = process.env.EXPO_PUBLIC_DEMO_CONTENT === "true";
+export const DEMO_CONTENT_ENABLED = process.env.PUBLIC_DEMO_CONTENT === "true";

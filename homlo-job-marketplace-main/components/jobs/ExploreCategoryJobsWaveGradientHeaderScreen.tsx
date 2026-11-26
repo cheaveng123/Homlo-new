@@ -17,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { AppIcon } from '@/components/ui/AppIcon';
 import { LegacyRowListSkeleton } from '@/src/new/components/NewSkeletons';

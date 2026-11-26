@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { AppIcon } from "@/components/ui/AppIcon";

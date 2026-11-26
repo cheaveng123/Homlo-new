@@ -1,4 +1,4 @@
-import type { ImperativeRouter } from "expo-router";
+import type { ImperativeRouter } from "@/lib/router";
 
 /** Route builders kept in one place so every application surface navigates the same way. */
 export function openApplication(router: ImperativeRouter, applicationId: string): void {

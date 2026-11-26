@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { StyleSheet, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 
 import ExploreCategoryJobsWaveGradientHeaderScreen from "@/components/jobs/ExploreCategoryJobsWaveGradientHeaderScreen";
 import { JobCard } from "@/components/jobs/JobCard";

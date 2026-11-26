@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 
 import { ApplicationDetailView } from "@/src/new/applications";
 import type { ApplicationDetail } from "@/src/new/applications/types";

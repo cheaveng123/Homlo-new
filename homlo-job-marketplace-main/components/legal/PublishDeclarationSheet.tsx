@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { CONSENT_WORDING } from "@/lib/legal/consent-wording";
 import { trpc } from "@/lib/trpc";

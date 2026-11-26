@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 
 // Stand-in for real job photography until image URLs are wired up.
 // Swap this for <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />

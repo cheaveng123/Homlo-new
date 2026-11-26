@@ -44,7 +44,7 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from '@/lib/native/image-picker';
 
 import { AppIcon, type IconName } from '@/components/ui/AppIcon';
 

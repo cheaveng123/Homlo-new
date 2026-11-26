@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from "@/components/ui/AppIcon";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Text } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "@/lib/router";
 
 import { Btn, Card, ErrorText, Input, Muted, TrustScreen, trustStyles } from "@/components/legal/TrustScreen";
 import { trpc } from "@/lib/trpc";

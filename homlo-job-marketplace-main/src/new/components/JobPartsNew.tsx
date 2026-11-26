@@ -1,13 +1,13 @@
 import { ReactNode, useEffect } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { AppIconNew } from '../icons/AppIconNew';
 import { TextNew } from './TextNew';
 import { ChipNew, PressableScaleNew } from './PrimitivesNew';
 import { PhotoPlaceholder } from '@/src/design/primitives';
 import { AdsIcon } from '@/src/components/icons/AdsIcon';
-import { useIsFocused } from 'expo-router';
+import { useIsFocused } from '@/lib/router';
 import { colorsNew, radiusNew } from '../theme/tokensNew';
 import { motionNew } from '../theme/motionNew';
 import { useCopyNew } from '../theme/copyNew';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { AdsIcon } from '@/src/components/icons/AdsIcon';
 import { BoostIcon } from '@/src/components/icons/BoostIcon';
 import { useBoostCountdown } from './useBoostCountdown';

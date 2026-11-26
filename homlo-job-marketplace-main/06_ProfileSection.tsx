@@ -3,8 +3,8 @@
 // All data below is mock-first: wire each save to the repository layer.
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import LinearGradient from '@/lib/native/linear-gradient';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 import {
   Button, DetailScreen, Field, Group, GroupLabel, Hint, OptionRow, Row, Tag, ToggleRow,
 } from '../../components/profile/ProfileUI';

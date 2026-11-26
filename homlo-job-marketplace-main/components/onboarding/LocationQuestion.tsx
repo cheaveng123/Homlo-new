@@ -10,7 +10,7 @@
 // The parent owns the value; this component only reports it via onChange.
 import { useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import * as Location from "expo-location";
+import * as Location from "@/lib/native/location";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { IconTile } from "@/components/onboarding/OptionRow";

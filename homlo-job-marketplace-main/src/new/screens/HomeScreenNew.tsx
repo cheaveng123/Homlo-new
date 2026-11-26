@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { ScrollView, StyleProp, StyleSheet, View, ViewStyle, useWindowDimensions } from 'react-native';
 import Animated, { Extrapolation, interpolate, runOnJS, type SharedValue, useAnimatedReaction, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TextNew } from '../components/TextNew';
 import { PressableScaleNew } from '../components/PrimitivesNew';

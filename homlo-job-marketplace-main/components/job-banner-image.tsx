@@ -23,7 +23,7 @@ export function JobBannerImage({ uri, accessibilityLabel, style, blur = true }: 
   if (!uri) return null;
 
   if (Platform.OS === "web") {
-    const background = { backgroundImage: `url("${uri}")`, backgroundPosition: "center" };
+    const background = { backgroundImage: `url("${uri}")`, backgroundPosition: "center" } as unknown as ViewStyle;
     if (!blur) {
       return (
         <View accessibilityLabel={accessibilityLabel} style={[styles.holder, style]}>

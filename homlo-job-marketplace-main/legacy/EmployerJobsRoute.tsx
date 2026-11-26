@@ -6,7 +6,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { View, Text, FlatList, Pressable, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from '@/lib/router';
 import { AppIcon } from "@/components/ui/AppIcon";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

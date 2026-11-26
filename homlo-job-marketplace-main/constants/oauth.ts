@@ -1,11 +1,8 @@
-import * as Linking from "expo-linking";
-import Constants from "expo-constants";
-// Named import only. A namespace import (`import * as ReactNative`) makes Expo's
-// `metroRequire.importAll` enumerate every lazy getter on react-native's index,
-// including the deprecated `get PushNotificationIOS()`, which does
-// `require(...).default` on a module that no longer resolves, crashing with
-// "Cannot read property 'default' of undefined" before the app mounts.
-import { NativeModules, Platform, TurboModuleRegistry } from "react-native";
+// Named import only: a namespace import (`import * as ReactNative`) enumerates
+// every lazy getter on react-native's index, including deprecated ones that no
+// longer resolve, and can crash before the app mounts.
+import { Linking, NativeModules, Platform, TurboModuleRegistry } from "react-native";
+import { DEEP_LINK_SCHEME } from "@/constants/deep-link";
 import type { TurboModule } from "react-native";
 import {
   devServerAuthorityFromBundleUrl,
@@ -14,20 +11,15 @@ import {
   toApiAuthority,
 } from "@/lib/api-base-url";
 
-// Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "com.app.homlojobmarketplace";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
-  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
-  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "",
-  appId: process.env.EXPO_PUBLIC_APP_ID ?? "",
-  ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
-  ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-  deepLinkScheme: schemeFromBundleId,
+  portal: process.env.PUBLIC_OAUTH_PORTAL_URL ?? "",
+  server: process.env.PUBLIC_OAUTH_SERVER_URL ?? "",
+  appId: process.env.PUBLIC_APP_ID ?? "",
+  ownerId: process.env.PUBLIC_OWNER_OPEN_ID ?? "",
+  ownerName: process.env.PUBLIC_OWNER_NAME ?? "",
+  apiBaseUrl: process.env.PUBLIC_API_BASE_URL ?? "",
+  deepLinkScheme: DEEP_LINK_SCHEME,
 };
 
 export const OAUTH_PORTAL_URL = env.portal;
@@ -62,13 +54,13 @@ export function getApiBaseUrl(): string {
   const isNative = Platform.OS !== "web";
 
   // If API_BASE_URL is set, use it. The one exception is a native dev build
-  // configured to point at the Metro bundler (e.g. EXPO_PUBLIC_API_BASE_URL was
+  // configured to point at the Metro bundler (e.g. PUBLIC_API_BASE_URL was
   // exported as :8081): the bundler would answer API calls with HTML, so fall
   // through and derive the API host instead.
   if (API_BASE_URL) {
     if (__DEV__ && isNative && isMetroAuthority(parseDevServerAuthority(API_BASE_URL))) {
       console.warn(
-        `[getApiBaseUrl] EXPO_PUBLIC_API_BASE_URL (${API_BASE_URL}) points at the Metro dev server; ` +
+        `[getApiBaseUrl] PUBLIC_API_BASE_URL (${API_BASE_URL}) points at the Metro dev server; ` +
           "using the API port :3000 instead. Unset it in the Metro shell to silence this warning.",
       );
     } else {
@@ -97,22 +89,19 @@ export function getApiBaseUrl(): string {
     return `${protocol}//${hostname}`;
   }
 
-  // On native, derive the API host from the dev server and swap its port for the
-  // API port. `hostUri` is the Expo runtime host (Expo Go / dev client); the JS
-  // bundle URL (from the `SourceCode` TurboModule, read above) covers plain
-  // `expo run:ios`/`run:android` builds that have no `hostUri` (e.g. without
-  // expo-dev-client).
+  // On native dev builds, derive the API host from the Metro dev server the JS
+  // bundle was loaded from (the `SourceCode` TurboModule, read above) and swap
+  // its port for the API port.
   if (isNative) {
     const devServerAuthority =
       devServerAuthorityFromSourceCode() ??
-      parseDevServerAuthority(Constants.expoConfig?.hostUri) ??
       devServerAuthorityFromBundleUrl(NativeModules.SourceCode?.scriptURL);
     if (devServerAuthority) {
       return `http://${toApiAuthority(devServerAuthority)}`;
     }
   }
 
-  console.warn("[getApiBaseUrl] No API base URL is configured. Set EXPO_PUBLIC_API_BASE_URL for production builds.");
+  console.warn("[getApiBaseUrl] No API base URL is configured. Set PUBLIC_API_BASE_URL for production builds.");
   // Fallback to localhost API server for native development so fetch() has an
   // absolute URL to call (relative URLs do not work on React Native).
   // On iOS Simulator, "localhost" refers to the host Mac.
@@ -144,9 +133,7 @@ export const getRedirectUri = () => {
   if (Platform.OS === "web") {
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
-    return Linking.createURL("/oauth/callback", {
-      scheme: env.deepLinkScheme,
-    });
+    return `${env.deepLinkScheme}://oauth/callback`;
   }
 };
 

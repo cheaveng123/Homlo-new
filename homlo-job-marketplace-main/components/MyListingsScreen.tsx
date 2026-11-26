@@ -21,9 +21,9 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
+import { useRouter, usePathname, useLocalSearchParams } from '@/lib/router';
 import { AppIcon, type IconName } from '@/components/ui/AppIcon';
 import { BottomTabBar } from '@/components/home/BottomTabBar';
 import { colors, fontFamily } from '@/theme';

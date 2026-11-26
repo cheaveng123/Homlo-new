@@ -37,7 +37,7 @@ declare module "*.gif" {
 }
 
 // Unlike the image types above, a bundled video is only ever consumed as a
-// source handle for `expo-video`'s `VideoSource` (which takes the numeric
+// source handle for `react-native-video`'s `source` (which takes the numeric
 // Metro asset id), so `number` is the honest declared type here rather than
 // `ImageSourcePropType`.
 declare module "*.mov" {
@@ -49,3 +49,6 @@ declare module "*.mp4" {
   const source: number;
   export default source;
 }
+
+// global.css is compiled by NativeWind's Metro transformer; it has no exports.
+declare module "*.css";

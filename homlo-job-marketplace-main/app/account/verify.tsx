@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 
 import { ConsentCheckbox } from "@/components/legal/LegalUI";
 import { Btn, Card, ErrorText, Input, Muted, TrustScreen, trustStyles } from "@/components/legal/TrustScreen";

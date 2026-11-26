@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router } from '@/lib/router';
 import Animated, { FadeInDown, FadeOut, LinearTransition, useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, useAnimatedReaction, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from '@/lib/native/status-bar';
 import { c, f } from './NewTheme';
 import { AP, cardShadow, liftShadow } from '@/components/employer-job/applicants/tokens';
 import { ApplicantItem, BoostSpotlight, HiringProgress, JobHero, NoApplicants, StatsStrip, StatusSwitch } from '@/components/employer-job/manager/JobManagerParts';

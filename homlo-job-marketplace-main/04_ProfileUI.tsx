@@ -6,9 +6,9 @@ import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, Modal, Switch,
   KeyboardAvoidingView, Platform, TextInputProps, StyleProp, ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import Animated, {
   Easing, SlideInDown, interpolate, useAnimatedStyle, useReducedMotion,
   useSharedValue, withRepeat, withSequence, withTiming,

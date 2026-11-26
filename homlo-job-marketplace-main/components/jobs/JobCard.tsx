@@ -1,6 +1,6 @@
 import React, { memo, useRef } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { AppIcon } from "@/components/ui/AppIcon";
 import { jobCardTokens as t } from './jobCardTokens';

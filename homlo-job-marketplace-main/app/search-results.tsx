@@ -1,5 +1,5 @@
 import { locationService } from "@/lib/location-service";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "@/lib/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 

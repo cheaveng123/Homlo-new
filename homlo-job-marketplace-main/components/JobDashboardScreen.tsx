@@ -48,8 +48,8 @@ import {
 } from 'react-native';
 import type { ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, usePathname, useRouter } from '@/lib/router';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { AppIcon } from '@/components/ui/AppIcon';
 
 import { BottomTabBar } from '@/components/home/BottomTabBar';

@@ -24,7 +24,7 @@ import {
   View,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import InboxHeader from '../components/inbox/InboxHeader';

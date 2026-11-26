@@ -5,7 +5,7 @@
  */
 import React, { useEffect } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,

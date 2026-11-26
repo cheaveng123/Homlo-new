@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { useMapJobs } from "@/lib/nearestJobs";
 import { NearbyJobsMap } from "@/src/components/NearbyJobsMap";

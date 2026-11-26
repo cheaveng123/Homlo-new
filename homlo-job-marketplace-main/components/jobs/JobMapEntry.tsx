@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { AppIcon } from "@/components/ui/AppIcon";
-import { router } from 'expo-router';
+import { router } from '@/lib/router';
 
 const FOREST = '#0E3B2E';
 const MINT = '#0891B2';

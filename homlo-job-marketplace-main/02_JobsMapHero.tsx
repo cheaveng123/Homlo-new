@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, Pressable, Platform, StyleSheet } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withTiming } from 'react-native-reanimated';
 import { C, F, shadow } from './01_exploreShared';
 

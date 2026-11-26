@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 import { ticketStatus } from '@/components/employer-job/ApplicantTicketCard';
 import type { Applicant, ApplicantStatus } from '@/components/employer-job/ApplicantTicketCard';
 import { ConfirmSheet, DotsMenu, Press, Txt } from '@/components/employer-v2/ui';

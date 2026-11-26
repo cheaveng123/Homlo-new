@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { FlatList, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import Animated from "react-native-reanimated";
 
 import { useJobStore, type Job } from "@/components/job-store";

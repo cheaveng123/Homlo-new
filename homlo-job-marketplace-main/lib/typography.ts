@@ -1,57 +1,12 @@
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
-import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-} from "@expo-google-fonts/plus-jakarta-sans";
-// PERF: Space Grotesk and Manrope are no longer referenced by any screen
-// (components/job-details/typography.ts moved off them), so they are not
-// loaded at startup any more: 5 fewer font files (464 KB) before first paint.
-import {
-  Figtree_400Regular,
-  Figtree_500Medium,
-  Figtree_600SemiBold,
-  Figtree_700Bold,
-  Figtree_800ExtraBold,
-} from "@expo-google-fonts/figtree";
-import { BricolageGrotesque_700Bold } from "@expo-google-fonts/bricolage-grotesque";
 import type { TextStyle } from "react-native";
 
-export const fontAssets = {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
-  // theme/tokens.ts (inbox/chat redesign) references these family names.
-  "PlusJakartaSans-Regular": PlusJakartaSans_400Regular,
-  "PlusJakartaSans-Medium": PlusJakartaSans_500Medium,
-  "PlusJakartaSans-SemiBold": PlusJakartaSans_600SemiBold,
-  "PlusJakartaSans-Bold": PlusJakartaSans_700Bold,
-  "PlusJakartaSans-ExtraBold": PlusJakartaSans_800ExtraBold,
-  // Figtree is used only inside job containers — see
-  // components/jobs/jobCardTokens.ts. Not part of fonts.heading/body below,
-  // so nothing outside the job card changes typeface.
-  Figtree_400Regular,
-  Figtree_500Medium,
-  Figtree_600SemiBold,
-  Figtree_700Bold,
-  Figtree_800ExtraBold,
-  // Home section titles only — see components/home/SectionHeader.tsx. Not in
-  // `fonts` below, so no other surface picks up this typeface.
-  BricolageGrotesque_700Bold,
-};
+// Font files live in assets/fonts and are bundled into the app binary by
+// `npx react-native-asset` (see react-native.config.js). Each file's internal
+// name equals the family string used below (e.g. "Inter_400Regular"), so the
+// same string works on iOS and Android. Families in use:
+//   Inter, Plus Jakarta Sans (also as "PlusJakartaSans-Bold" etc. for
+//   theme/tokens.ts), Figtree (job cards), Bricolage Grotesque 700 (home
+//   section titles), Noto Sans Khmer (src/new).
 
 export const fontFamilies = {
   regular: "Inter_400Regular",

@@ -41,7 +41,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { useIsFocused } from 'expo-router';
+import { useIsFocused } from '@/lib/router';
 
 /* ───────────── typewriter hook ───────────── */
 type TypewriterOpts = {

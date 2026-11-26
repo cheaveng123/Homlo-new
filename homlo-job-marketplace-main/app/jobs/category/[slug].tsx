@@ -2,7 +2,7 @@
 // in the app (router.push(`/jobs/category/${category.id}`)) and renders the v2
 // CategoryScreen fed by homlo.searchJobs for that category.
 import React, { useMemo } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 
 import CategoryScreen, { type CategoryJob, type Employer } from '@/components/jobs-v2/CategoryScreen';
 import type { SearchJobRecord } from '@/hooks/use-job-search';

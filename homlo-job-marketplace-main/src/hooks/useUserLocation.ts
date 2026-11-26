@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
-import * as ExpoLocation from "expo-location";
+import * as ExpoLocation from "@/lib/native/location";
 import type {
   GeolocationError,
   GeolocationOptions,

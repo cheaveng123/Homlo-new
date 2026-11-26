@@ -3,8 +3,8 @@
 //   router.push(`/jobs/category/${category.id}`)
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import LinearGradient from '@/lib/native/linear-gradient';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 import { AppIcon } from '../../../components/ui/AppIcon';
 import {
   SunriseHeader, OverlapCard, RoleChip, MiniSegmented, SectionTitle, JobCard, LogoSquare, Gauge,

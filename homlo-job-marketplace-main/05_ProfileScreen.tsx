@@ -3,10 +3,10 @@
 // Needs: expo-image-picker, expo-linear-gradient
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, Image, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from '@/lib/router';
+import * as ImagePicker from '@/lib/native/image-picker';
 import { AppIcon } from '../../components/ui/AppIcon';
 import { Button, Group, GroupLabel, RoundButton, Row, Sheet, Tag } from '../../components/profile/ProfileUI';
 import { C, F, shadow } from '../../lib/profileTheme';

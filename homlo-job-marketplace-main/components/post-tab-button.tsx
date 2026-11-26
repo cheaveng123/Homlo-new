@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Pressable, StyleSheet, View, Image } from "react-native";
-import { usePathname } from "expo-router";
+import { usePathname } from "@/lib/router";
 
 import cardImage from "@/assets/images/new-job.png";
 import { haptic } from "@/lib/haptics";

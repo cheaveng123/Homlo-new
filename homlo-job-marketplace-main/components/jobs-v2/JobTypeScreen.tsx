@@ -6,8 +6,8 @@
 // Visual layer only: data, hooks and handlers come from app/jobs/ways-to-work.tsx.
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from '@/lib/native/status-bar';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, {
   runOnJS, useAnimatedReaction, useAnimatedScrollHandler, useReducedMotion, useSharedValue, withTiming,
 } from 'react-native-reanimated';

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router } from '@/lib/router';
 import Animated, { ZoomIn, FadeInDown, FadeOut, LinearTransition, useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, withRepeat, withTiming, withDelay, interpolate, Extrapolation, useReducedMotion } from 'react-native-reanimated';
 import { c, f, sh } from './NewTheme';
 import { Icon, Circ, Btn, Pill, Sec, Reveal, Tabs } from './NewUI';

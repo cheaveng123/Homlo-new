@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { accents, colors, font } from "@/components/jobs-v2/theme";

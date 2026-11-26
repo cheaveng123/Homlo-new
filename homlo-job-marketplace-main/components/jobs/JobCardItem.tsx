@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { JobCard } from "@/components/jobs/JobCard";
 import type { JobCardData } from "@/components/jobs/jobCardTypes";

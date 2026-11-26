@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { locationService } from "@/lib/location-service";
 

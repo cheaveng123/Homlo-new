@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Linking, Platform, Share, Text } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { ConsentCheckbox } from "@/components/legal/LegalUI";
 import { Btn, Card, ErrorText, Muted, TrustScreen, trustStyles } from "@/components/legal/TrustScreen";

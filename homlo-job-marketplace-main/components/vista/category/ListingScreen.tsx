@@ -6,8 +6,8 @@
 //   live here so every listing page moves the same way.
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from '@/lib/native/status-bar';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, {
   Extrapolation, FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle,
   runOnJS, useAnimatedReaction, useReducedMotion, useSharedValue,

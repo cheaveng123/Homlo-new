@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
-import { useIsFocused } from "expo-router";
+import { useIsFocused } from "@/lib/router";
 import { SchemeColors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import AnimatedPlaceholder from "./AnimatedPlaceholder";

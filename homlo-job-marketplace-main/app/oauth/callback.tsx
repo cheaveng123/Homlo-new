@@ -2,10 +2,9 @@ import { ThemedView } from "@/components/themed-view";
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { useAuth } from "@/hooks/use-auth";
-import * as Linking from "expo-linking";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Text } from "react-native";
+import { ActivityIndicator, Linking, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function OAuthCallback() {
@@ -57,7 +56,7 @@ export default function OAuthCallback() {
         // Get URL from params or Linking
         let url: string | null = null;
 
-        // Try to get from local search params first (works with expo-router)
+        // Try to get from local search params first (set by the router from the deep link)
         if (params.code || params.state || params.error) {
           console.log("[OAuth] Found params in route params");
           const urlParams = new URLSearchParams();

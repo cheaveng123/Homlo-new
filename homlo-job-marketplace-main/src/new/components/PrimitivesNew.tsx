@@ -4,11 +4,11 @@ import Animated, {
   Easing, FadeIn, FadeOut, cancelAnimation, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue,
   withDelay, withRepeat, withSequence, withTiming,
 } from 'react-native-reanimated';
-import { useIsFocused } from 'expo-router';
+import { useIsFocused } from '@/lib/router';
 import { Skeleton } from '@/src/design/primitives';
 import { featureIcons, type FeatureIconName } from '@/src/components/icons';
 import { SectionIcon, type SectionIconName } from '@/src/components/icons/SectionIcons';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { AppIconNew, AppIconNameNew } from '../icons/AppIconNew';
 import { TextNew, hasKhmerNew } from './TextNew';
 import { AccentNew, accentNew, colorsNew, radiusNew, shadowNew } from '../theme/tokensNew';

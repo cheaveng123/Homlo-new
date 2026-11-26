@@ -1,4 +1,4 @@
-import { Redirect } from "expo-router";
+import { Redirect } from "@/lib/router";
 
 // The post-a-job experience now lives in the redesigned employer wizard at
 // app/employer/post-job.tsx. This legacy root route is kept only so stale

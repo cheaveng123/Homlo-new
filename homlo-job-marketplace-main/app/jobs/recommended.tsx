@@ -11,7 +11,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JobFieldArtwork } from '@/components/shared/JobFieldArtwork';
 import { JOB_FIELDS, resolveJobField } from '@/lib/job-fields';

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router } from '@/lib/router';
 import Animated, {
   FadeIn,
   FadeInDown,

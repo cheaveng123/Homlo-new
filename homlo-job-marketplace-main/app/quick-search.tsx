@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { AppIcon } from "@/components/ui/AppIcon";
 import { DrawAreaMap, type LatLng } from '@/components/DrawAreaMap';
 import { opportunityCategories } from '@/lib/category-data';

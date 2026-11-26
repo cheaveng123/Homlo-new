@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 import { AppIcon } from "@/components/ui/AppIcon";
 
 import { ScreenContainer } from "@/components/screen-container";

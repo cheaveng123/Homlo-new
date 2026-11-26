@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { useCallback, useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/use-auth";

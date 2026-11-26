@@ -2,8 +2,8 @@
 // react-native-svg, react-native-reanimated, react-native-safe-area-context.
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar } from 'expo-status-bar';
+import LinearGradient from '@/lib/native/linear-gradient';
+import { StatusBar } from '@/lib/native/status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';

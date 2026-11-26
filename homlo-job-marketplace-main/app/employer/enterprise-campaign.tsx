@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { AppIcon, type IconName } from "@/components/ui/AppIcon";

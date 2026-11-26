@@ -11,7 +11,7 @@
  * New applicants screen.
  */
 import { Image, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { ScalePressable } from "@/components/ui/scale-pressable";
 import Svg, { Path } from "react-native-svg";

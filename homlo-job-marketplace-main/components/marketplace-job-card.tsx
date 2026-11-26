@@ -1,6 +1,6 @@
 import { memo as reactMemo } from "react";
 import { Image, Platform, Pressable, StyleSheet, View, type GestureResponderEvent, type StyleProp, type ViewStyle } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { type Job, useJobStore } from "@/components/job-store";
 import { AppIcon } from "@/components/ui/AppIcon";

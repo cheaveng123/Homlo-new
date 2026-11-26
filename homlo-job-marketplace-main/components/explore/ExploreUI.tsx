@@ -8,7 +8,7 @@ import Animated, {
   Easing, FadeInDown, FadeOutUp, cancelAnimation, useAnimatedStyle, useReducedMotion,
   useSharedValue, withDelay, withRepeat, withSequence, withTiming,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { Tint, c, fonts, r, shadow, sp, tints, type } from './tokens';
 
 import { smooth } from '@/src/design/motion';

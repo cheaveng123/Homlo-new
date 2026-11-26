@@ -1,7 +1,7 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import { StyleProp, TextInput, View, ViewStyle } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '@react-native-community/blur';
 import { AppIconNew } from '../icons/AppIconNew';
 import { TextNew, hasKhmerNew } from './TextNew';
 import { PressableScaleNew } from './PrimitivesNew';
@@ -62,7 +62,7 @@ export function SearchPillNew({ onPress, editable, value, onChangeText, onSubmit
     <View style={[{ borderRadius: radiusNew.pill, ...shadowNew.lg }, style]}>
       {onPress && !editable ? (
         <PressableScaleNew onPress={onPress} accessibilityLabel="Search" style={shell}>
-          {floating && <BlurView intensity={40} tint="light" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />}
+          {floating && <BlurView blurAmount={13} blurType="light" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />}
           {inner}
         </PressableScaleNew>
       ) : (

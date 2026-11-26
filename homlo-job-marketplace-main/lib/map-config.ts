@@ -3,8 +3,9 @@
  *
  * Every map, geocoder and router reads its endpoint from here so a deployment
  * can point at self-hosted infrastructure (or a paid tile provider) without
- * touching component code. All client-safe values use the `EXPO_PUBLIC_`
- * prefix because Expo inlines them at build time.
+ * touching component code. All client-safe values use the `PUBLIC_`
+ * prefix: babel/public-env.js inlines those (and only those) into the app
+ * bundle.
  */
 
 export type MapRouteProfile = "driving" | "walking" | "cycling";
@@ -52,22 +53,22 @@ function readProfile(value: string | undefined, fallback: MapRouteProfile): MapR
 
 export const mapProviderConfig: MapProviderConfig = {
   tileTemplate:
-    process.env.EXPO_PUBLIC_MAP_TILE_URL?.trim() || DEFAULT_TILE_TEMPLATE,
-  styleUrl: readUrl(process.env.EXPO_PUBLIC_MAP_STYLE_URL, DEFAULT_STYLE_URL),
+    process.env.PUBLIC_MAP_TILE_URL?.trim() || DEFAULT_TILE_TEMPLATE,
+  styleUrl: readUrl(process.env.PUBLIC_MAP_STYLE_URL, DEFAULT_STYLE_URL),
   nominatimBaseUrl: readUrl(
-    process.env.EXPO_PUBLIC_NOMINATIM_URL,
+    process.env.PUBLIC_NOMINATIM_URL,
     DEFAULT_NOMINATIM_BASE_URL,
   ),
   osrmBaseUrl: readUrl(
-    process.env.EXPO_PUBLIC_OSRM_URL,
+    process.env.PUBLIC_OSRM_URL,
     DEFAULT_OSRM_BASE_URL,
   ),
   attribution:
-    process.env.EXPO_PUBLIC_MAP_ATTRIBUTION?.trim() || DEFAULT_MAP_ATTRIBUTION,
-  maxTileZoom: readNumber(process.env.EXPO_PUBLIC_MAP_MAX_ZOOM, 19),
-  routeProfile: readProfile(process.env.EXPO_PUBLIC_ROUTE_PROFILE, "driving"),
-  routingTimeoutMs: readNumber(process.env.EXPO_PUBLIC_ROUTE_TIMEOUT_MS, 8000),
-  geocodingTimeoutMs: readNumber(process.env.EXPO_PUBLIC_GEOCODING_TIMEOUT_MS, 8000),
+    process.env.PUBLIC_MAP_ATTRIBUTION?.trim() || DEFAULT_MAP_ATTRIBUTION,
+  maxTileZoom: readNumber(process.env.PUBLIC_MAP_MAX_ZOOM, 19),
+  routeProfile: readProfile(process.env.PUBLIC_ROUTE_PROFILE, "driving"),
+  routingTimeoutMs: readNumber(process.env.PUBLIC_ROUTE_TIMEOUT_MS, 8000),
+  geocodingTimeoutMs: readNumber(process.env.PUBLIC_GEOCODING_TIMEOUT_MS, 8000),
 };
 
 export const MAP_TILE_URL = mapProviderConfig.tileTemplate;

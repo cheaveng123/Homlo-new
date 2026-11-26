@@ -1,6 +1,6 @@
 import React from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RoundButtonNew } from "../components/PrimitivesNew";

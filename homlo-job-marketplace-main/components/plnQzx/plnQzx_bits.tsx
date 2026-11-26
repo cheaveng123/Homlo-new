@@ -5,7 +5,7 @@ import Animated, {
   withDelay, withRepeat, withSequence, withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QZ } from './plnQzx_tokens';
 

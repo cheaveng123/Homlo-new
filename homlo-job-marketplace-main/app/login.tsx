@@ -26,7 +26,7 @@ import {
   type TextInputProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import Animated, { FadeIn, FadeOut, LinearTransition, ZoomIn, useAnimatedStyle, useReducedMotion, useSharedValue } from "react-native-reanimated";
 
 import { AppIcon, type IconName } from "@/components/ui/AppIcon";

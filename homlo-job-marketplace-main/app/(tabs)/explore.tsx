@@ -1,7 +1,7 @@
 import ExploreScreen from '@/components/explore/ExploreScreen';
 import { useJobStore } from '@/components/job-store';
 import { haptic } from '@/lib/haptics';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 
 export default function ExploreRoute() {
   const router = useRouter();

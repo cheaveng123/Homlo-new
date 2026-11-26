@@ -9,7 +9,7 @@ import {
   View,
   Image,
 } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "@/lib/router";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { SafeAreaView } from "react-native-safe-area-context";
 

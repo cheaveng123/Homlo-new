@@ -1,4 +1,4 @@
-import { Redirect } from "expo-router";
+import { Redirect } from "@/lib/router";
 
 // The employer "post a job" home is now the new listings dashboard at
 // app/employer/listings.tsx (Live/Draft/Review tabs). This legacy root route

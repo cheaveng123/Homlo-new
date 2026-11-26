@@ -8,9 +8,9 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Svg, { Defs, Ellipse, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { useIsFocused } from 'expo-router';
+import { useIsFocused } from '@/lib/router';
 import { TextNew } from '@/src/new/components/TextNew';
 import { featureIcons, PhotoGlyph, type FeatureIconName } from '@/src/components/icons';
 import { PressableScale } from './motion';

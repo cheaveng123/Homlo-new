@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router } from '@/lib/router';
 // REAL route paths. Every button in the new screens goes through here.
 export const R = {
   /** Public job detail. */

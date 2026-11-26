@@ -2,7 +2,7 @@ import React from 'react';
 import { RefreshControl, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from 'expo-router';
+import { useIsFocused } from '@/lib/router';
 import { useCopyNew } from '../theme/copyNew';
 import { EmptyStateNew } from '../components/PrimitivesNew';
 import { DashboardJobRowsSkeleton } from '@/src/new/components/NewSkeletons';

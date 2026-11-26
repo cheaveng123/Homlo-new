@@ -7,7 +7,7 @@
  */
 import { Fragment, type ReactNode } from "react";
 import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { colorsNew } from "@/src/new/theme/tokensNew";
 

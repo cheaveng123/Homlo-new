@@ -1,6 +1,6 @@
 import { AppState, type AppStateStatus } from "react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as Location from "expo-location";
+import * as Location from "@/lib/native/location";
 
 import { locationService, type LocationPermissionStatus, type LocationState } from "@/lib/location-service";
 

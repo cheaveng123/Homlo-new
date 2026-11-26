@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, ImageSourcePropType, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from '@/lib/native/status-bar';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, { Easing, useAnimatedProps } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

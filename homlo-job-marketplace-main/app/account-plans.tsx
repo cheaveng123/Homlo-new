@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PlansShowcaseView } from "@/components/plans/PlansShowcaseView";

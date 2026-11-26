@@ -66,7 +66,7 @@ export function getProfilePhotoUrl(key: string | null | undefined): string | nul
     return null;
   }
   if (value.length > 1024) return null;
-  const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
+  const supabaseUrl = (process.env.PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
   if (!supabaseUrl) return null;
   return `${supabaseUrl}/storage/v1/object/public/${PROFILE_PHOTOS_BUCKET}/${value}`;
 }
@@ -152,24 +152,41 @@ async function nativeImageToJpegDataUrl(
   if (/^ph:/i.test(uri) && typeof assetBase64 === "string" && assetBase64.length > 0) {
     return `data:${JPEG_MIME};base64,${assetBase64}`;
   }
-  const { manipulateAsync, SaveFormat } = await import("expo-image-manipulator");
-  const actions: Parameters<typeof manipulateAsync>[1] = [];
-  if (options.aspect) {
-    // `crop` takes an absolute origin, so the centred rectangle has to be
-    // measured against the source dimensions before it can be applied.
-    const { width, height } = await Image.getSize(uri);
-    actions.push({ crop: centredCrop(width, height, options.aspect) });
-  }
-  if (options.maxWidth > 0) {
-    actions.push({ resize: { width: options.maxWidth } });
-  }
-  const result = await manipulateAsync(uri, actions, {
-    compress: options.compress,
-    format: SaveFormat.JPEG,
-    base64: true,
+  const { default: ImageResizer } = await import("@bam.tech/react-native-image-resizer");
+  const { width: srcW, height: srcH } = await Image.getSize(uri);
+  // Target box: the requested aspect (centre-cropped, "cover"), no wider than
+  // maxWidth and never upscaled past the source.
+  const crop = options.aspect ? centredCrop(srcW, srcH, options.aspect) : { width: srcW, height: srcH };
+  const scale = options.maxWidth > 0 ? Math.min(1, options.maxWidth / crop.width) : 1;
+  const outW = Math.max(1, Math.round(crop.width * scale));
+  const outH = Math.max(1, Math.round(crop.height * scale));
+  const resized = await ImageResizer.createResizedImage(
+    uri,
+    outW,
+    outH,
+    "JPEG",
+    Math.round(options.compress * 100),
+    0,
+    undefined,
+    false,
+    { mode: options.aspect ? "cover" : "contain", onlyScaleDown: true },
+  );
+  const base64 = await fileToBase64(resized.uri);
+  if (!base64) throw new Error(READ_ERROR_MESSAGE);
+  return `data:${JPEG_MIME};base64,${base64}`;
+}
+
+/** Reads a local file:// image as base64 (React Native's fetch + FileReader). */
+async function fileToBase64(fileUri: string): Promise<string | null> {
+  const blob = await (await fetch(fileUri)).blob();
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(blob);
   });
-  if (!result.base64) throw new Error(READ_ERROR_MESSAGE);
-  return `data:${JPEG_MIME};base64,${result.base64}`;
+  const comma = dataUrl.indexOf(",");
+  return comma >= 0 ? dataUrl.slice(comma + 1) : null;
 }
 
 const READ_ERROR_MESSAGE = "We could not read that image. Please try another one.";

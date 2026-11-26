@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { View, TouchableOpacity } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 import type { Region } from "react-native-maps";
 import { AppIcon } from "@/components/ui/AppIcon";
 

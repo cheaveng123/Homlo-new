@@ -8,16 +8,18 @@
  *
  * `source` is the bundled-asset handle for a local video — the numeric value a
  * static `import` of e.g. `@/assets/images/foo.mov` resolves to, which is what
- * `expo-video`'s `VideoSource` accepts (see ../types/assets.d.ts).
+ * `react-native-video`'s `source` accepts (see ../types/assets.d.ts).
  *
  * Pass `transparent` to render it with no frame, shadow or clipping of its own.
  *
  * Deliberately non-interactive: `pointerEvents="none"` leaves the parent
  * ScrollView's gestures intact.
  */
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { useVideoPlayer, VideoView, type VideoContentFit } from 'expo-video';
+import Video from 'react-native-video';
+
+type VideoContentFit = 'cover' | 'contain' | 'fill';
 
 type Props = {
   /** Bundled-asset handle for a local video file. */
@@ -47,20 +49,6 @@ export default function LoopingVideoTile({
   style,
   transparent = false,
 }: Props) {
-  const player = useVideoPlayer(source, (instance) => {
-    instance.loop = true;
-    // Muted so the tile autoplays without audio, which is also what both
-    // platforms' autoplay policies require.
-    instance.muted = true;
-    // Nothing here reacts to time updates, so don't pay for the status events.
-    instance.timeUpdateEventInterval = 0;
-  });
-
-  // expo-video never autoplays on its own — playback only starts on play().
-  useEffect(() => {
-    player.play();
-  }, [player]);
-
   return (
     // The wrapper carries the rounding and the shadow so the native video
     // surface underneath can stay unclipped, matching the employer logo tile.
@@ -73,13 +61,24 @@ export default function LoopingVideoTile({
         style,
       ]}
     >
-      <VideoView
-        player={player}
-        nativeControls={false}
-        contentFit={contentFit}
+      <Video
+        // A static require() of a bundled video is a numeric asset id.
+        source={source as never}
+        // Muted so the tile autoplays without audio, which is also what both
+        // platforms' autoplay policies require.
+        muted
+        repeat
+        paused={false}
+        controls={false}
+        resizeMode={contentFit === 'fill' ? 'stretch' : contentFit}
         // A SurfaceView lives in its own Android layer and clips/z-orders badly
         // inside a horizontal ScrollView; a TextureView composites correctly.
-        surfaceType="textureView"
+        viewType={0}
+        // Never take audio focus from music the user is playing.
+        disableFocus
+        ignoreSilentSwitch="obey"
+        mixWithOthers="mix"
+        playInBackground={false}
         pointerEvents="none"
         style={styles.video}
       />

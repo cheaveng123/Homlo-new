@@ -9,8 +9,8 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import LinearGradient from '@/lib/native/linear-gradient';
+import { BlurView } from '@react-native-community/blur';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -204,7 +204,7 @@ export function BoostSpotlight({ onBoost }: { onBoost: () => void }) {
         <Animated.View style={[s.blob, s.blobCyan, cyanBlob]} />
         <Animated.View style={[s.blob, s.blobNavy]} />
         {/* the glass */}
-        <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+        <BlurView blurAmount={13} blurType="light" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.34)' }]} />
         <LinearGradient pointerEvents="none" colors={['rgba(255,255,255,0.85)', 'rgba(255,255,255,0)']} style={s.glassTop} />
         {w > 0 && (

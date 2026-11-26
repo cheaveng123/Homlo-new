@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useIsFocused } from "expo-router";
+import { useIsFocused } from "@/lib/router";
 
 import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";

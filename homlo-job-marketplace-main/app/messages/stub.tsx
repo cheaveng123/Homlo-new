@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { useLocalSearchParams, useRouter, Stack } from "@/lib/router";
 import { AppIcon } from "@/components/ui/AppIcon";
 
 import { jobsColors } from "@/constants/jobsTheme";

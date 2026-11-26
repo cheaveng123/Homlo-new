@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { AppIcon } from "@/components/ui/AppIcon";
 
 import { Text } from "@/components/ui/text";

@@ -4,7 +4,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { PressableScale } from '@/src/design/motion';
 import { palette } from '@/src/design/tokens';
 import { haptic } from '@/lib/haptics';

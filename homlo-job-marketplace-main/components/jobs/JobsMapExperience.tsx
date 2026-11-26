@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { router } from 'expo-router';
+import { router } from '@/lib/router';
 
 import JobMapScreen from '@/components/explore/JobMapScreen';
 import type { Job } from '@/components/explore/ExploreUI';

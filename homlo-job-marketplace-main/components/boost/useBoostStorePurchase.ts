@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { planIdForProductId } from "@/lib/boost-products";

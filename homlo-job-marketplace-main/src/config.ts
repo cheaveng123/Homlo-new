@@ -1,39 +1,13 @@
-import { Platform } from "react-native";
-
 import { MAP_THEME } from "./theme/mapTheme";
 import type { Coordinate } from "./types";
 
-type NativeConfig = {
-  MAPTILER_KEY?: string;
-  ORS_API_KEY?: string;
-  MAPTILER_STYLE_URL?: string;
-  ORS_BASE_URL?: string;
+// Public values from .env, inlined at bundle time (see babel/public-env.js).
+const nativeConfig = {
+  MAPTILER_KEY: process.env.PUBLIC_MAPTILER_KEY,
+  ORS_API_KEY: process.env.PUBLIC_ORS_API_KEY,
+  MAPTILER_STYLE_URL: process.env.PUBLIC_MAPTILER_STYLE_URL,
+  ORS_BASE_URL: process.env.PUBLIC_ORS_BASE_URL,
 };
-
-function loadConfig(): NativeConfig {
-  if (Platform.OS === "web") {
-    return {
-      MAPTILER_KEY: process.env.EXPO_PUBLIC_MAPTILER_KEY,
-      ORS_API_KEY: process.env.EXPO_PUBLIC_ORS_API_KEY,
-      MAPTILER_STYLE_URL: process.env.EXPO_PUBLIC_MAPTILER_STYLE_URL,
-      ORS_BASE_URL: process.env.EXPO_PUBLIC_ORS_BASE_URL,
-    };
-  }
-
-  try {
-    // Optional native module: loaded lazily so the app runs without it.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const loaded = require("react-native-config") as
-      | (NativeConfig & { default?: NativeConfig })
-      | undefined;
-
-    return loaded?.default ?? loaded ?? {};
-  } catch {
-    return {};
-  }
-}
-
-const nativeConfig = loadConfig();
 
 export const MAPTILER_KEY = nativeConfig.MAPTILER_KEY?.trim() ?? "";
 export const ORS_API_KEY = nativeConfig.ORS_API_KEY?.trim() ?? "";

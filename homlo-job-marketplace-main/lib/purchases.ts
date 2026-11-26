@@ -10,7 +10,7 @@ import { Platform } from "react-native";
 import { planIdForProductId } from "@/lib/boost-products";
 
 /** RevenueCat offering that holds the six boost packages. */
-const BOOST_OFFERING_ID = process.env.EXPO_PUBLIC_RC_BOOST_OFFERING?.trim() || "boost";
+const BOOST_OFFERING_ID = process.env.PUBLIC_RC_BOOST_OFFERING?.trim() || "boost";
 
 let configuration: Promise<boolean> | null = null;
 let configured = false;
@@ -28,12 +28,12 @@ function usableKey(value: string | null | undefined): string | null {
 }
 
 function revenueCatApiKey(): string | null {
-  const testKey = usableKey(process.env.EXPO_PUBLIC_RC_TEST_KEY);
+  const testKey = usableKey(process.env.PUBLIC_RC_TEST_KEY);
   if (Platform.OS === "ios") {
-    return usableKey(process.env.EXPO_PUBLIC_RC_IOS_KEY) || testKey;
+    return usableKey(process.env.PUBLIC_RC_IOS_KEY) || testKey;
   }
   if (Platform.OS === "android") {
-    return usableKey(process.env.EXPO_PUBLIC_RC_ANDROID_KEY) || testKey;
+    return usableKey(process.env.PUBLIC_RC_ANDROID_KEY) || testKey;
   }
   return null;
 }
@@ -43,7 +43,7 @@ function warnIfTestKeyShipsToProduction(key: string): void {
   if (!key.startsWith("test_")) return;
   console.warn(
     "[Purchases] A RevenueCat Test Store key (test_…) is bundled into a production build. " +
-      "Set EXPO_PUBLIC_RC_IOS_KEY / EXPO_PUBLIC_RC_ANDROID_KEY to the live SDK keys before shipping.",
+      "Set PUBLIC_RC_IOS_KEY / PUBLIC_RC_ANDROID_KEY to the live SDK keys before shipping.",
   );
 }
 
@@ -61,7 +61,7 @@ export function initPurchases(): Promise<boolean> {
       if (!warnedMissingKey) {
         warnedMissingKey = true;
         console.warn(
-          "[Purchases] EXPO_PUBLIC_RC_TEST_KEY is missing or still the placeholder. " +
+          "[Purchases] PUBLIC_RC_TEST_KEY is missing or still the placeholder. " +
             "Set it to your RevenueCat Test Store public SDK key " +
             "(RevenueCat dashboard -> Project settings -> API keys). " +
             "The paywall will show an empty state until it is configured.",

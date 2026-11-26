@@ -12,9 +12,9 @@
  */
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import Animated, {
   Extrapolation,
   FadeInDown,

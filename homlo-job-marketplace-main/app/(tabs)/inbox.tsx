@@ -1,4 +1,4 @@
-import { useGlobalSearchParams } from "expo-router";
+import { useGlobalSearchParams } from "@/lib/router";
 
 import InboxScreenNewAdapter from "@/screens/InboxScreenNewAdapter";
 

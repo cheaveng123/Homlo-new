@@ -4,7 +4,7 @@
 // feed's server-composed sections. The picker on the page switches the type in
 // place (local state), so the same hooks simply follow the selected type.
 import { useEffect, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 
 import JobTypeScreen, { type ListedJob } from '@/components/jobs-v2/JobTypeScreen';
 import { HOME_JOB_TYPES } from '@/lib/job-types';

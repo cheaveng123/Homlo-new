@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, TextInput, Image, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from '@/lib/router';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { AppIcon } from "@/components/ui/AppIcon";
 import Animated, { Easing, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { C, F, Reveal, ScrollYCtx, shadow } from './01_exploreShared';

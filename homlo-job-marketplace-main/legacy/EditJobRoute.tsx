@@ -1,11 +1,11 @@
 // EmployerEditJobScreen (employer side): edit all details of a listed job
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from '@/lib/native/linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from '@/lib/router';
 import { AppIcon } from "@/components/ui/AppIcon";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from '@/lib/native/image-picker';
 import MintGradientButton from '@/components/employer-job/MintGradientButton';
 import ConfirmActionSheet from '@/components/employer-job/ConfirmActionSheet';
 import OptionPickerSheet from '@/components/employer-job/OptionPickerSheet';
