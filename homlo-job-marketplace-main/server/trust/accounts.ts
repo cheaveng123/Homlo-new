@@ -1,7 +1,7 @@
 import type { Queryable } from "../hlPlanBoostService";
 import { hashIdentifier, normalizePhone, randomSixDigitCode, randomToken, sha256 } from "./crypto";
 import type { RequestMeta } from "./consent";
-import { queueEmail, sendSms } from "./outbound";
+import { DeliveryUnavailableError, deliverPendingEmails, emailDeliveryReady, queueEmail, sendSms, smsDeliveryReady } from "./outbound";
 
 /** A message safe to show the user (raised for rule violations). */
 export class TrustError extends Error {
@@ -94,6 +94,9 @@ export async function sendEmailVerification(db: Queryable, userId: string): Prom
   const row = rows[0];
   if (!row?.email) throw new TrustError("No email address is linked to this account.");
   if (row.verified) return;
+  // Say so instead of pretending: without a provider the email would sit in
+  // the outbox forever while the app claims it was sent.
+  if (!emailDeliveryReady()) throw new DeliveryUnavailableError("email delivery is not configured");
   const token = randomToken();
   await db.query(
     `insert into verification_codes (user_id, channel, target_hash, code_hash, expires_at)
@@ -106,19 +109,29 @@ export async function sendEmailVerification(db: Queryable, userId: string): Prom
     to: row.email,
     template: "verify_email",
     subject: "Confirm your email address",
-    body: `Confirm your email address to start posting jobs:\n\n${link}\n\nThis link expires in ${EMAIL_TOKEN_TTL_HOURS} hours. If you did not create an account, ignore this email.`,
+    body: `One last step before you can post jobs on HireNow: confirm that this is your email address.\n\n${link}\n\nThe link works once and expires in ${EMAIL_TOKEN_TTL_HOURS} hours. If you did not create a HireNow account, you can ignore this email.`,
   });
+  // Send right away rather than waiting for the next background sweep, so the
+  // link arrives while the user is still looking at the verify screen.
+  await deliverPendingEmails(db).catch((error) => console.error("[trust] immediate email delivery failed", error));
 }
 
 export async function confirmEmailToken(db: Queryable, token: string): Promise<boolean> {
-  const found = await db.query<{ id: string; user_id: string; target_hash: string }>(
-    `select id, user_id, target_hash from verification_codes
-      where channel = 'email' and code_hash = $1 and consumed_at is null and expires_at > now()
+  const found = await db.query<{ id: string; user_id: string; target_hash: string; consumed: boolean; verified: boolean }>(
+    `select v.id, v.user_id, v.target_hash, v.consumed_at is not null as consumed,
+            u.email_verified_at is not null as verified
+       from verification_codes v join users u on u.id = v.user_id
+      where v.channel = 'email' and v.code_hash = $1
+        and (v.consumed_at is not null or v.expires_at > now())
       limit 1`,
     [sha256(token)],
   );
   const code = found.rows[0];
   if (!code) return false;
+  // Mail apps and browsers often open a link twice (preview, then the tap).
+  // The first open confirms; a repeat of the same, already used link should
+  // still say "confirmed" while the account is confirmed, not "expired".
+  if (code.consumed) return code.verified;
   // The link only counts for the email address the account still has.
   const current = await db.query<{ email: string | null }>(`select homlo_user_email($1) as email`, [code.user_id]);
   if (!current.rows[0]?.email || hashIdentifier("email", current.rows[0].email) !== code.target_hash) return false;
@@ -131,11 +144,8 @@ export async function confirmEmailToken(db: Queryable, token: string): Promise<b
 // SMS phone code
 // ---------------------------------------------------------------------------
 
-export async function sendPhoneCode(db: Queryable, userId: string, rawPhone: string): Promise<void> {
-  const phone = normalizePhone(rawPhone);
-  if (!E164.test(phone)) throw new TrustError("Enter your phone number in international format, for example +85512345678.");
-  const phoneHash = hashIdentifier("phone", phone);
-
+/** Refuses banned numbers and numbers already verified on another account. */
+async function assertPhoneUsable(db: Queryable, userId: string, phoneHash: string): Promise<void> {
   const banned = await db.query(`select 1 from banned_identifiers where kind = 'phone' and value_hash = $1 limit 1`, [phoneHash]);
   if (banned.rows.length) throw new TrustError("This phone number cannot be used.", "FORBIDDEN");
   const taken = await db.query(
@@ -143,6 +153,20 @@ export async function sendPhoneCode(db: Queryable, userId: string, rawPhone: str
     [phoneHash, userId],
   );
   if (taken.rows.length) throw new TrustError("This phone number is already linked to another account.", "FORBIDDEN");
+}
+
+async function markPhoneVerified(db: Queryable, userId: string, phone: string, phoneHash: string): Promise<void> {
+  await db.query(`update users set phone_verified_at = now(), phone_hash = $2 where id = $1`, [userId, phoneHash]);
+  // Keep the visible profile phone in sync with the verified one.
+  await db.query(`update profiles set phone = $2 where user_id = $1 and deleted_at is null`, [userId, phone]);
+}
+
+export async function sendPhoneCode(db: Queryable, userId: string, rawPhone: string): Promise<void> {
+  const phone = normalizePhone(rawPhone);
+  if (!E164.test(phone)) throw new TrustError("Enter your phone number in international format, for example +85512345678.");
+  if (!smsDeliveryReady()) throw new DeliveryUnavailableError("SMS delivery is not configured");
+  const phoneHash = hashIdentifier("phone", phone);
+  await assertPhoneUsable(db, userId, phoneHash);
 
   const recent = await db.query<{ n: number }>(
     `select count(*)::int as n from verification_codes
@@ -176,7 +200,5 @@ export async function verifyPhoneCode(db: Queryable, userId: string, rawPhone: s
     throw new TrustError("That code is not correct.");
   }
   await db.query(`update verification_codes set consumed_at = now() where id = $1`, [row.id]);
-  await db.query(`update users set phone_verified_at = now(), phone_hash = $2 where id = $1`, [userId, phoneHash]);
-  // Keep the visible profile phone in sync with the verified one.
-  await db.query(`update profiles set phone = $2 where user_id = $1 and deleted_at is null`, [userId, phone]);
+  await markPhoneVerified(db, userId, phone, phoneHash);
 }

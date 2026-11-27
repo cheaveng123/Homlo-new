@@ -19,11 +19,29 @@ function isProduction(env: NodeJS.ProcessEnv = process.env) {
   return env.NODE_ENV === "production" || env.APP_ENV === "production";
 }
 
+/** True when the server is connected to a database that is not on this machine. */
+function usesRemoteDatabase(env: NodeJS.ProcessEnv) {
+  const url = env.SUPABASE_DB_URL || env.DATABASE_URL;
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return !["localhost", "127.0.0.1", "::1", "[::1]", "host.docker.internal"].includes(host);
+  } catch {
+    return true;
+  }
+}
+
 export function assertTrustSecretsConfigured(env: NodeJS.ProcessEnv = process.env) {
-  if (!isProduction(env)) return;
+  // A development server pointed at a shared/remote database (e.g. the live
+  // Supabase project) must use the same keys as production: with the dev
+  // fallback its email-link hashes and encrypted fields don't match what the
+  // live server reads, so confirmation links say "expired" and stored data
+  // can't be decrypted. Local databases may keep using the fallback.
+  if (!isProduction(env) && !usesRemoteDatabase(env)) return;
   const missing = ["FIELD_ENCRYPTION_KEY", "HOMLO_IDENTIFIER_HASH_SECRET"].filter((k) => !env[k] || env[k]!.length < 32);
   if (missing.length) {
-    throw new Error(`Trust & safety secrets missing or too short (need 32+ chars): ${missing.join(", ")}`);
+    const where = isProduction(env) ? "" : " (this server uses a remote database, so it needs the same keys as the live server)";
+    throw new Error(`Trust & safety secrets missing or too short (need 32+ chars): ${missing.join(", ")}${where}`);
   }
 }
 

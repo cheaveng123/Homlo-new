@@ -7,11 +7,10 @@ import { confirmEmailToken } from "./accounts";
 import { assertTrustSecretsConfigured } from "./crypto";
 import { startTrustSweeper } from "./privacy";
 
+// Plain text, not HTML: Supabase serves Edge Function responses on its own
+// domain as text/plain, so an HTML page showed up as raw code in the browser.
 function page(title: string, message: string) {
-  const esc = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title><style>body{font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#1f2937}h1{font-size:1.4rem}</style>
-</head><body><h1>${esc(title)}</h1><p>${esc(message)}</p></body></html>`;
+  return `${title}\n\n${message}\n`;
 }
 
 export function registerTrustRoutes(app: Express) {
@@ -20,17 +19,24 @@ export function registerTrustRoutes(app: Express) {
   // Target of the confirmation link in the verification email.
   app.get("/api/trust/verify-email", limiter, async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-store");
+    // The designed result page lives on the website (Supabase shows HTML from
+    // Edge Functions as plain text). Without it configured, answer in plain text.
+    const resultPage = (process.env.HOMLO_EMAIL_CONFIRM_PAGE_URL ?? "").trim();
+    const reply = (status: number, state: "confirmed" | "expired" | "invalid" | "error", title: string, message: string) => {
+      if (resultPage) return res.redirect(303, `${resultPage}${resultPage.includes("?") ? "&" : "?"}status=${state}`);
+      return res.status(status).type("text/plain; charset=utf-8").send(page(title, message));
+    };
     const token = typeof req.query.token === "string" ? req.query.token : "";
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) {
-      return res.status(400).send(page("Link not valid", "This confirmation link is not valid."));
+      return reply(400, "invalid", "Link not valid", "This confirmation link is not valid.");
     }
     try {
       const ok = await confirmEmailToken(getPlanBoostDb(), token);
-      if (!ok) return res.status(400).send(page("Link expired", "This link has expired or was already used. Request a new one in the app."));
-      return res.send(page("Email confirmed", "Thank you. Your email address is confirmed. You can go back to the app."));
+      if (!ok) return reply(400, "expired", "Link expired", "This link has expired or was already used. Request a new one in the app.");
+      return reply(200, "confirmed", "Email confirmed", "Thank you. Your email address is confirmed. You can go back to the app.");
     } catch (error) {
       console.error("[trust] verify-email failed", error);
-      return res.status(500).send(page("Something went wrong", "Please try again later."));
+      return reply(500, "error", "Something went wrong", "Please try again later.");
     }
   });
 }

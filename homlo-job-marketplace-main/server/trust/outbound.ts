@@ -1,4 +1,5 @@
 import type { Queryable } from "../hlPlanBoostService";
+import { renderEmailHtml } from "./email-html";
 
 /**
  * Email and SMS delivery.
@@ -26,7 +27,21 @@ function isProduction() {
 
 export class DeliveryUnavailableError extends Error {}
 
-type Email = { to: string; subject: string; body: string };
+/** True when an email would actually be delivered (or logged, outside production). */
+export function emailDeliveryReady(): boolean {
+  const provider = process.env.EMAIL_PROVIDER ?? "log";
+  if (provider === "resend") return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return !isProduction();
+}
+
+/** True when an SMS would actually be delivered (or logged, outside production). */
+export function smsDeliveryReady(): boolean {
+  const provider = process.env.SMS_PROVIDER ?? "log";
+  if (provider === "twilio") return Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM);
+  return !isProduction();
+}
+
+type Email = { to: string; subject: string; body: string; template?: string | null; id?: string };
 
 async function sendEmailNow(email: Email): Promise<void> {
   const provider = process.env.EMAIL_PROVIDER ?? "log";
@@ -37,7 +52,16 @@ async function sendEmailNow(email: Email): Promise<void> {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [email.to], subject: email.subject, text: email.body }),
+      body: JSON.stringify({
+        from,
+        to: [email.to],
+        subject: email.subject,
+        text: email.body,
+        html: renderEmailHtml(email),
+        // A unique id per email stops Gmail from stacking every "Confirm your
+        // email" into one conversation, where the newest link is hard to find.
+        ...(email.id ? { headers: { "X-Entity-Ref-ID": email.id } } : {}),
+      }),
     });
     if (!response.ok) throw new Error(`Resend responded ${response.status}`);
     return;
@@ -73,22 +97,33 @@ export async function queueEmailToUser(
 }
 
 export async function deliverPendingEmails(db: Queryable, batch = 25): Promise<number> {
-  const { rows } = await db.query<{ id: string; to_address: string; subject: string; body: string }>(
-    `select id, to_address, subject, body from email_outbox
-      where status = 'pending' and attempts < 5
-      order by created_at limit $1`,
+  // Claim rows atomically before sending. Several workers can run at once (the
+  // immediate send after "send the link again", the pg_cron sweep, a dev
+  // server's timer); without the claim two of them picked the same row and the
+  // user got the email twice. status only allows pending/sent/failed, so a
+  // claimed row stays 'pending' with sent_at set to the claim time; one left
+  // behind by a crashed worker is retried after 5 minutes.
+  const { rows } = await db.query<{ id: string; to_address: string; subject: string; body: string; template: string | null }>(
+    `update email_outbox set sent_at = now()
+      where id in (
+        select id from email_outbox
+         where status = 'pending' and attempts < 5
+           and (sent_at is null or sent_at < now() - interval '5 minutes')
+         order by created_at limit $1
+         for update skip locked)
+      returning id, to_address, subject, body, template`,
     [batch],
   );
   let sent = 0;
   for (const row of rows) {
     try {
-      await sendEmailNow({ to: row.to_address, subject: row.subject, body: row.body });
+      await sendEmailNow({ to: row.to_address, subject: row.subject, body: row.body, template: row.template, id: row.id });
       await db.query(`update email_outbox set status = 'sent', sent_at = now(), attempts = attempts + 1 where id = $1`, [row.id]);
       sent += 1;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await db.query(
-        `update email_outbox set attempts = attempts + 1, last_error = $2,
+        `update email_outbox set attempts = attempts + 1, last_error = $2, sent_at = null,
                 status = case when attempts + 1 >= 5 then 'failed' else 'pending' end
           where id = $1`,
         [row.id, message.slice(0, 500)],
