@@ -8,7 +8,7 @@ import { AppIcon } from "@/components/ui/AppIcon";
 
 const STYLES = {
   card: {
-    backgroundColor: "#E4F0E7",
+    backgroundColor: "#E6EDEF",
     borderRadius: 16,
     height: 270,
     marginTop: 16,
@@ -24,7 +24,7 @@ const STYLES = {
   },
   pin: {
     alignItems: "center" as const,
-    backgroundColor: "#22A447",
+    backgroundColor: "#0891B2",
     borderColor: "#FFFFFF",
     borderRadius: 23,
     borderWidth: 3,
@@ -42,12 +42,12 @@ const STYLES = {
     position: "absolute" as const,
   },
   mapTitle: {
-    color: "#17201A",
+    color: "#12303C",
     fontSize: 12,
     fontWeight: "800" as const,
   },
   mapCaption: {
-    color: "#66736A",
+    color: "#5D7480",
     fontSize: 10,
     marginTop: 2,
   },
@@ -56,19 +56,19 @@ const STYLES = {
     alignItems: "center" as const,
     justifyContent: "center" as const,
     paddingHorizontal: 24,
-    backgroundColor: "#E4F0E7",
+    backgroundColor: "#E6EDEF",
     borderRadius: 16,
   },
   permissionTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: "#12271F",
+    color: "#14324A",
     textAlign: "center" as const,
     marginBottom: 12,
   },
   permissionBody: {
     fontSize: 15,
-    color: "#5F7A6E",
+    color: "#5D7480",
     textAlign: "center" as const,
     lineHeight: 22,
   },
@@ -165,7 +165,7 @@ export function OnboardingLocationMap({ location, onSelect }: { location: string
           <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 24, alignItems: "center", width: "80%" }}>
             <AppIcon name="pin" size={48} color="#0B6F8A" style={{ marginBottom: 16 }} />
             <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 8, textAlign: "center" }}>Location Access Required</Text>
-            <Text style={{ fontSize: 15, color: "#5F7A6E", textAlign: "center", marginBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: "#5D7480", textAlign: "center", marginBottom: 20 }}>
               We need your location to provide you with the best job recommendations. This helps us show you jobs near your actual location.
             </Text>
             <Pressable

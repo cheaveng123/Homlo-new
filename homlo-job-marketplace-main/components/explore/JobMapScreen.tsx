@@ -10,8 +10,8 @@ import { c, fonts, r, shadow, sp, type } from './tokens';
 
 import { smooth } from '@/src/design/motion';
 /* Custom marker for the free map (MapLibre / OpenStreetMap). Use it as the marker's child view.
-   Style the map itself to the palette: water #8BD3E3, parks #DCF1F6, land #E6F3F1, roads #FFFFFF, labels #6A7C84.
-   Draw the radius as a map circle layer: stroke #0891B2 dashed 1.5, fill rgba(14,124,134,0.07). */
+   Style the map itself to the palette: water #8BD3E3, parks #DCF1F6, land #E6EDEF, roads #FFFFFF, labels #6A7C84.
+   Draw the radius as a map circle layer: stroke #0891B2 dashed 1.5, fill rgba(8,145,178,0.07). */
 export function PricePin({ pay, selected, index = 0 }: { pay: string; selected?: boolean; index?: number }) {
   const reduce = useReducedMotion();
   const pop = useSharedValue(reduce ? 1 : 0);
@@ -125,7 +125,7 @@ export default function JobMapScreen(p: Props) {
 function reduceInit() { return 260; }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#E6F3F1' },
+  root: { flex: 1, backgroundColor: '#E6EDEF' },
   scrim: { position: 'absolute', left: 0, right: 0, top: 0 },
   top: { position: 'absolute', left: sp.l, right: sp.l, gap: sp.s },
   row: { flexDirection: 'row', alignItems: 'center', gap: sp.s },

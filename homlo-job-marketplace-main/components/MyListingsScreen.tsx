@@ -567,7 +567,7 @@ tab: {
     marginTop: 32,
   },
 
-  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(7,59,66,0.45)' },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(20,50,74,0.45)' },
   sheetDismiss: { flex: 1 },
   actionSheet: {
     backgroundColor: colors.card,

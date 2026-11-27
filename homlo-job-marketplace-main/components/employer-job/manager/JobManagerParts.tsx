@@ -266,7 +266,7 @@ export function StatusSwitch({ keys, counts, value, onChange }: { keys: string[]
 
 /* ───────── applicant ───────── */
 
-const TONES: [string, string][] = [['#3FC1DB', '#0B7F99'], ['#2B5577', '#14324A'], ['#FFC765', '#E8870F'], ['#5CC9B5', '#1F8A79']];
+const TONES: [string, string][] = [['#3FC1DB', '#0B7F99'], ['#2B5577', '#14324A'], ['#FFC765', '#E8870F'], ['#8BD3E3', '#0891B2']];
 function tone(name: string) { let h = 0; for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0; return TONES[h % TONES.length]; }
 function initials(name: string) { return (name.trim().split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2) || '?').toUpperCase(); }
 
@@ -341,7 +341,7 @@ const s = StyleSheet.create({
   glassTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   amberTag: { backgroundColor: AP.amber, borderColor: AP.amberSoft },
   glassTagText: { fontFamily: F.hb, fontSize: 12, color: '#fff' },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#5BE3A6' },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8BD3E3' },
   heroTitle: { fontFamily: F.h, fontSize: 30, lineHeight: 36, letterSpacing: -0.5, color: '#fff' },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heroPlace: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5 },

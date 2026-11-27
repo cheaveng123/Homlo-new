@@ -370,7 +370,7 @@ export function BottomSheet({
   return (
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={StyleSheet.absoluteFill}>
-        <RNAnimated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(7,59,66,0.55)', opacity: prog }]}>
+        <RNAnimated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,50,74,0.55)', opacity: prog }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
         </RNAnimated.View>
         <RNAnimated.View

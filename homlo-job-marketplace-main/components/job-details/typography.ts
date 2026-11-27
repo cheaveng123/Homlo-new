@@ -33,7 +33,7 @@ export const type = {
     fontFamily: homeFont.bold, // PlusJakartaSans_700Bold
     fontSize: 20,
     lineHeight: 26,
-    color: homeColors.ink, // #12211D
+    color: homeColors.ink, // #12303C
   },
   // Section headings ("Job description", "Requirements", ...). Home's section
   // titles are the heaviest type on the feed, so this is Plus Jakarta Bold
@@ -63,14 +63,14 @@ export const type = {
     fontFamily: homeFont.interMedium, // Inter_500Medium
     fontSize: 12,
     lineHeight: 15,
-    color: homeColors.sub, // #5C6B67
+    color: homeColors.sub, // #5D7480
   },
   // "Company A - Location" under the title - home's location meta style.
   jobSubtitle: {
     fontFamily: homeFont.interMedium, // Inter_500Medium
     fontSize: 14,
     lineHeight: 19,
-    color: homeColors.sub, // #5C6B67
+    color: homeColors.sub, // #5D7480
   },
   // Job description and any long-form copy.
   body: {

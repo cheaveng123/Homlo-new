@@ -5,11 +5,11 @@ export const jobCategoryTheme = {
   color: {
     mint: '#0891B2',       // live home screen mint — confirmed choice for this page
     mintTint: '#DCF1F6',
-    forest: '#0E3B2E',
+    forest: '#14324A',
     bg: '#FFFFFF',
-    bgGutter: '#F6F8F7',
-    line: '#E7EDEA',
-    muted: '#6B8478',
+    bgGutter: '#F3F6F5',
+    line: '#E6EDEF',
+    muted: '#6A7C84',
     white: '#FFFFFF',
     // Heart state colours, matching the home job cards, which use these exact
     // literals: a red filled heart when saved, a near-black outline when not.

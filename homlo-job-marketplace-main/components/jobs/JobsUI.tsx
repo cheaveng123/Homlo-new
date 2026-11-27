@@ -249,7 +249,7 @@ export const HoursBar = ({ from, to }: { from: number; to: number }) => (
   <View>
     <View style={{ flexDirection: 'row', gap: 3, marginTop: 10 }}>
       {Array.from({ length: 12 }, (_, i) => (
-        <View key={i} style={{ flex: 1, maxWidth: 14, height: 6, borderRadius: 3, backgroundColor: i >= from && i < to ? J.primary : '#DCE8E8' }} />
+        <View key={i} style={{ flex: 1, maxWidth: 14, height: 6, borderRadius: 3, backgroundColor: i >= from && i < to ? J.primary : '#DCE6EA' }} />
       ))}
     </View>
     <Text style={[u.cardS, { fontSize: TS.caption, marginTop: S.xs }]}>Usual hours, 6 AM → 6 PM</Text>

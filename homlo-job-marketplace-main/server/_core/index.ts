@@ -164,6 +164,13 @@ export function createApp() {
   registerRevenueCatRoutes(app);
   registerTrustRoutes(app);
 
+  // On Supabase Edge the whole server lives under the `api` function, so feed
+  // calls arrive as /api/feed/*. Serve them through the same /feed/* routes.
+  app.use((req, _res, next) => {
+    if (req.url.startsWith("/api/feed/")) req.url = req.url.slice("/api".length);
+    next();
+  });
+
   // Rate limit feed endpoints (same shape as other API routes)
   app.use("/feed/*", feed);
 

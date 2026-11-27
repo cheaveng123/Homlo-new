@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   noticeText: { color: accents.sunrise.ink, fontFamily: font.medium, fontSize: 12, lineHeight: 17 },
   errorCard: {
     backgroundColor: "#FDF0D9",
-    borderColor: "#F8CDB6",
+    borderColor: "#F8DDB0",
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 12,

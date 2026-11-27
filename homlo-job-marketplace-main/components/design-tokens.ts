@@ -7,25 +7,25 @@ import { Platform, type ShadowStyleIOS, type ViewStyle } from "react-native";
 import { fonts } from "@/lib/typography";
 import { fontFamily } from "@/theme/tokens";
 
-const BRAND = "#08675F";
+const BRAND = "#14324A";
 const BRAND_NEAR = "#0B6F8A";
 
-// Build teal ramp around #08675F (deep teal from design.md)
+// Build teal ramp around #14324A (deep teal from design.md)
 export const brand = {
-  50: "#F2F7F6",
-  100: "#E6F0EC",
-  200: "#CFE5DE",
-  300: "#B9D9D1",
-  400: "#8FC4B2",
+  50: "#F3F6F5",
+  100: "#E6EDEF",
+  200: "#DCE6EA",
+  300: "#DCE6EA",
+  400: "#8BD3E3",
   500: BRAND_NEAR, // near existing primary
   600: BRAND, // canonical brand
-  700: "#065549",
-  800: "#053F3A",
-  900: "#032A22",
+  700: "#14324A",
+  800: "#14324A",
+  900: "#14324A",
   DEFAULT: BRAND,
-  surface: "#F1F8F2",
-  surfaceSoft: "#EAF6EC",
-  border: "#D5EBDC",
+  surface: "#F3F6F5",
+  surfaceSoft: "#EEF3F4",
+  border: "#DCF1F6",
   textOnPrimary: "#FFFFFF",
 } as const;
 
@@ -34,16 +34,16 @@ export const neutrals = {
   white: "#FFFFFF",
   page: "#FFFFFF",
   surface: "#FFFFFF",
-  ink: "#17201A",
-  textPrimary: "#17201A",
-  textSecondary: "#66736A",
-  textTertiary: "#83918A",
-  muted: "#66736A",
-  sub: "#66736A",
-  border: "#E8ECEA",
-  borderStrong: "#E2E8E5",
-  line: "#ECEEEC",
-  chipBg: "#EAF6EC",
+  ink: "#12303C",
+  textPrimary: "#12303C",
+  textSecondary: "#5D7480",
+  textTertiary: "#6A7C84",
+  muted: "#5D7480",
+  sub: "#5D7480",
+  border: "#E6EDEF",
+  borderStrong: "#DCE6EA",
+  line: "#E6EDEF",
+  chipBg: "#EEF3F4",
   overlayLight: "rgba(255,255,255,0.92)",
 } as const;
 
@@ -85,7 +85,7 @@ export const semantic = {
   },
   overlay: {
     /** Scrim for controls that sit on top of a job photo. */
-    onMedia: "rgba(8, 103, 95, 0.55)",
+    onMedia: "rgba(11,111,138, 0.55)",
     onMediaCard: neutrals.overlayLight,
     /** Bottom fade from photo into the card body. */
     mediaFade: ["rgba(255,255,255,0)", "rgba(255,255,255,0.85)"] as const,

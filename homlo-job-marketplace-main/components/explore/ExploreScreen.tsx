@@ -285,7 +285,7 @@ export default function ExploreScreen({
       { color: '#2B5577', cover: ['#F7B54A', '#E8870F'] },
       { color: EX.cyanDeep, cover: ['#1BA6C4', '#0B6F8A'] },
       { color: EX.cyan, cover: ['#5E86A8', '#2E5476'] },
-      { color: '#3D6283', cover: ['#34B39E', '#1F8A79'] },
+      { color: '#3D6283', cover: ['#0891B2', '#0891B2'] },
     ];
     const slug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const counts = new Map<string, number>();

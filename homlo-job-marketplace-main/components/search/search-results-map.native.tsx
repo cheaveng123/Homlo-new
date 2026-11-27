@@ -89,9 +89,9 @@ export function SearchResultsMap({ center, zoom, radiusKm, markers, selectedId, 
 const styles = StyleSheet.create({
   container: { flex: 1, position: "relative" },
   map: { flex: 1 },
-  marker: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: primaryColor, borderRadius: 999, borderWidth: 1.5, maxWidth: 110, paddingHorizontal: 9, paddingVertical: 5, shadowColor: "#173C25", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4 },
+  marker: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: primaryColor, borderRadius: 999, borderWidth: 1.5, maxWidth: 110, paddingHorizontal: 9, paddingVertical: 5, shadowColor: "#14324A", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4 },
   markerSelected: { backgroundColor: primaryColor, borderColor: primaryColor, transform: [{ scale: 1.08 }] },
   markerText: { color: primaryColor, fontSize: 11, fontWeight: "700" },
   markerTextSelected: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
-  attribution: { position: "absolute", right: 5, bottom: 4, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.82)", fontSize: 9, color: "#5F7A6E" },
+  attribution: { position: "absolute", right: 5, bottom: 4, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.82)", fontSize: 9, color: "#5D7480" },
 });

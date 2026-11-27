@@ -16,14 +16,14 @@ import { defaultSearchFilters, payPeriods, type EmploymentFilter, type MapCoordi
 import { getDetailSnapshot, publishAppliedFilters } from "@/lib/detail-search-store";
 import { trpc } from "@/lib/trpc";
 
-const GREEN = "#58C7A4";
-const GREEN_INK = "#0E8160";
+const GREEN = "#8BD3E3";
+const GREEN_INK = "#0B6F8A";
 const TEXT_PRIMARY = "#1F2933";
 const TEXT_SECONDARY = "#6B7280";
-const CONTROL_GRAY = "#F1F4F3";
-const SELECTED_BG = "#EFF9F5";
-const DIVIDER = "#EEF0EF";
-const SLIDER_TRACK = "#E3E8E6";
+const CONTROL_GRAY = "#EEF3F4";
+const SELECTED_BG = "#EEF7FA";
+const DIVIDER = "#EEF3F4";
+const SLIDER_TRACK = "#DCE6EA";
 const MUTED = "#9AA19F";
 
 const DISTANCE_MIN = 5;
@@ -458,14 +458,14 @@ const styles = StyleSheet.create({
   periodRow: { flexDirection: "row", gap: 8, marginTop: 11 },
   periodPill: { alignItems: "center", backgroundColor: CONTROL_GRAY, borderRadius: 17, flex: 1, height: 33, justifyContent: "center" },
   periodPillActive: { backgroundColor: GREEN },
-  periodPillText: { color: "#66706D", fontSize: 12, fontWeight: "600" },
+  periodPillText: { color: "#5D7480", fontSize: 12, fontWeight: "600" },
   periodPillTextActive: { color: GREEN_INK, fontSize: 12, fontWeight: "700" },
 
   sectionBlock: { marginTop: 12 },
   jobTypeList: { marginTop: 10 },
   jobTypeRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: 9, flexDirection: "row", gap: 12, height: 44, paddingHorizontal: 10 },
   jobTypeRowSelected: { backgroundColor: SELECTED_BG },
-  jobTypeLabel: { color: "#4F5956", flex: 1, fontSize: 14, fontWeight: "500" },
+  jobTypeLabel: { color: "#5D7480", flex: 1, fontSize: 14, fontWeight: "500" },
   jobTypeLabelSelected: { color: GREEN_INK, flex: 1, fontSize: 14, fontWeight: "600" },
   jobTypeCount: { color: "#9AA19F", fontSize: 12.5, fontWeight: "500", marginRight: 4 },
   jobTypeCountSelected: { color: GREEN_INK, fontSize: 12.5, fontWeight: "600", marginRight: 4 },
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     height: 16,
-    shadowColor: "#173C25",
+    shadowColor: "#14324A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.5,
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
     height: 14,
     left: 0,
     position: "absolute",
-    shadowColor: "#173C25",
+    shadowColor: "#14324A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 2,

@@ -667,7 +667,7 @@ export default function HomeScreen() {
 
   return (
     // No `containerClassName` override: this inherits `ScreenContainer`'s
-    // `bg-background` (#F7F8F6), the same surface the search tab and the app
+    // `bg-background` (#F3F6F5), the same surface the search tab and the app
     // root already use. The search bar's own fill is transparent, so a
     // non-white page is what lets its black outline read as a floating field
     // instead of a white slab. The job cards keep their white fill + hairline
@@ -977,8 +977,8 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: fontFamily.semibold, fontSize: 14, color: colors.textPrimary },
   emptyMessage: { fontFamily: fontFamily.regular, fontSize: 12, color: colors.textSecondary, marginTop: 4 },
 
-  skeletonMedia: { backgroundColor: "#E8F0EC" },
-  skeletonLine: { backgroundColor: "#D8E1DC", borderRadius: 6 },
+  skeletonMedia: { backgroundColor: "#E6EDEF" },
+  skeletonLine: { backgroundColor: "#DCE6EA", borderRadius: 6 },
   skeletonTag: { width: 74, height: 20, borderRadius: 999 },
   skeletonTitle: { width: "72%", height: 15, marginTop: 10 },
   skeletonMetaRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },

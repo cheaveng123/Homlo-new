@@ -19,9 +19,9 @@ export type EmployerListing = {
 };
 
 const STATUS_DOT: Record<ListingStatus, string> = {
-  live: '#2FA97C',
+  live: '#0891B2',
   draft: '#E0A800',
-  review: '#5DCAA5',
+  review: '#8BD3E3',
 };
 
 type Props = {
@@ -50,7 +50,7 @@ export function EmployerJobListingCard({ listing, onPress, onMenuPress }: Props)
         <Image source={{ uri: listing.imageUrl }} style={styles.thumb} resizeMode="cover" />
       ) : (
         <View style={[styles.thumb, styles.thumbPlaceholder]}>
-          <AppIcon name="image-off" size={20} color="#8FA69B" />
+          <AppIcon name="image-off" size={20} color="#9AAAB1" />
         </View>
       )}
 
@@ -72,7 +72,7 @@ export function EmployerJobListingCard({ listing, onPress, onMenuPress }: Props)
       </View>
 
       <Pressable hitSlop={10} onPress={() => onMenuPress(listing.id)} style={styles.menuBtn}>
-        <AppIcon name="dots" size={18} color="#8FA69B" />
+        <AppIcon name="dots" size={18} color="#9AAAB1" />
       </Pressable>
     </Pressable>
   );
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
-    backgroundColor: '#EAF6EF',
+    backgroundColor: '#EEF3F4',
   },
   thumbPlaceholder: {
     alignItems: 'center',
@@ -101,8 +101,8 @@ const styles = StyleSheet.create({
   info: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  title: { fontSize: 14, fontWeight: '500', color: '#12271F' },
-  meta: { fontSize: 12, color: '#5F7A6E', marginTop: 2, marginBottom: 6 },
-  subLabel: { fontSize: 12, color: '#04342C' },
+  title: { fontSize: 14, fontWeight: '500', color: '#14324A' },
+  meta: { fontSize: 12, color: '#5D7480', marginTop: 2, marginBottom: 6 },
+  subLabel: { fontSize: 12, color: '#14324A' },
   menuBtn: { padding: 4 },
 });

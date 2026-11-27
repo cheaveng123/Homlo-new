@@ -234,13 +234,13 @@ export function JobLocationPicker({ onSelect, initialRegion = PHNOM_PENH_REGION 
     <View style={isFull ? styles.bodyFull : undefined}>
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
-          <AppIcon name="search" size={14} color="#5F7A6E" />
+          <AppIcon name="search" size={14} color="#5D7480" />
           <TextInput
             style={styles.searchInput}
             value={query}
             onChangeText={onQueryChange}
             placeholder="Search an address"
-            placeholderTextColor="#5F7A6E"
+            placeholderTextColor="#5D7480"
           />
         </View>
 
@@ -251,7 +251,7 @@ export function JobLocationPicker({ onSelect, initialRegion = PHNOM_PENH_REGION 
             hitSlop={6}
             accessibilityLabel="Fullscreen map"
           >
-            <AppIcon name="maximize" size={15} color="#12271F" />
+            <AppIcon name="maximize" size={15} color="#14324A" />
           </Pressable>
         )}
       </View>
@@ -307,7 +307,7 @@ export function JobLocationPicker({ onSelect, initialRegion = PHNOM_PENH_REGION 
               tracksViewChanges={false}
             >
               <View style={styles.pin}>
-                <AppIcon name="pin" size={20} color="#0F3D2B" />
+                <AppIcon name="pin" size={20} color="#14324A" />
               </View>
             </Marker>
           )}
@@ -327,7 +327,7 @@ export function JobLocationPicker({ onSelect, initialRegion = PHNOM_PENH_REGION 
         value={manualText}
         onChangeText={commitManualAddress}
         placeholder="Type the address exactly (optional)"
-        placeholderTextColor="#8FA69B"
+        placeholderTextColor="#9AAAB1"
       />
 
       <Text style={styles.selectedLabel}>
@@ -351,7 +351,7 @@ export function JobLocationPicker({ onSelect, initialRegion = PHNOM_PENH_REGION 
         <SafeAreaView style={styles.fullscreenRoot}>
           <View style={styles.fullscreenHeader}>
             <Pressable onPress={() => setFullscreen(false)} hitSlop={10}>
-              <AppIcon name="close" size={20} color="#12271F" />
+              <AppIcon name="close" size={20} color="#14324A" />
             </Pressable>
             <Text style={styles.fullscreenTitle}>Choose location</Text>
           </View>
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 38,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
   },
   expandBtn: {
     width: 38,
@@ -390,15 +390,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
   },
-  searchInput: { flex: 1, fontSize: 12, color: '#12271F', padding: 0 },
+  searchInput: { flex: 1, fontSize: 12, color: '#14324A', padding: 0 },
   resultsBox: {
     maxHeight: 160,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     marginBottom: 8,
     overflow: 'hidden',
   },
@@ -406,13 +406,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EDF2EF',
+    borderBottomColor: '#EEF3F4',
   },
-  resultText: { fontSize: 12, color: '#12271F' },
+  resultText: { fontSize: 12, color: '#14324A' },
   searchStatus: { alignItems: 'center', flexDirection: 'row', gap: 6, marginBottom: 8 },
-  searchStatusText: { fontSize: 11.5, color: '#5F7A6E' },
+  searchStatusText: { fontSize: 11.5, color: '#5D7480' },
   statusText: { fontSize: 11.5, color: '#9A3412', marginBottom: 8 },
-  locationHint: { fontSize: 11, color: '#5F7A6E', marginTop: 6 },
+  locationHint: { fontSize: 11, color: '#5D7480', marginTop: 6 },
   attribution: {
     position: 'absolute',
     right: 5,
@@ -422,35 +422,35 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.82)',
     fontSize: 9,
-    color: '#5F7A6E',
+    color: '#5D7480',
   },
   mapWrapper: {
     height: 130,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#EAF6EF',
+    backgroundColor: '#EEF3F4',
   },
   mapWrapperFull: {
     flex: 1,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#EAF6EF',
+    backgroundColor: '#EEF3F4',
     marginBottom: 10,
   },
   map: { flex: 1 },
   pin: { alignItems: 'center', justifyContent: 'center' },
-  manualLabel: { fontSize: 11, color: '#5F7A6E', marginTop: 10, marginBottom: 4 },
+  manualLabel: { fontSize: 11, color: '#5D7480', marginTop: 10, marginBottom: 4 },
   manualInput: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 42,
     fontSize: 13,
-    color: '#12271F',
+    color: '#14324A',
   },
-  selectedLabel: { fontSize: 12, color: '#5F7A6E', marginTop: 10 },
-  selectedValue: { color: '#12271F', fontWeight: '500' },
+  selectedLabel: { fontSize: 12, color: '#5D7480', marginTop: 10 },
+  selectedValue: { color: '#14324A', fontWeight: '500' },
 
   bodyFull: { flex: 1 },
   fullscreenRoot: { flex: 1, backgroundColor: '#FFFFFF' },
@@ -461,8 +461,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EDF2EF',
+    borderBottomColor: '#EEF3F4',
   },
-  fullscreenTitle: { fontSize: 15, fontWeight: '600', color: '#12271F' },
+  fullscreenTitle: { fontSize: 15, fontWeight: '600', color: '#14324A' },
   fullscreenContent: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
 });

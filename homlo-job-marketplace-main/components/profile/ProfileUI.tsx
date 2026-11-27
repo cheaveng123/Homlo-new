@@ -21,7 +21,7 @@ export function DetailScreen({ title, children }: { title: string; children: Rea
   const router = useRouter();
   return (
     <View style={s.page}>
-      <LinearGradient colors={['#CFEAEA', '#E6F4F4', C.bg]} style={s.wash} pointerEvents="none" />
+      <LinearGradient colors={['#DCF1F6', '#E6EDEF', C.bg]} style={s.wash} pointerEvents="none" />
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={s.head}>
@@ -85,7 +85,7 @@ export function Row({ icon, label, onPress, right, danger, pos }: {
       <Text style={[s.rowText, danger && { color: C.danger }]}>{label}</Text>
       <View style={s.rowRight}>
         {right}
-        {!danger && <AppIcon name="chevron" size={18} color="#9AA59E" />}
+        {!danger && <AppIcon name="chevron" size={18} color="#9AAAB1" />}
       </View>
     </Pressable>
   );
@@ -100,7 +100,7 @@ export function ToggleRow({ title, subtitle, value, onChange, pos }: {
         <Text style={s.rowText}>{title}</Text>
         <Text style={s.sub}>{subtitle}</Text>
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: C.primary, false: '#D5DDD8' }} ios_backgroundColor="#D5DDD8" thumbColor="#fff" />
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: C.primary, false: '#DCE6EA' }} ios_backgroundColor="#DCE6EA" thumbColor="#fff" />
     </View>
   );
 }
@@ -123,7 +123,7 @@ export function Field({ label, prefix, ...input }: { label: string; prefix?: str
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {prefix ? <Text style={[s.input, { fontFamily: F.b600 }]}>{prefix}</Text> : null}
         <TextInput
-          {...input} placeholderTextColor="#9AA59E" style={[s.input, { flex: 1 }, input.multiline && { height: 110, textAlignVertical: 'top', lineHeight: 22 }]}
+          {...input} placeholderTextColor="#9AAAB1" style={[s.input, { flex: 1 }, input.multiline && { height: 110, textAlignVertical: 'top', lineHeight: 22 }]}
           onFocus={(e) => { setFocus(true); input.onFocus?.(e); }} onBlur={(e) => { setFocus(false); input.onBlur?.(e); }}
         />
       </View>
@@ -151,7 +151,7 @@ export function OptionRow({ title, subtitle, selected, onPress, icon, badge }: {
 const VARIANTS = {
   solid: { box: { backgroundColor: C.primary, ...shadowPrimary() }, fg: '#fff' },
   outline: { box: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.primary }, fg: C.primary },
-  soft: { box: { backgroundColor: '#F1F4F2' }, fg: C.fg },
+  soft: { box: { backgroundColor: '#EEF3F4' }, fg: C.fg },
   light: { box: { backgroundColor: '#fff' }, fg: C.forest },
 } as const;
 function shadowPrimary(): ViewStyle {
@@ -241,14 +241,14 @@ const s = StyleSheet.create({
   fieldLabel: { fontFamily: F.b400, fontSize: 11.5, color: C.muted, marginBottom: 2 },
   input: { fontFamily: F.b500, fontSize: 15, color: C.fg, paddingVertical: 2 },
   opt: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 18, minHeight: 60, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 8, borderWidth: 1.5, borderColor: 'transparent' },
-  optSel: { borderColor: C.mint, backgroundColor: '#F0FAFA' },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#CFD8D3' },
+  optSel: { borderColor: C.mint, backgroundColor: '#EEF7FA' },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#DCE6EA' },
   badge: { minWidth: 38, height: 38, paddingHorizontal: 4, borderRadius: 12, backgroundColor: C.mint100, alignItems: 'center', justifyContent: 'center' },
   badgeT: { fontFamily: F.h700, fontSize: 12, color: C.forest },
   btn: { height: 48, paddingHorizontal: 26, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
   btnT: { fontFamily: F.b600, fontSize: 15 },
   shWrap: { flex: 1, backgroundColor: 'rgba(10,25,18,0.45)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 34, gap: 8 },
-  grab: { width: 40, height: 4, borderRadius: 9, backgroundColor: '#D5DDD8', alignSelf: 'center', marginBottom: 10 },
+  grab: { width: 40, height: 4, borderRadius: 9, backgroundColor: '#DCE6EA', alignSelf: 'center', marginBottom: 10 },
   shTitle: { fontFamily: F.h800, fontSize: 19, color: C.fg, marginBottom: 6 },
 });

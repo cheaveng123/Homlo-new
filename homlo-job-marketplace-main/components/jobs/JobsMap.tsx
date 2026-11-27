@@ -66,11 +66,11 @@ export const JobsMap = forwardRef<JobsMapHandle, JobsMapProps>(function JobsMap(
 });
 
 const m = StyleSheet.create({
-  map: { backgroundColor: '#E4EFEE', overflow: 'hidden' },
-  park: { position: 'absolute', backgroundColor: '#CDE7DF', borderRadius: 24 },
+  map: { backgroundColor: '#E6EDEF', overflow: 'hidden' },
+  park: { position: 'absolute', backgroundColor: '#DCF1F6', borderRadius: 24 },
   water: { position: 'absolute', backgroundColor: '#CFE3F0', borderRadius: 110 },
   road: { position: 'absolute', backgroundColor: '#fff' },
-  ring: { position: 'absolute', backgroundColor: 'rgba(14,124,134,0.10)', borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(14,124,134,0.6)' },
+  ring: { position: 'absolute', backgroundColor: 'rgba(8,145,178,0.10)', borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(8,145,178,0.6)' },
   halo: { position: 'absolute', width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(245,181,43,0.3)' },
   me: { position: 'absolute', width: 18, height: 18, borderRadius: 9, backgroundColor: J.sun, borderWidth: 3, borderColor: '#fff' },
   pinWrap: { position: 'absolute', width: 100, alignItems: 'center' },

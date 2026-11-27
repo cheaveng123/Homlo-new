@@ -4,7 +4,7 @@ import { Platform, ViewStyle } from 'react-native';
 export const colors = {
   forest: '#12303C',
   mint: '#0891B2',
-  mintLight: '#3EA6AE',
+  mintLight: '#0891B2',
   tint: '#DCF1F6',
   bg: '#F3F6F5',
   white: '#FFFFFF',
@@ -16,7 +16,7 @@ export const colors = {
   dash: '#D5E6EA',
   amberBg: '#FFF1D2',
   amberText: '#7A4300',
-  scrim: 'rgba(7,59,66,0.55)',
+  scrim: 'rgba(20,50,74,0.55)',
   toggleOff: '#D5E6EA',
 };
 

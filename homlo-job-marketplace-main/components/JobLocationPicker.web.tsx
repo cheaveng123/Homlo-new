@@ -124,13 +124,13 @@ export function JobLocationPicker({ onSelect, initialRegion }: Props) {
     <View>
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
-          <AppIcon name="search" size={14} color="#5F7A6E" />
+          <AppIcon name="search" size={14} color="#5D7480" />
           <TextInput
             style={styles.searchInput}
             value={query}
             onChangeText={onQueryChange}
             placeholder="Search an address"
-            placeholderTextColor="#5F7A6E"
+            placeholderTextColor="#5D7480"
           />
         </View>
       </View>
@@ -167,7 +167,7 @@ export function JobLocationPicker({ onSelect, initialRegion }: Props) {
         value={manualText}
         onChangeText={commitManualAddress}
         placeholder="Type the address exactly (optional)"
-        placeholderTextColor="#8FA69B"
+        placeholderTextColor="#9AAAB1"
       />
 
       <Text style={styles.selectedLabel}>
@@ -187,21 +187,21 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DDEAE6',
+    borderColor: '#DCE6EA',
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
   },
-  searchInput: { flex: 1, fontSize: 13, color: '#12271F' },
-  resultsBox: { marginTop: 6, borderRadius: 12, borderWidth: 1, borderColor: '#DDEAE6', backgroundColor: '#FFFFFF', overflow: 'hidden' },
-  resultRow: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EDF4F1' },
-  resultText: { fontSize: 12.5, color: '#12271F' },
-  status: { marginTop: 6, fontSize: 11.5, color: '#5F7A6E' },
-  mapWrapper: { height: 260, marginTop: 10, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E4F0E7' },
-  manualLabel: { marginTop: 12, fontSize: 11, fontWeight: '700', color: '#5F7A6E' },
-  manualInput: { marginTop: 4, minHeight: 42, borderRadius: 10, borderWidth: 1, borderColor: '#DDEAE6', backgroundColor: '#FFFFFF', paddingHorizontal: 12, fontSize: 13, color: '#12271F' },
-  selectedLabel: { marginTop: 10, fontSize: 11, color: '#5F7A6E' },
-  selectedValue: { fontWeight: '700', color: '#12271F' },
+  searchInput: { flex: 1, fontSize: 13, color: '#14324A' },
+  resultsBox: { marginTop: 6, borderRadius: 12, borderWidth: 1, borderColor: '#DCE6EA', backgroundColor: '#FFFFFF', overflow: 'hidden' },
+  resultRow: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEF3F4' },
+  resultText: { fontSize: 12.5, color: '#14324A' },
+  status: { marginTop: 6, fontSize: 11.5, color: '#5D7480' },
+  mapWrapper: { height: 260, marginTop: 10, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E6EDEF' },
+  manualLabel: { marginTop: 12, fontSize: 11, fontWeight: '700', color: '#5D7480' },
+  manualInput: { marginTop: 4, minHeight: 42, borderRadius: 10, borderWidth: 1, borderColor: '#DCE6EA', backgroundColor: '#FFFFFF', paddingHorizontal: 12, fontSize: 13, color: '#14324A' },
+  selectedLabel: { marginTop: 10, fontSize: 11, color: '#5D7480' },
+  selectedValue: { fontWeight: '700', color: '#14324A' },
 });

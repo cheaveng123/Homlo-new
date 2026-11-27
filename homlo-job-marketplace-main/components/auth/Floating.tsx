@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   abs: {
     position: 'absolute',
     ...Platform.select({
-      ios: { shadowColor: '#0F4637', shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 6 } },
+      ios: { shadowColor: '#14324A', shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 6 } },
       default: {},
     }),
   },

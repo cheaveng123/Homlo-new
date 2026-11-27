@@ -120,7 +120,7 @@ export default function JobsMapExperience() {
         radius={radiusKm * 1000}
         strokeColor={TEAL}
         strokeWidth={1.5}
-        fillColor="rgba(14,124,134,0.07)"
+        fillColor="rgba(8,145,178,0.07)"
         lineDashPattern={[6, 6]}
       />
       {jobs.map((job, i) => {

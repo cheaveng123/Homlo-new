@@ -53,8 +53,8 @@ const C = {
   segment: "#F3F6F5",
   error: "#B42318",
   errorBg: "#FEF3F2",
-  success: "#236B3A",
-  successBg: "#ECFDF3",
+  success: "#0B6F8A",
+  successBg: "#EEF7FA",
 };
 
 const FIELD_H = 52;

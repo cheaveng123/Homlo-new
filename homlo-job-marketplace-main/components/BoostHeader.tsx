@@ -44,6 +44,6 @@ const styles = StyleSheet.create({
   row: { alignItems: "center", flexDirection: "row", gap: 10, paddingHorizontal: 18, paddingVertical: 10 },
   placeholder: { width: 26 },
   bars: { flex: 1, flexDirection: "row", gap: 6 },
-  bar: { backgroundColor: "#DFE4E1", borderRadius: 4, flex: 1, height: 4 },
+  bar: { backgroundColor: "#DCE6EA", borderRadius: 4, flex: 1, height: 4 },
   label: { color: colors.sub, fontFamily: fonts.bold, fontSize: 12 },
 });

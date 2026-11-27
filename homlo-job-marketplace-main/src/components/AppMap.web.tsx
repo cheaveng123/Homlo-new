@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 12,
-    color: "#4F5E57",
+    color: "#5D7480",
   },
 });
 

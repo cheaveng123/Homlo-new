@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   bubbleTextOwn: { color: colors.white },
   bubbleTextOther: { color: colors.forest900 },
   bubbleTime: { color: 'rgba(255,255,255,0.7)', fontSize: 9.5, marginTop: 3, textAlign: 'right' },
-  bubbleDeleted: { backgroundColor: '#F5F6F5', borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5D1' },
+  bubbleDeleted: { backgroundColor: '#F3F6F5', borderStyle: 'dashed', borderWidth: 1, borderColor: '#DCE6EA' },
   bubbleDeletedOwn: {},
   bubbleDeletedOther: {},
   deletedText: { color: colors.sand400, fontStyle: 'italic', fontSize: 12 },

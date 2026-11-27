@@ -38,7 +38,7 @@ export function PostTabButton() {
 
 const styles = StyleSheet.create({
   slot: { alignItems: "center", flex: 1 },
-  button: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 27, borderWidth: 5, height: 54, justifyContent: "center", marginTop: -24, shadowColor: "#0F5C2B", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 10, width: 54 },
+  button: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 27, borderWidth: 5, height: 54, justifyContent: "center", marginTop: -24, shadowColor: "#14324A", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.18, shadowRadius: 10, width: 54 },
   newJobIcon: { width: 24, height: 24 },
   pressed: { opacity: 0.86, transform: [{ scale: 0.94 }] },
 });

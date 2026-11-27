@@ -6,7 +6,10 @@ import { useMemo } from 'react';
 let feedClientInstance: FeedClient | null = null;
 
 function resolveFeedBaseUrl(): string {
-  return getApiBaseUrl() || 'http://localhost:3000';
+  const base = (getApiBaseUrl() || 'http://localhost:3000').replace(/\/+$/, '');
+  // Supabase Edge hosts the API as the `api` function (…/functions/v1/api),
+  // the same place tRPC calls go; a bare …/functions/v1/feed/* does not exist.
+  return /\/functions\/v1$/.test(base) ? `${base}/api` : base;
 }
 
 /**

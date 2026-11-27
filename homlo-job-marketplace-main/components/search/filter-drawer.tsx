@@ -97,21 +97,21 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
         <View style={styles.header}>
           <Text style={styles.title}>Filters</Text>
           <Pressable accessibilityLabel="Close filters" onPress={onClose} style={styles.closeButton}>
-            <AppIcon name="close" size={18} color="#17201A" />
+            <AppIcon name="close" size={18} color="#12303C" />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Section title="Location">
-            <TextInput accessibilityLabel="Filter by location" onChangeText={(value) => onChange("location", value)} placeholder="City or area" placeholderTextColor="#94A098" style={styles.input} value={draft.location} />
+            <TextInput accessibilityLabel="Filter by location" onChangeText={(value) => onChange("location", value)} placeholder="City or area" placeholderTextColor="#9AAAB1" style={styles.input} value={draft.location} />
             <Pressable accessibilityRole="button" accessibilityState={{ selected: isValidPolygon(draft.polygon) }} accessibilityLabel="Draw area on map" onPress={openDraw} style={({ pressed }) => [styles.drawButton, isValidPolygon(draft.polygon) && styles.drawButtonActive, pressed && styles.pressed]}>
-              <AppIcon name="pin" size={15} color={isValidPolygon(draft.polygon) ? "#0891B2" : "#17201A"} />
+              <AppIcon name="pin" size={15} color={isValidPolygon(draft.polygon) ? "#0891B2" : "#12303C"} />
               <Text style={isValidPolygon(draft.polygon) ? styles.drawButtonTextActive : styles.drawButtonText}>{isValidPolygon(draft.polygon) ? `Drawn area (${draft.polygon!.length} points)` : "Draw area on map"}</Text>
             </Pressable>
           </Section>
           <Section title="Salary range">
             <View style={styles.salaryRow}>
-              <TextInput accessibilityLabel="Minimum salary" keyboardType="numeric" onChangeText={(value) => onChange("salaryMin", value)} placeholder="Minimum" placeholderTextColor="#94A098" style={[styles.input, styles.halfField]} value={draft.salaryMin} />
-              <TextInput accessibilityLabel="Maximum salary" keyboardType="numeric" onChangeText={(value) => onChange("salaryMax", value)} placeholder="Maximum" placeholderTextColor="#94A098" style={[styles.input, styles.halfField]} value={draft.salaryMax} />
+              <TextInput accessibilityLabel="Minimum salary" keyboardType="numeric" onChangeText={(value) => onChange("salaryMin", value)} placeholder="Minimum" placeholderTextColor="#9AAAB1" style={[styles.input, styles.halfField]} value={draft.salaryMin} />
+              <TextInput accessibilityLabel="Maximum salary" keyboardType="numeric" onChangeText={(value) => onChange("salaryMax", value)} placeholder="Maximum" placeholderTextColor="#9AAAB1" style={[styles.input, styles.halfField]} value={draft.salaryMax} />
             </View>
           </Section>
           {sections.map((section) => (
@@ -135,7 +135,7 @@ export function FilterDrawer({ visible, draft, categoryOptions, onChange, onClos
         <View style={[styles.drawHeader, { paddingTop: Math.max(insets.top, 8) }]}>
           <Text style={styles.drawTitle}>Draw area</Text>
           <Pressable accessibilityLabel="Close drawing" onPress={() => setDrawVisible(false)} style={styles.closeButton}>
-            <AppIcon name="close" size={18} color="#17201A" />
+            <AppIcon name="close" size={18} color="#12303C" />
           </Pressable>
         </View>
         <Text style={styles.drawHint}>Tap the map to drop points, then choose Done to filter jobs inside this area.</Text>
@@ -191,35 +191,35 @@ const styles = StyleSheet.create({
   overlay: { backgroundColor: "rgba(15, 23, 17, 0.45)", bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
   dismiss: { flex: 1 },
   sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, bottom: 0, left: 0, maxHeight: "92%", position: "absolute", right: 0 },
-  handle: { alignSelf: "center", backgroundColor: "#E2E8E5", borderRadius: 2.5, height: 5, marginTop: 8, width: 38 },
+  handle: { alignSelf: "center", backgroundColor: "#DCE6EA", borderRadius: 2.5, height: 5, marginTop: 8, width: 38 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14 },
-  title: { color: "#17201A", fontSize: 17, fontWeight: "700" },
-  closeButton: { alignItems: "center", backgroundColor: "#F1F4F1", borderRadius: 16, height: 32, justifyContent: "center", width: 32 },
+  title: { color: "#12303C", fontSize: 17, fontWeight: "700" },
+  closeButton: { alignItems: "center", backgroundColor: "#EEF3F4", borderRadius: 16, height: 32, justifyContent: "center", width: 32 },
   content: { paddingBottom: 16, paddingHorizontal: 20 },
-  section: { borderTopColor: "#EEF2EF", borderTopWidth: 1, paddingVertical: 14 },
-  sectionTitle: { color: "#17201A", fontSize: 13, fontWeight: "700", marginBottom: 10 },
-  input: { backgroundColor: "#F4F7F4", borderColor: "#E2E8E5", borderRadius: 12, borderWidth: 1, color: "#17201A", fontSize: 14, paddingHorizontal: 14, paddingVertical: 12 },
+  section: { borderTopColor: "#EEF3F4", borderTopWidth: 1, paddingVertical: 14 },
+  sectionTitle: { color: "#12303C", fontSize: 13, fontWeight: "700", marginBottom: 10 },
+  input: { backgroundColor: "#F3F6F5", borderColor: "#DCE6EA", borderRadius: 12, borderWidth: 1, color: "#12303C", fontSize: 14, paddingHorizontal: 14, paddingVertical: 12 },
   salaryRow: { flexDirection: "row", gap: 10 },
   halfField: { flex: 1 },
   optionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  option: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
-  optionActive: { backgroundColor: "#EAF6EC", borderColor: "#0891B2" },
-  optionText: { color: "#17201A", fontSize: 12, fontWeight: "500" },
+  option: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCE6EA", borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
+  optionActive: { backgroundColor: "#EEF3F4", borderColor: "#0891B2" },
+  optionText: { color: "#12303C", fontSize: 12, fontWeight: "500" },
   optionTextActive: { color: "#0891B2", fontSize: 12, fontWeight: "700" },
   pressed: { opacity: 0.75 },
-  footer: { alignItems: "center", borderTopColor: "#EEF2EF", borderTopWidth: 1, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
-  clearButton: { alignItems: "center", borderColor: "#E2E8E5", borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
-  clearText: { color: "#17201A", fontSize: 13, fontWeight: "600" },
+  footer: { alignItems: "center", borderTopColor: "#EEF3F4", borderTopWidth: 1, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
+  clearButton: { alignItems: "center", borderColor: "#DCE6EA", borderRadius: 12, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
+  clearText: { color: "#12303C", fontSize: 13, fontWeight: "600" },
   applyButton: { alignItems: "center", backgroundColor: "#0891B2", borderRadius: 12, flex: 1, paddingVertical: 13 },
   applyText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
-  drawButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 12, borderWidth: 1, flexDirection: "row", gap: 8, marginTop: 10, paddingHorizontal: 14, paddingVertical: 11 },
-  drawButtonActive: { backgroundColor: "#EAF6EC", borderColor: "#0891B2" },
-  drawButtonText: { color: "#17201A", fontSize: 13, fontWeight: "600" },
+  drawButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCE6EA", borderRadius: 12, borderWidth: 1, flexDirection: "row", gap: 8, marginTop: 10, paddingHorizontal: 14, paddingVertical: 11 },
+  drawButtonActive: { backgroundColor: "#EEF3F4", borderColor: "#0891B2" },
+  drawButtonText: { color: "#12303C", fontSize: 13, fontWeight: "600" },
   drawButtonTextActive: { color: "#0891B2", fontSize: 13, fontWeight: "700" },
   drawScreen: { backgroundColor: "#FFFFFF", flex: 1 },
-  drawHeader: { alignItems: "center", borderBottomColor: "#EEF2EF", borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingBottom: 12, paddingHorizontal: 20 },
-  drawTitle: { color: "#17201A", fontSize: 17, fontWeight: "700" },
-  drawHint: { color: "#66736A", fontSize: 12.5, lineHeight: 18, paddingHorizontal: 20, paddingTop: 10 },
+  drawHeader: { alignItems: "center", borderBottomColor: "#EEF3F4", borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingBottom: 12, paddingHorizontal: 20 },
+  drawTitle: { color: "#12303C", fontSize: 17, fontWeight: "700" },
+  drawHint: { color: "#5D7480", fontSize: 12.5, lineHeight: 18, paddingHorizontal: 20, paddingTop: 10 },
   drawMap: { flex: 1, marginTop: 10 },
-  drawFooter: { alignItems: "center", borderTopColor: "#EEF2EF", borderTopWidth: 1, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
+  drawFooter: { alignItems: "center", borderTopColor: "#EEF3F4", borderTopWidth: 1, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12 },
 });

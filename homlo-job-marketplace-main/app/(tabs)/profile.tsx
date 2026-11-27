@@ -42,7 +42,7 @@ const enter = (i: number) =>
   FadeInDown.delay(i * 70).duration(durations.enter).easing(SMOOTH).withInitialValues({ opacity: 0, transform: [{ translateY: 20 }] });
 
 const BANNERS: [string, string, string][] = [
-  ['#14324A', '#0891B2', '#3CB4BE'], ['#9A3412', '#D97706', '#F59E0B'], ['#0C4A6E', '#0284C7', '#0EA5E9'],
+  ['#14324A', '#0891B2', '#0891B2'], ['#9A3412', '#D97706', '#F59E0B'], ['#0C4A6E', '#0284C7', '#0EA5E9'],
   ['#4C1D95', '#7C3AED', '#A78BFA'], ['#1F2937', '#4B5563', '#6B7280'],
 ];
 

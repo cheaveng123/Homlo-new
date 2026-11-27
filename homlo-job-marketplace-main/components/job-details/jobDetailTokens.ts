@@ -11,8 +11,8 @@
  */
 
 export const colors = {
-  accent: '#17C89C',       // sampled from the real "Apply now" button
-  accentSoft: '#E7FAF4',
+  accent: '#0891B2',       // sampled from the real "Apply now" button
+  accentSoft: '#EEF7FA',
   ink: '#17181A',
   ink2: '#75797E',
   ink3: '#A2A6AA',

@@ -12,10 +12,10 @@
 import { View, Text, Switch, StyleSheet } from "react-native";
 
 const COLORS = {
-  accent: "#2BB389",
-  ink: "#17201A",
-  inkSecondary: "#66736A",
-  line: "#E2E8E5",
+  accent: "#0891B2",
+  ink: "#12303C",
+  inkSecondary: "#5D7480",
+  line: "#DCE6EA",
   surface: "#FFFFFF",
   trackOff: "#C9CDCB",
 };

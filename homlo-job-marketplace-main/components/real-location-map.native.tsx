@@ -34,7 +34,7 @@ export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocation
         zoomEnabled
       >
         <UrlTile maximumZ={MAP_MAX_TILE_ZOOM} minimumZ={2} shouldReplaceMapContent urlTemplate={openStreetMapTiles} />
-        <Circle center={coordinate} fillColor="rgba(8,103,95,0.16)" radius={radiusKm * 1000} strokeColor="rgba(8,103,95,0.78)" strokeWidth={2} />
+        <Circle center={coordinate} fillColor="rgba(11,111,138,0.16)" radius={radiusKm * 1000} strokeColor="rgba(11,111,138,0.78)" strokeWidth={2} />
         {location && (
           <Marker coordinate={location}>
             <View style={styles.gpsDot} />

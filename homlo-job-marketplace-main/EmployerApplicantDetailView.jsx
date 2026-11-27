@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 /* ---------- Tokens ---------- */
 const C = {
   teal: '#0891B2', deep: '#14324A', tint: '#DCF1F6', bg: '#FFFFFF', text: '#12303C',
-  muted: '#6A7C84', line: '#E6EDEF', holder: '#EAEFEF', holderIcon: '#8A9A9C',
+  muted: '#6A7C84', line: '#E6EDEF', holder: '#E6EDEF', holderIcon: '#8A9A9C',
   clay: '#E8870F', cream: '#FFF1D2', creamInk: '#7A4300', danger: '#C0392B', dangerBg: '#FBEAE6',
 };
 // Change these to your real font names.

@@ -101,7 +101,7 @@ export default function FilterScreen({ resultCount, onApply }: { resultCount?: n
           <Text style={st.h3}>Job type</Text>
           <View style={st.chips}>
             {TYPES.map(({ k, I }) => { const on = types.includes(k); return (
-              <Chip key={k} on={on} onPress={() => tog(types, setTypes, k)}><AppIcon name={I} size={17} color={on ? '#7EE2AE' : C.mint} /><Text style={[st.chipT, on && { color: '#fff' }]}>{k}</Text></Chip>
+              <Chip key={k} on={on} onPress={() => tog(types, setTypes, k)}><AppIcon name={I} size={17} color={on ? '#8BD3E3' : C.mint} /><Text style={[st.chipT, on && { color: '#fff' }]}>{k}</Text></Chip>
             ); })}
           </View>
         </Animated.View>
@@ -143,9 +143,9 @@ export default function FilterScreen({ resultCount, onApply }: { resultCount?: n
 
         <Animated.View entering={sec(6)} style={[st.card, { marginTop: 24 }]}>
           <View style={st.sw}><View style={{ flex: 1 }}><Text style={st.swT}>Urgent hiring only</Text><Text style={st.swS}>Roles that need someone now</Text></View>
-            <Switch value={urgent} onValueChange={setUrgent} trackColor={{ true: C.mint, false: '#D5DDD8' }} thumbColor="#fff" /></View>
+            <Switch value={urgent} onValueChange={setUrgent} trackColor={{ true: C.mint, false: '#DCE6EA' }} thumbColor="#fff" /></View>
           <View style={[st.sw, { marginTop: 8 }]}><View style={{ flex: 1 }}><Text style={st.swT}>Verified employers</Text><Text style={st.swS}>Checked by Homlo</Text></View>
-            <Switch value={verified} onValueChange={setVerified} trackColor={{ true: C.mint, false: '#D5DDD8' }} thumbColor="#fff" /></View>
+            <Switch value={verified} onValueChange={setVerified} trackColor={{ true: C.mint, false: '#DCE6EA' }} thumbColor="#fff" /></View>
         </Animated.View>
       </ScrollView>
 
@@ -170,7 +170,7 @@ const st = StyleSheet.create({
   per: { backgroundColor: C.mint50, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 12 },
   track: { position: 'absolute', left: 0, right: 0, height: 6, borderRadius: 9, backgroundColor: C.mint100 },
   fill: { position: 'absolute', height: 6, borderRadius: 9, backgroundColor: C.mint },
-  thumb: { position: 'absolute', left: 0, width: THUMB, height: THUMB, borderRadius: THUMB / 2, backgroundColor: '#fff', borderWidth: 7, borderColor: C.mint, shadowColor: '#173C25', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
+  thumb: { position: 'absolute', left: 0, width: THUMB, height: THUMB, borderRadius: THUMB / 2, backgroundColor: '#fff', borderWidth: 7, borderColor: C.mint, shadowColor: '#14324A', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 },
   seg: { flexDirection: 'row', backgroundColor: C.bg, borderRadius: 999, padding: 5 },
   segI: { flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 999 },
   sw: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },

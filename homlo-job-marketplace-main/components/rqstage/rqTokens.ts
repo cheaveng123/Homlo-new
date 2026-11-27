@@ -63,11 +63,11 @@ export const RQ_CLR = {
   chipText: '#8A5A12',
   windowTeal: '#2b727e',
   boardTeal: '#1a4a53',
-  lineTeal: '#8fc0c4',
+  lineTeal: '#8BD3E3',
   lampLine: '#7fb5bb',
   coral: '#F09C7D',
-  mintSky: '#A9DADB',
-  pageBg: '#F6F8F7',
+  mintSky: '#8BD3E3',
+  pageBg: '#F3F6F5',
   pillBg: 'rgba(255,255,255,0.16)',
 } as const;
 
@@ -118,7 +118,7 @@ export const RQ_SCENE_DEFS: RqSceneDef[] = [
     chipW: 104,
     item: 'cup',
     emp: { skin: RQ_SKIN[1], hair: '#1d1d28', hairLong: false, shirt: '#F3E7D3', longSleeve: false, deco: 'apron', helmet: false },
-    cand: { skin: RQ_SKIN[0], hair: '#42291a', hairLong: true, shirt: '#3b9a74', longSleeve: false, deco: 'none', helmet: false },
+    cand: { skin: RQ_SKIN[0], hair: '#42291a', hairLong: true, shirt: '#0891B2', longSleeve: false, deco: 'none', helmet: false },
   },
   {
     key: 'delivery',

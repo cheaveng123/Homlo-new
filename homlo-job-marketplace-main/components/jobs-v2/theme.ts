@@ -35,7 +35,7 @@ export const colors = {
   mintTint: '#DCF1F6',
   green: '#0891B2',
   greenDark: '#14324A',
-  mintBloom: '#96D1BE',
+  mintBloom: '#8BD3E3',
   forest: '#14324A',
   mint100: '#DCF1F6',
   primary: '#0891B2',
@@ -56,8 +56,8 @@ export type AccentKey = 'lagoon' | 'sunrise' | 'clay' | 'dusk';
 export const accents: Record<AccentKey, { bg: string; mid: string; ink: string }> = {
   lagoon: { bg: '#DCF1F6', mid: '#8BD3E3', ink: '#14324A' },
   sunrise: { bg: '#FFF1D2', mid: '#FFE0A0', ink: '#7A4300' },
-  clay: { bg: '#FDF0D9', mid: '#F8CDB6', ink: '#A8620B' },
-  dusk: { bg: '#EDE6F7', mid: '#D9CBEE', ink: '#4A3578' },
+  clay: { bg: '#FDF0D9', mid: '#F8DDB0', ink: '#A8620B' },
+  dusk: { bg: '#EEF3F4', mid: '#D5E6EA', ink: '#14324A' },
 };
 
 /** Solid colors for logo / avatar tiles. */

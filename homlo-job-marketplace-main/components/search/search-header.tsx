@@ -48,7 +48,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
             onChangeText={onChangeKeyword}
             onSubmitEditing={onSearch}
             placeholder={isCompact ? "Search jobs" : "Search jobs, skills, or companies"}
-            placeholderTextColor="#94A098"
+            placeholderTextColor="#9AAAB1"
             returnKeyType="search"
             style={styles.searchInput}
             value={keyword}
@@ -62,7 +62,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
             onChangeText={onChangeLocation}
             onSubmitEditing={onSearch}
             placeholder="Location"
-            placeholderTextColor="#94A098"
+            placeholderTextColor="#9AAAB1"
             returnKeyType="search"
             style={styles.searchInput}
             value={location}
@@ -87,7 +87,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
               }}
               style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
             >
-              <AppIcon name={CHIP_ICON[chip.icon]} size={13} color={active ? "#0891B2" : "#17201A"} />
+              <AppIcon name={CHIP_ICON[chip.icon]} size={13} color={active ? "#0891B2" : "#12303C"} />
               <Text style={active ? styles.chipTextActive : styles.chipText}>{chip.label}</Text>
             </Pressable>
           );
@@ -98,7 +98,7 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
           onPress={onOpenFilters}
           style={({ pressed }) => [styles.chip, filterCount > 0 && styles.chipActive, pressed && styles.pressed]}
         >
-          <AppIcon name="sliders" size={13} color={filterCount > 0 ? "#0891B2" : "#17201A"} />
+          <AppIcon name="sliders" size={13} color={filterCount > 0 ? "#0891B2" : "#12303C"} />
           <Text style={filterCount > 0 ? styles.chipTextActive : styles.chipText}>Filters{filterCount > 0 ? ` · ${filterCount}` : ""}</Text>
         </Pressable>
       </ScrollView>
@@ -107,30 +107,30 @@ export function SearchHeader({ keyword, location, activeChip, filterCount = 0, a
 }
 
 const styles = StyleSheet.create({
-  headerShell: { backgroundColor: "#F7F8F6", paddingHorizontal: 16, paddingBottom: 8 },
+  headerShell: { backgroundColor: "#F3F6F5", paddingHorizontal: 16, paddingBottom: 8 },
   eyebrow: { color: "#0891B2", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 },
-  title: { color: "#17201A", fontSize: 21, fontWeight: "700", letterSpacing: -0.4, marginTop: 4 },
+  title: { color: "#12303C", fontSize: 21, fontWeight: "700", letterSpacing: -0.4, marginTop: 4 },
   searchCard: {
     backgroundColor: "#FFFFFF",
-    borderColor: "#E2E8E5",
+    borderColor: "#DCE6EA",
     borderRadius: 16,
     borderWidth: 1,
     marginTop: 14,
     paddingHorizontal: 14,
     paddingVertical: 4,
-    shadowColor: "#173C25",
+    shadowColor: "#14324A",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
   },
   searchRow: { alignItems: "center", flexDirection: "row", minHeight: 44, paddingVertical: 4 },
-  searchInput: { color: "#17201A", flex: 1, fontSize: 14, marginLeft: 10, paddingVertical: 6 },
-  divider: { backgroundColor: "#EEF2EF", height: 1 },
+  searchInput: { color: "#12303C", flex: 1, fontSize: 14, marginLeft: 10, paddingVertical: 6 },
+  divider: { backgroundColor: "#EEF3F4", height: 1 },
   searchButton: { alignItems: "center", backgroundColor: "#0891B2", borderRadius: 10, height: 34, justifyContent: "center", marginLeft: 8, width: 56 },
   chipRow: { flexDirection: "row", gap: 8, marginTop: 14, paddingRight: 4 },
-  chip: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 12, paddingVertical: 6 },
-  chipActive: { backgroundColor: "#EAF6EC", borderColor: "#0891B2" },
-  chipText: { color: "#17201A", fontSize: 12, fontWeight: "600" },
+  chip: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCE6EA", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 12, paddingVertical: 6 },
+  chipActive: { backgroundColor: "#EEF3F4", borderColor: "#0891B2" },
+  chipText: { color: "#12303C", fontSize: 12, fontWeight: "600" },
   chipTextActive: { color: "#0891B2", fontSize: 12, fontWeight: "700" },
   pressed: { opacity: 0.78 },
 });

@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   disc: { alignItems: "center", backgroundColor: colors.red, borderRadius: 32, height: 64, justifyContent: "center", width: 64 },
   title: { color: colors.text, fontFamily: fonts.heading, fontSize: 24, marginTop: 18 },
   subtitle: { color: "#6B736E", fontFamily: fonts.body, fontSize: 13, marginTop: 4, paddingHorizontal: 12, textAlign: "center" },
-  card: { alignSelf: "stretch", backgroundColor: "#FFFFFF", borderColor: "#E6E9E7", borderRadius: 18, borderWidth: 1, gap: 8, marginTop: 24, padding: 16 },
+  card: { alignSelf: "stretch", backgroundColor: "#FFFFFF", borderColor: "#E6EDEF", borderRadius: 18, borderWidth: 1, gap: 8, marginTop: 24, padding: 16 },
   row: { flexDirection: "row", justifyContent: "space-between" },
   planSummary: { color: "#555555", fontFamily: fonts.body, fontSize: 13, flex: 1 },
   amount: { color: colors.text, fontFamily: fonts.bold, fontSize: 13, marginLeft: 12 },

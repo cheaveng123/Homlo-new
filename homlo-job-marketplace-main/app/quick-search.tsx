@@ -144,7 +144,7 @@ export default function QuickSearchWizard() {
           ))}
         </View>
         <Pressable onPress={() => router.back()} hitSlop={10}>
-          <AppIcon name="close" size={20} color="#5F7A6E" />
+          <AppIcon name="close" size={20} color="#5D7480" />
         </Pressable>
       </View>
 
@@ -198,7 +198,7 @@ export default function QuickSearchWizard() {
               onPress={toggleSalaryMenu}
             >
               <Text style={styles.dropdownText}>{salaryType}</Text>
-              <AppIcon name="chevron" size={14} color="#12271F" style={{ transform: [{ rotate: "90deg" }] }} />
+              <AppIcon name="chevron" size={14} color="#14324A" style={{ transform: [{ rotate: "90deg" }] }} />
             </Pressable>
             <Text style={styles.salaryTypeHint}>pay</Text>
           </View>
@@ -236,9 +236,9 @@ export default function QuickSearchWizard() {
             step={salaryType === 'Hourly' ? 1 : 50}
             value={maxSalary}
             onValueChange={setMaxSalary}
-            minimumTrackTintColor="#5DCAA5"
-            maximumTrackTintColor="#E1E8E3"
-            thumbTintColor="#0F3D2B"
+            minimumTrackTintColor="#8BD3E3"
+            maximumTrackTintColor="#DCE6EA"
+            thumbTintColor="#14324A"
           />
 
           <Text style={styles.fieldLabel}>What field are you in?</Text>
@@ -250,7 +250,7 @@ export default function QuickSearchWizard() {
                 {selectedField.svg ? (
                   <JobFieldArtwork xml={selectedField.svg} width={22} height={22} />
                 ) : (
-                  <AppIcon name="brief" size={15} color="#8FA69B" />
+                  <AppIcon name="brief" size={15} color="#9AAAB1" />
                 )}
               </View>
             ) : null}
@@ -263,7 +263,7 @@ export default function QuickSearchWizard() {
               <AppIcon
                 name="chevron"
                 size={14}
-                color="#12271F"
+                color="#14324A"
                 style={[{ transform: [{ rotate: "90deg" }] }, fieldOpen && styles.chevronOpen]}
               />
           </Pressable>
@@ -275,7 +275,7 @@ export default function QuickSearchWizard() {
                 value={fieldFilter}
                 onChangeText={setFieldFilter}
                 placeholder="Filter fields"
-                placeholderTextColor="#8FA69B"
+                placeholderTextColor="#9AAAB1"
                 autoCorrect={false}
               />
               <ScrollView
@@ -298,7 +298,7 @@ export default function QuickSearchWizard() {
                         {option.svg ? (
                           <JobFieldArtwork xml={option.svg} width={30} height={30} />
                         ) : (
-                          <AppIcon name="brief" size={16} color="#8FA69B" />
+                          <AppIcon name="brief" size={16} color="#9AAAB1" />
                         )}
                       </View>
                       <Text
@@ -310,7 +310,7 @@ export default function QuickSearchWizard() {
                       >
                         {option.title}
                       </Text>
-                      {active && <AppIcon name="check" size={15} color="#04342C" />}
+                      {active && <AppIcon name="check" size={15} color="#14324A" />}
                     </Pressable>
                   );
                 })}
@@ -338,7 +338,7 @@ export default function QuickSearchWizard() {
             <AppIcon
               name="pin"
               size={18}
-              color={locationMode === 'near' ? '#04342C' : '#12271F'}
+              color={locationMode === 'near' ? '#14324A' : '#14324A'}
             />
             <Text
               style={[
@@ -361,7 +361,7 @@ export default function QuickSearchWizard() {
             <AppIcon
               name="map"
               size={18}
-              color={locationMode === 'draw' ? '#04342C' : '#12271F'}
+              color={locationMode === 'draw' ? '#14324A' : '#14324A'}
             />
             <Text
               style={[
@@ -405,15 +405,15 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   dots: { flexDirection: 'row', gap: 6, flex: 1 },
-  dot: { height: 4, flex: 1, borderRadius: 999, backgroundColor: '#E1E8E3' },
-  dotActive: { backgroundColor: '#5DCAA5' },
+  dot: { height: 4, flex: 1, borderRadius: 999, backgroundColor: '#DCE6EA' },
+  dotActive: { backgroundColor: '#8BD3E3' },
 
   page: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 },
-  stepLabel: { fontSize: 13, color: '#5F7A6E', marginBottom: 4 },
+  stepLabel: { fontSize: 13, color: '#5D7480', marginBottom: 4 },
   heading: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#12271F',
+    color: '#14324A',
     marginBottom: 18,
   },
 
@@ -423,14 +423,14 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  cellActive: { backgroundColor: '#5DCAA5', borderColor: '#5DCAA5' },
-  cellText: { fontSize: 14, color: '#12271F' },
-  cellTextActive: { color: '#04342C', fontWeight: '500' },
+  cellActive: { backgroundColor: '#8BD3E3', borderColor: '#8BD3E3' },
+  cellText: { fontSize: 14, color: '#14324A' },
+  cellTextActive: { color: '#14324A', fontWeight: '500' },
 
   salaryTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dropdown: {
@@ -438,22 +438,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  dropdownText: { fontSize: 13, color: '#12271F', fontWeight: '500' },
-  salaryTypeHint: { fontSize: 13, color: '#5F7A6E' },
+  dropdownText: { fontSize: 13, color: '#14324A', fontWeight: '500' },
+  salaryTypeHint: { fontSize: 13, color: '#5D7480' },
   dropdownMenu: {
     marginTop: 8,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     overflow: 'hidden',
   },
   dropdownItem: { paddingHorizontal: 14, paddingVertical: 11 },
-  dropdownItemText: { fontSize: 13, color: '#12271F' },
+  dropdownItemText: { fontSize: 13, color: '#14324A' },
 
   sliderLabels: {
     flexDirection: 'row',
@@ -461,29 +461,29 @@ const styles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 2,
   },
-  sliderValue: { fontSize: 13, fontWeight: '500', color: '#12271F' },
+  sliderValue: { fontSize: 13, fontWeight: '500', color: '#14324A' },
 
   fieldLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#12271F',
+    color: '#14324A',
     marginTop: 22,
   },
-  optional: { fontSize: 12, color: '#8FA69B', marginTop: 2, marginBottom: 8 },
+  optional: { fontSize: 12, color: '#9AAAB1', marginTop: 2, marginBottom: 8 },
   fieldTriggerIcon: {
     height: 22,
     justifyContent: 'center',
     width: 22,
   },
   fieldTriggerImage: { height: '100%', width: '100%' },
-  fieldTriggerPlaceholder: { color: '#8FA69B' },
+  fieldTriggerPlaceholder: { color: '#9AAAB1' },
   chevronOpen: { transform: [{ rotate: '-90deg' }] },
 
   fieldMenu: {
     marginTop: 8,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
@@ -491,9 +491,9 @@ const styles = StyleSheet.create({
     height: 42,
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#DCE5E0',
+    borderBottomColor: '#DCE6EA',
     fontSize: 13,
-    color: '#12271F',
+    color: '#14324A',
   },
   fieldMenuScroll: { maxHeight: 260 },
   fieldMenuItem: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  fieldMenuItemActive: { backgroundColor: '#EAF6EF' },
+  fieldMenuItemActive: { backgroundColor: '#EEF3F4' },
   fieldMenuIcon: {
     height: 30,
     alignItems: 'center',
@@ -511,13 +511,13 @@ const styles = StyleSheet.create({
     width: 30,
   },
   fieldMenuImage: { height: '100%', width: '100%' },
-  fieldMenuText: { flex: 1, fontSize: 13, color: '#12271F' },
-  fieldMenuTextActive: { color: '#04342C', fontWeight: '500' },
+  fieldMenuText: { flex: 1, fontSize: 13, color: '#14324A' },
+  fieldMenuTextActive: { color: '#14324A', fontWeight: '500' },
   fieldMenuEmpty: {
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 13,
-    color: '#8FA69B',
+    color: '#9AAAB1',
   },
 
   row: {
@@ -525,20 +525,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
     borderRadius: 14,
     padding: 14,
   },
-  rowText: { fontSize: 14, color: '#12271F' },
+  rowText: { fontSize: 14, color: '#14324A' },
 
   cta: {
     marginTop: 20,
     height: 48,
     borderRadius: 999,
-    backgroundColor: '#5DCAA5',
+    backgroundColor: '#8BD3E3',
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaDisabled: { opacity: 0.45 },
-  ctaText: { fontSize: 15, fontWeight: '600', color: '#04342C' },
+  ctaText: { fontSize: 15, fontWeight: '600', color: '#14324A' },
 });

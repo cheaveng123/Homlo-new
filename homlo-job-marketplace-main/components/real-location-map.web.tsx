@@ -30,9 +30,9 @@ export function RealLocationMap({ coordinate, radiusKm, onSelect }: RealLocation
     map.on("click", (event: maplibregl.MapMouseEvent) => onSelectRef.current({ latitude: event.lngLat.lat, longitude: event.lngLat.lng }));
     map.on("load", () => {
       map.addSource("job-search-area", { type: "geojson", data: buildSelectionGeoJson(initialCoordinate.current, initialRadius.current) });
-      map.addLayer({ id: "job-search-radius-fill", type: "fill", source: "job-search-area", filter: ["==", ["get", "kind"], "radius"], paint: { "fill-color": "#087569", "fill-opacity": 0.18 } });
-      map.addLayer({ id: "job-search-radius-line", type: "line", source: "job-search-area", filter: ["==", ["get", "kind"], "radius"], paint: { "line-color": "#08675F", "line-width": 2 } });
-      map.addLayer({ id: "job-search-center", type: "circle", source: "job-search-area", filter: ["==", ["get", "kind"], "center"], paint: { "circle-color": "#08675F", "circle-radius": 7, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } });
+      map.addLayer({ id: "job-search-radius-fill", type: "fill", source: "job-search-area", filter: ["==", ["get", "kind"], "radius"], paint: { "fill-color": "#0B6F8A", "fill-opacity": 0.18 } });
+      map.addLayer({ id: "job-search-radius-line", type: "line", source: "job-search-area", filter: ["==", ["get", "kind"], "radius"], paint: { "line-color": "#14324A", "line-width": 2 } });
+      map.addLayer({ id: "job-search-center", type: "circle", source: "job-search-area", filter: ["==", ["get", "kind"], "center"], paint: { "circle-color": "#14324A", "circle-radius": 7, "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } });
     });
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; userMarkerRef.current = null; };

@@ -217,7 +217,7 @@ export function DrawAreaMap({ onAreaChange, initialRegion }: Props) {
         {!drawing && polygon.length > 2 && (
           <Polygon
             coordinates={polygon}
-            strokeColor="#0F3D2B"
+            strokeColor="#14324A"
             strokeWidth={2}
             fillColor="rgba(93, 202, 165, 0.28)"
           />
@@ -239,7 +239,7 @@ export function DrawAreaMap({ onAreaChange, initialRegion }: Props) {
                 })
                 .join(' ')}
               fill="none"
-              stroke="#5DCAA5"
+              stroke="#8BD3E3"
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -271,13 +271,13 @@ export function DrawAreaMap({ onAreaChange, initialRegion }: Props) {
 
         {polygon.length > 0 && (
           <Pressable style={styles.control} onPress={clear}>
-            <AppIcon name="undo" size={14} color="#12271F" />
+            <AppIcon name="undo" size={14} color="#14324A" />
           </Pressable>
         )}
 
         {!isFullscreen && (
           <Pressable style={styles.control} onPress={() => setFullscreen(true)} hitSlop={6}>
-            <AppIcon name="maximize" size={14} color="#12271F" />
+            <AppIcon name="maximize" size={14} color="#14324A" />
           </Pressable>
         )}
       </View>
@@ -296,7 +296,7 @@ export function DrawAreaMap({ onAreaChange, initialRegion }: Props) {
         <SafeAreaView style={styles.fullscreenRoot}>
           <View style={styles.fullscreenHeader}>
             <Pressable onPress={() => setFullscreen(false)} hitSlop={10}>
-              <AppIcon name="close" size={20} color="#12271F" />
+              <AppIcon name="close" size={20} color="#14324A" />
             </Pressable>
             <Text style={styles.fullscreenTitle}>Draw area</Text>
           </View>
@@ -329,9 +329,9 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#EAF6EF',
+    backgroundColor: '#EEF3F4',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#DCE5E0',
+    borderColor: '#DCE6EA',
   },
   fullscreenRoot: { flex: 1, backgroundColor: '#FFFFFF' },
   fullscreenHeader: {
@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-  fullscreenTitle: { fontSize: 15, fontWeight: '600', color: '#12271F' },
-  fullscreenMap: { flex: 1, backgroundColor: '#EAF6EF' },
+  fullscreenTitle: { fontSize: 15, fontWeight: '600', color: '#14324A' },
+  fullscreenMap: { flex: 1, backgroundColor: '#EEF3F4' },
   controls: {
     position: 'absolute',
     top: 10,
@@ -359,17 +359,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  controlActive: { backgroundColor: '#5DCAA5' },
-  controlText: { fontSize: 12, fontWeight: '500', color: '#12271F' },
-  controlTextActive: { color: '#04342C' },
+  controlActive: { backgroundColor: '#8BD3E3' },
+  controlText: { fontSize: 12, fontWeight: '500', color: '#14324A' },
+  controlTextActive: { color: '#14324A' },
   hint: {
     position: 'absolute',
     bottom: 10,
     alignSelf: 'center',
-    backgroundColor: 'rgba(4, 52, 44, 0.85)',
+    backgroundColor: 'rgba(20,50,74, 0.85)',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  hintText: { fontSize: 11, color: '#EAF6EF' },
+  hintText: { fontSize: 11, color: '#EEF3F4' },
 });

@@ -7,7 +7,7 @@ import { useUserLocation } from "@/lib/use-user-location";
 
 const STYLES = {
   card: {
-    backgroundColor: "#E4F0E7",
+    backgroundColor: "#E6EDEF",
     borderRadius: 16,
     height: 300,
     marginTop: 16,
@@ -17,7 +17,7 @@ const STYLES = {
   locate: {
     alignItems: "center" as const,
     backgroundColor: "#FFFFFF",
-    borderColor: "#DDEAE6",
+    borderColor: "#DCE6EA",
     borderRadius: 10,
     borderWidth: 1,
     height: 36,
@@ -37,12 +37,12 @@ const STYLES = {
     position: "absolute" as const,
   },
   mapTitle: {
-    color: "#17201A",
+    color: "#12303C",
     fontSize: 12,
     fontWeight: "800" as const,
   },
   mapCaption: {
-    color: "#66736A",
+    color: "#5D7480",
     fontSize: 10,
     marginTop: 2,
   },
@@ -56,14 +56,14 @@ const STYLES = {
   },
   control: {
     alignItems: "center" as const,
-    borderBottomColor: "#E2E8E5",
+    borderBottomColor: "#DCE6EA",
     borderBottomWidth: 1,
     height: 36,
     justifyContent: "center" as const,
     width: 36,
   },
   controlText: {
-    color: "#17201A",
+    color: "#12303C",
     fontSize: 22,
     lineHeight: 24,
   },
@@ -90,19 +90,19 @@ const STYLES = {
     alignItems: "center" as const,
     justifyContent: "center" as const,
     paddingHorizontal: 24,
-    backgroundColor: "#E4F0E7",
+    backgroundColor: "#E6EDEF",
     borderRadius: 16,
   },
   permissionTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: "#12271F",
+    color: "#14324A",
     textAlign: "center" as const,
     marginBottom: 12,
   },
   permissionBody: {
     fontSize: 15,
-    color: "#5F7A6E",
+    color: "#5D7480",
     textAlign: "center" as const,
     lineHeight: 22,
   },
@@ -160,7 +160,7 @@ export function OnboardingLocationMap({ location, onSelect }: { location: string
             onPress={() => void requestPermission()}
             style={STYLES.locate}
           >
-            <AppIcon name="locate" size={16} color="#17201A" />
+            <AppIcon name="locate" size={16} color="#12303C" />
           </Pressable>
           <View style={STYLES.controls}>
             <Pressable
@@ -215,7 +215,7 @@ export function OnboardingLocationMap({ location, onSelect }: { location: string
           <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 24, alignItems: "center", width: "80%" }}>
             <AppIcon name="pin" size={48} color="#0B6F8A" style={{ marginBottom: 16 }} />
             <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 8, textAlign: "center" }}>Location Access Required</Text>
-            <Text style={{ fontSize: 15, color: "#5F7A6E", textAlign: "center", marginBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: "#5D7480", textAlign: "center", marginBottom: 20 }}>
               We need your location to provide you with the best job recommendations. This helps us show you jobs near your actual location.
             </Text>
             <Pressable

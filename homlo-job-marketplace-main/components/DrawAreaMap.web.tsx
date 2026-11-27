@@ -81,8 +81,8 @@ export function DrawAreaMap({ onAreaChange, initialRegion }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { borderRadius: 16, borderWidth: 1, borderColor: '#DDEAE6', overflow: 'hidden', backgroundColor: '#FFFFFF' },
-  map: { height: 300, backgroundColor: '#E4F0E7' },
+  wrap: { borderRadius: 16, borderWidth: 1, borderColor: '#DCE6EA', overflow: 'hidden', backgroundColor: '#FFFFFF' },
+  map: { height: 300, backgroundColor: '#E6EDEF' },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -91,11 +91,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#EDF4F1',
+    borderTopColor: '#EEF3F4',
   },
-  hint: { flex: 1, fontSize: 11.5, color: '#5F7A6E' },
+  hint: { flex: 1, fontSize: 11.5, color: '#5D7480' },
   actions: { flexDirection: 'row', gap: 8 },
-  action: { borderRadius: 999, borderWidth: 1, borderColor: '#DDEAE6', paddingHorizontal: 12, paddingVertical: 6 },
+  action: { borderRadius: 999, borderWidth: 1, borderColor: '#DCE6EA', paddingHorizontal: 12, paddingVertical: 6 },
   actionDisabled: { opacity: 0.4 },
   actionText: { fontSize: 11.5, fontWeight: '700', color: '#0B6F8A' },
 });

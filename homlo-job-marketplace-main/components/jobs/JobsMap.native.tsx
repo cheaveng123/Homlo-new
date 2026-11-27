@@ -117,10 +117,10 @@ export const JobsMap = forwardRef<JobsMapHandle, JobsMapProps>(function JobsMap(
           <Circle
             center={origin}
             radius={radiusKm * KM}
-            strokeColor="rgba(14,124,134,0.8)"
+            strokeColor="rgba(8,145,178,0.8)"
             strokeWidth={1.5}
             lineDashPattern={[6, 6]}
-            fillColor="rgba(14,124,134,0.10)"
+            fillColor="rgba(8,145,178,0.10)"
           />
         )}
         {ordered.map((j, i) => (
@@ -142,7 +142,7 @@ export const JobsMap = forwardRef<JobsMapHandle, JobsMapProps>(function JobsMap(
 });
 
 const m = StyleSheet.create({
-  wrap: { backgroundColor: '#E4EFEE', overflow: 'hidden' },
+  wrap: { backgroundColor: '#E6EDEF', overflow: 'hidden' },
   locBadge: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.92)', paddingHorizontal: S.sm, paddingVertical: 4, borderRadius: 999 },
   locBadgeT: { fontFamily: F.b400, fontSize: 11, color: J.muted },
   attribution: { position: 'absolute', right: S.sm, bottom: 4, fontFamily: F.b400, fontSize: 9, color: J.muted },

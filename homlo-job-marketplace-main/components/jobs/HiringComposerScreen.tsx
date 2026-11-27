@@ -71,7 +71,7 @@ const C = {
   muted: card.color.muted,
   white: card.color.surface,
   shadow: card.color.shadow,
-  placeholder: '#9AA8A0',
+  placeholder: '#9AAAB1',
   // No theme token exists for these three; they are unique to this flow.
   sun: '#FFE9A8',
   sunInk: '#6B4E00',

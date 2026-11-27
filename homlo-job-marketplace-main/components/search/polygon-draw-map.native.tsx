@@ -56,6 +56,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
   vertexDot: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 9, borderWidth: 2.5, height: 18, justifyContent: "center", width: 18 },
-  vertexDotStart: { backgroundColor: "#0B5D3B" },
+  vertexDotStart: { backgroundColor: "#14324A" },
   vertexDotCore: { backgroundColor: "#FFFFFF", borderRadius: 3, height: 6, width: 6 },
 });

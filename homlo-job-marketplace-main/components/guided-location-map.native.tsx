@@ -40,7 +40,7 @@ export function GuidedLocationMap({ coordinate, onSelect, radiusKm }: GuidedLoca
         <Marker coordinate={{ latitude: city.latitude, longitude: city.longitude }} key={city.city} onPress={() => onSelect(city)} title={city.city} />
       ))}
       {location && <Marker coordinate={location} title="Your location" description="You are here" pinColor="#007AFF" />}
-      {coordinate ? <Circle center={coordinate} fillColor="rgba(8,103,95,0.14)" radius={radiusKm * 1000} strokeColor="rgba(8,103,95,0.72)" strokeWidth={2} /> : null}
+      {coordinate ? <Circle center={coordinate} fillColor="rgba(11,111,138,0.14)" radius={radiusKm * 1000} strokeColor="rgba(11,111,138,0.72)" strokeWidth={2} /> : null}
     </MapView>
   );
 }

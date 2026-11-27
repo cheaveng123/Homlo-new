@@ -50,7 +50,7 @@ export function SearchBar({
             }}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <AppIcon name="back" size={18} color="#17201A" />
+            <AppIcon name="back" size={18} color="#12303C" />
           </Pressable>
         ) : null}
         <Pressable
@@ -86,7 +86,7 @@ function FilterButton({ count, onPress }: { count?: number; onPress: () => void 
       }}
       style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}
     >
-      <AppIcon name="sliders" size={18} color="#17201A" />
+      <AppIcon name="sliders" size={18} color="#12303C" />
       {count ? (
         <View style={styles.filterBadge}>
           <Text style={styles.filterBadgeText}>{count}</Text>
@@ -110,7 +110,7 @@ function BarContent({
   return (
     <>
       <View style={{ marginRight: 6 }}>
-        <AppIcon name="search" size={17} color="#94A098" />
+        <AppIcon name="search" size={17} color="#9AAAB1" />
       </View>
       <View style={{ flex: 1, position: "relative", justifyContent: "center" }}>
         {displayQuery ? (
@@ -123,7 +123,7 @@ function BarContent({
             visible={!displayQuery}
             paused={paused}
             color={schemeTheme?.softBlue ?? "#7FAEF0"}
-            prefixColor={schemeTheme?.muted ?? "#6F7F75"}
+            prefixColor={schemeTheme?.muted ?? "#6A7C84"}
             fontSize={15}
             lineHeight={22}
           />
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E2E8E5",
+    borderColor: "#DCE6EA",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
@@ -156,16 +156,16 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E2E8E5",
+    borderColor: "#DCE6EA",
     paddingHorizontal: 16,
     height: 56,
     gap: 10,
   },
   barFlex: { flex: 1 },
-  filterButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#E2E8E5", borderRadius: 16, borderWidth: 1, justifyContent: "center", position: "relative", width: 48, height: 48 },
+  filterButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCE6EA", borderRadius: 16, borderWidth: 1, justifyContent: "center", position: "relative", width: 48, height: 48 },
   filterBadge: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 8, borderWidth: 1.5, height: 16, justifyContent: "center", minWidth: 16, paddingHorizontal: 3, position: "absolute", right: -3, top: -4 },
   filterBadgeText: { color: "#FFFFFF", fontSize: 8, fontWeight: "800" },
-  searchText: { color: "#94A098", flex: 1, fontSize: 15, fontWeight: "400" },
-  searchTextActive: { color: "#17201A", fontWeight: "500" },
+  searchText: { color: "#9AAAB1", flex: 1, fontSize: 15, fontWeight: "400" },
+  searchTextActive: { color: "#12303C", fontWeight: "500" },
   pressed: { opacity: 0.82 },
 });

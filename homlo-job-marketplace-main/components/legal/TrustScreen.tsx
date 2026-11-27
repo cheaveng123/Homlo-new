@@ -91,7 +91,7 @@ export function ErrorText({ children }: { children: ReactNode }) {
 
 export const trustStyles = StyleSheet.create({
   row: { flexDirection: "row", gap: 10, flexWrap: "wrap", alignItems: "center" },
-  ok: { color: "#15803D", fontWeight: "700" },
+  ok: { color: "#0B6F8A", fontWeight: "700" },
   pill: { alignSelf: "flex-start", backgroundColor: colorsNew.tint, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 12 },
   pillText: { color: colorsNew.deep, fontSize: 13, fontWeight: "700" },
 });

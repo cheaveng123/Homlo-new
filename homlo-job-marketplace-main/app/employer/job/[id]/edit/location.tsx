@@ -40,7 +40,7 @@ export default function LocationPickerScreen() {
     <ScreenContainer className="flex-1" containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}>
       <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
         <TouchableOpacity onPress={() => goBack(router)} hitSlop={10}>
-          <AppIcon name="back" size={20} color="#17201A" />
+          <AppIcon name="back" size={20} color="#12303C" />
         </TouchableOpacity>
         <Text className="text-[15px] font-semibold text-foreground">Job location</Text>
         <View style={{ width: 20 }} />
@@ -56,7 +56,7 @@ export default function LocationPickerScreen() {
             picked ? "bg-primary" : "bg-border"
           }`}
         >
-          <AppIcon name="check" size={16} color={picked ? "#FFFFFF" : "#66736A"} />
+          <AppIcon name="check" size={16} color={picked ? "#FFFFFF" : "#5D7480"} />
           <Text className={`text-[14px] font-semibold ${picked ? "text-white" : "text-muted"}`}>
             Use this location
           </Text>

@@ -34,7 +34,7 @@ const AVATAR_TONES: [string, string][] = [
   ['#3FC1DB', '#0B7F99'],
   ['#2B5577', '#14324A'],
   ['#FFC765', '#E8870F'],
-  ['#5CC9B5', '#1F8A79'],
+  ['#8BD3E3', '#0891B2'],
 ];
 
 function initials(name: string) {

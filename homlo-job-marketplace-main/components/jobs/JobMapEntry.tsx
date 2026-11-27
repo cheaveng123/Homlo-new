@@ -4,12 +4,12 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { AppIcon } from "@/components/ui/AppIcon";
 import { router } from '@/lib/router';
 
-const FOREST = '#0E3B2E';
+const FOREST = '#14324A';
 const MINT = '#0891B2';
-const MINT100 = '#DFF7E9';
-const BORDER = '#E2E8E5';
-const MUTED = '#66736A';
-const SHADOW = '#173C25';
+const MINT100 = '#DCF1F6';
+const BORDER = '#DCE6EA';
+const MUTED = '#5D7480';
+const SHADOW = '#14324A';
 
 // Pin positions inside the 172x104 mini-map viewBox. The SVG scales to fill the tile via
 // preserveAspectRatio="slice" (static drawing, not a live MapView).
@@ -32,7 +32,7 @@ function MiniMap() {
 function GuideArt({ size = 56 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64">
-      <Path d="M8 20 24 14 40 20 56 14V46L40 52 24 46 8 52Z" fill="#BFE7D0" />
+      <Path d="M8 20 24 14 40 20 56 14V46L40 52 24 46 8 52Z" fill="#DCF1F6" />
       <Path d="M24 14V46M40 20V52" stroke="#fff" strokeWidth={2} />
       <Path d="M26 32 32 44 38 32Z" fill={FOREST} />
       <Circle cx={32} cy={26} r={9} fill={FOREST} />
@@ -89,7 +89,7 @@ const s = StyleSheet.create({
     height: 120,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#E9F1EC',
+    backgroundColor: '#E6EDEF',
     borderWidth: 1,
     borderColor: BORDER,
     shadowColor: SHADOW,

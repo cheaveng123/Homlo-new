@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: "flex-start",
     borderRadius: 999,
-    backgroundColor: "#DCEBE2",
+    backgroundColor: "#DCE6EA",
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
@@ -63,12 +63,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#17231E",
+    color: "#12303C",
   },
   message: {
     maxWidth: 360,
     fontSize: 12,
     lineHeight: 17,
-    color: "#4F5E57",
+    color: "#5D7480",
   },
 });

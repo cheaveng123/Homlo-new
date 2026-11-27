@@ -43,10 +43,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#17231E",
+    color: "#12303C",
   },
   body: {
     fontSize: 12,
-    color: "#4F5E57",
+    color: "#5D7480",
   },
 });

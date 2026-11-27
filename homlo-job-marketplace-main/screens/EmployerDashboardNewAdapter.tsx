@@ -254,8 +254,8 @@ const styles = StyleSheet.create({
   sheetOverlay: { flex: 1, backgroundColor: "rgba(6,32,36,0.35)", justifyContent: "flex-end" },
   sheetDismiss: { flex: 1 },
   actionSheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 28, paddingTop: 10 },
-  sheetHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#E2E8E5", marginBottom: 12 },
+  sheetHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DCE6EA", marginBottom: 12 },
   sheetTitle: { paddingHorizontal: 20, fontSize: 15, fontWeight: "700", color: "#062024", marginBottom: 8 },
-  sheetRow: { paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1, borderColor: "#EAF0EE" },
+  sheetRow: { paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1, borderColor: "#E6EDEF" },
   sheetRowTitle: { fontSize: 15, fontWeight: "600", color: "#062024" },
 });

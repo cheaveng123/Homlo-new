@@ -98,7 +98,7 @@ export default function JobOptionsMenu({ job, onJobUpdated }: JobOptionsMenuProp
         onPress={() => setOpen(true)}
         hitSlop={10}
       >
-        <AppIcon name="dots" size={20} color="#17201A" />
+        <AppIcon name="dots" size={20} color="#12303C" />
       </TouchableOpacity>
 
       <Modal
@@ -114,7 +114,7 @@ export default function JobOptionsMenu({ job, onJobUpdated }: JobOptionsMenuProp
               onPress={goEdit}
               className="flex-row items-center gap-2.5 px-3.5 py-3 border-b border-border"
             >
-              <AppIcon name="edit" size={17} color="#17201A" />
+              <AppIcon name="edit" size={17} color="#12303C" />
               <Text className="text-sm font-medium text-foreground">Edit job</Text>
             </TouchableOpacity>
 
@@ -122,7 +122,7 @@ export default function JobOptionsMenu({ job, onJobUpdated }: JobOptionsMenuProp
               onPress={() => void shareListing()}
               className="flex-row items-center gap-2.5 px-3.5 py-3 border-b border-border"
             >
-              <AppIcon name="share" size={17} color="#17201A" />
+              <AppIcon name="share" size={17} color="#12303C" />
               <Text className="text-sm font-medium text-foreground">Share listing</Text>
             </TouchableOpacity>
 
@@ -130,7 +130,7 @@ export default function JobOptionsMenu({ job, onJobUpdated }: JobOptionsMenuProp
               onPress={toggleOpenClosed}
               className="flex-row items-center gap-2.5 px-3.5 py-3 border-b border-border"
             >
-              {isOpen ? <AppIcon name="pause" size={17} color="#17201A" /> : <AppIcon name="play" size={17} color="#17201A" />}
+              {isOpen ? <AppIcon name="pause" size={17} color="#12303C" /> : <AppIcon name="play" size={17} color="#12303C" />}
               <Text className="text-sm font-medium text-foreground">
                 {isOpen ? "Close job" : "Reopen job"}
               </Text>

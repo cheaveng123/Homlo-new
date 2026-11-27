@@ -1,10 +1,10 @@
 // Palette "Lagoon & Sunrise". Main = lagoon teal. Accents = sun (saffron), clay, cream.
 // Spacing is an 8pt grid. Screen side margin is always S.lg (16). Touch targets are at least 44.
 export const J = {
-  primary: '#0E7C86', deep: '#073B42', tint: '#D8F0EE',
-  sun: '#F5B52B', clay: '#C4531F', cream: '#FFF1D2', creamInk: '#7A4300', eyebrowInk: '#8A4B00',
-  fg: '#14272B', muted: '#58696B', border: '#E4ECEC', bg: '#F4F8F8', surface: '#FFFFFF',
-  track: '#D9EAEA', headerFrom: '#052E34',
+  primary: '#0891B2', deep: '#14324A', tint: '#DCF1F6',
+  sun: '#F5A524', clay: '#E8870F', cream: '#FFF1D2', creamInk: '#7A4300', eyebrowInk: '#8A4B00',
+  fg: '#12303C', muted: '#6A7C84', border: '#E6EDEF', bg: '#F3F6F5', surface: '#FFFFFF',
+  track: '#D5E6EA', headerFrom: '#0B7F99',
 };
 
 export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
@@ -14,13 +14,13 @@ export const TS = { caption: 12, meta: 13, body: 14, title: 16, section: 17, hea
 
 // Soft gradient pairs for logo tiles and selector circles (cycle by index).
 export const TINTS: [string, string][] = [
-  ['#D8F0EE', '#B5E2DF'], ['#FFF1D2', '#FFE0A0'], ['#FDE6DA', '#F8CDB6'], ['#EDE6F7', '#D9CBEE'],
+  ['#DCF1F6', '#8BD3E3'], ['#FFF1D2', '#FFE0A0'], ['#FDF0D9', '#F8DDB0'], ['#EEF3F4', '#D5E6EA'],
 ];
-export const SOLIDS = ['#0E7C86', '#073B42', '#C4531F', '#6B4FA0'];
+export const SOLIDS = ['#0891B2', '#14324A', '#E8870F', '#6B4FA0'];
 
 export const shadowSm = {
-  shadowColor: '#073B42', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
+  shadowColor: '#14324A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
 };
 export const shadowMd = {
-  shadowColor: '#073B42', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.16, shadowRadius: 28, elevation: 8,
+  shadowColor: '#14324A', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.16, shadowRadius: 28, elevation: 8,
 };

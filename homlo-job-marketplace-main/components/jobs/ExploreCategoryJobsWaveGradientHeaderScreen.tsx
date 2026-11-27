@@ -37,7 +37,7 @@ const ICON_SOURCE: number | null = require('../../assets/images/detailcategorypa
  * Rendered size of the floating artwork, in dp.
  *
  * The source PNG is 1536x1024 (3:2) on a transparent background, with a near-circular
- * opaque blob spanning y 14%-92% of the frame and averaging `#7A997D`. Since `resizeMode`
+ * opaque blob spanning y 14%-92% of the frame and averaging `#6A7C84`. Since `resizeMode`
  * is `contain`, the *width* is the binding dimension and the blob's real height lands at
  * roughly two thirds of this. Enlarged 30% from the original 110 so it reads as a proper
  * hero piece beside the category title on a 390pt phone without squeezing the copy.
@@ -55,7 +55,7 @@ const WAVE_MID = WAVE_H / 2;
 // still reads as the same surface. `forest` / `mint` have no canonical name in `@/theme`
 // (it ships a different green and a pale mint), so they stay explicit here with the same
 // hexes used across the job surfaces.
-const HERO = { deep: '#116B47', base: '#1D8A5C', light: '#2FAE79' };
+const HERO = { deep: '#0B6F8A', base: '#0B6F8A', light: '#0891B2' };
 const MINT = '#0891B2';
 const ON_HERO = 'rgba(255,255,255,0.85)';
 
@@ -210,9 +210,9 @@ function FloatingIcon({ reduceMotion, style }: { reduceMotion: boolean; style?: 
       <Svg width={ICON_SIZE} height={ICON_SIZE} style={StyleSheet.absoluteFill} pointerEvents="none">
         <Defs>
           <RadialGradient id="iconHalo" cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor="#9BD9B4" stopOpacity={0.55} />
-            <Stop offset="0.45" stopColor="#8ACFA6" stopOpacity={0.34} />
-            <Stop offset="0.75" stopColor="#5CBE8C" stopOpacity={0.12} />
+            <Stop offset="0" stopColor="#8BD3E3" stopOpacity={0.55} />
+            <Stop offset="0.45" stopColor="#8BD3E3" stopOpacity={0.34} />
+            <Stop offset="0.75" stopColor="#8BD3E3" stopOpacity={0.12} />
             <Stop offset="1" stopColor={HERO.base} stopOpacity={0} />
           </RadialGradient>
         </Defs>

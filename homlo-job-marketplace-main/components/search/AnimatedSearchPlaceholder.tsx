@@ -127,7 +127,7 @@ export function AnimatedSearchPlaceholder({
   words = ['jobs', 'skills', 'companies'],
   fontFamily,
   fontSize = 16,
-  color = '#66736A',
+  color = '#5D7480',
   typeMs = 70,
   deleteMs = 35,
   holdMs = 1600,

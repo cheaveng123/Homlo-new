@@ -530,7 +530,7 @@ export function EmployerApplicantSkeleton({ showTopBar = true, padded = true }: 
         </View>
       </View>
       {[0, 1, 2].map((s) => (
-        <View key={s} style={{ borderBottomWidth: 1, borderBottomColor: '#E2E8E5', paddingTop: 23, paddingBottom: 18 }}>
+        <View key={s} style={{ borderBottomWidth: 1, borderBottomColor: '#DCE6EA', paddingTop: 23, paddingBottom: 18 }}>
           <SkeletonNew width={100} height={11} radius={5} />
           {[0, 1, 2].map((r) => (
             <View key={r} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 13 }}>

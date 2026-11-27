@@ -15,8 +15,8 @@ import { employerIdForCompany } from '@/lib/mock/employerMockData';
 import { goBack } from '@/lib/navigation';
 import { CATEGORIES, CATEGORY_SLUG_TO_TITLE, type CategoryId } from '@/lib/jobsData';
 
-const LOGO_BG = ['#155743', '#C97A16', '#2FAE79', '#0E3B2E', '#F5A623'];
-const EMPLOYER_BG = ['#0E3B2E', '#F5A623'];
+const LOGO_BG = ['#14324A', '#C97A16', '#0891B2', '#14324A', '#F5A524'];
+const EMPLOYER_BG = ['#14324A', '#F5A524'];
 
 function hashOf(value: string): number {
   let hash = 0;

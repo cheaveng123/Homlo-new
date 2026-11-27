@@ -211,7 +211,7 @@ export default function ApplicantCard({ applicant, jobId, onStatusChange, jobTit
 
         <View className="flex-row gap-4 my-2.5 py-2.5 border-y border-border">
           <View className="flex-row items-center gap-1 flex-1">
-            <AppIcon name="pin" size={14} color="#94A098" />
+            <AppIcon name="pin" size={14} color="#9AAAB1" />
             <Text className="text-xs text-muted" numberOfLines={1}>
               {applicant.locationLabel ?? "Location not provided"}
             </Text>

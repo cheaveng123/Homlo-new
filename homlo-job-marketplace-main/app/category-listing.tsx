@@ -15,8 +15,8 @@ import { goBack } from "@/lib/navigation";
 import { computePositionsLeft } from "@/lib/positions";
 import { isAwaitingData, useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
 
-const THUMB_BG = ["#155743", "#C97A16", "#2FAE79", "#0E3B2E", "#F5A623"];
-const EMPLOYER_BG = ["#0E3B2E", "#F5A623"];
+const THUMB_BG = ["#14324A", "#C97A16", "#0891B2", "#14324A", "#F5A524"];
+const EMPLOYER_BG = ["#14324A", "#F5A524"];
 
 function hashOf(value: string): number {
   let hash = 0;
@@ -149,5 +149,5 @@ export default function CategoryListingRoute() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F6F8F7" },
+  screen: { flex: 1, backgroundColor: "#F3F6F5" },
 });

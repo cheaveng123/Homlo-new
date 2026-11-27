@@ -9,7 +9,7 @@
 
 export const colors = {
   white: '#FFFFFF',
-  card: '#FAFCFB',
+  card: '#F3F6F5',
 
   mint100: '#DCF1F6',
   mint300: '#8BD3E3',

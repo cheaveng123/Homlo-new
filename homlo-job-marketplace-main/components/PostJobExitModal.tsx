@@ -84,7 +84,7 @@ export function PostJobExitModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(18, 39, 31, 0.45)',
+    backgroundColor: 'rgba(20,50,74, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -94,18 +94,18 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 18,
   },
-  title: { fontSize: 15, fontWeight: '600', color: '#12271F', marginBottom: 4 },
-  subtitle: { fontSize: 12, color: '#5F7A6E', marginBottom: 16 },
+  title: { fontSize: 15, fontWeight: '600', color: '#14324A', marginBottom: 4 },
+  subtitle: { fontSize: 12, color: '#5D7480', marginBottom: 16 },
   primaryBtn: {
-    backgroundColor: '#5DCAA5',
+    backgroundColor: '#8BD3E3',
     borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 8,
   },
-  primaryBtnText: { fontSize: 14, fontWeight: '500', color: '#04342C' },
+  primaryBtnText: { fontSize: 14, fontWeight: '500', color: '#14324A' },
   dangerBtn: {
-    backgroundColor: '#F4F7F5',
+    backgroundColor: '#F3F6F5',
     borderRadius: 999,
     paddingVertical: 12,
     alignItems: 'center',
@@ -114,5 +114,5 @@ const styles = StyleSheet.create({
   dangerBtnText: { fontSize: 14, fontWeight: '500', color: '#B3423B' },
   cancelBtn: { paddingVertical: 10, alignItems: 'center' },
   btnBusy: { opacity: 0.5 },
-  cancelBtnText: { fontSize: 13, color: '#5F7A6E' },
+  cancelBtnText: { fontSize: 13, color: '#5D7480' },
 });

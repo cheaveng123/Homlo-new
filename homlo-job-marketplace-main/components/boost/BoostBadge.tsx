@@ -11,9 +11,9 @@ export const boostColors = {
   employerBorder: '#E8870F',
   employerText: '#7A4300',
   employerIcon: '#E8870F',
-  adBg: 'rgba(20,39,43,0.06)',
-  adBorder: 'rgba(20,39,43,0.18)',
-  adText: '#4A564E',
+  adBg: 'rgba(18,48,60,0.06)',
+  adBorder: 'rgba(18,48,60,0.18)',
+  adText: '#5D7480',
 };
 
 type Props =

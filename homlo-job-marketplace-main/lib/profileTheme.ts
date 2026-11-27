@@ -2,9 +2,9 @@ import { fonts } from './typography';
 
 // Tokens for the profile screens (forest/mint, Plus Jakarta Sans + Inter).
 export const C = {
-  bg: '#F4F8F8', surface: '#FFFFFF', fg: '#14272B', muted: '#58696B', border: '#E4ECEC',
-  primary: '#0E7C86', mint: '#12A0AB', mint100: '#D8F0EE', forest: '#073B42',
-  danger: '#C0392B', warn: '#B86E00', warnBg: '#FFF1DC', neutralBg: '#EEF1EF',
+  bg: '#F3F6F5', surface: '#FFFFFF', fg: '#12303C', muted: '#6A7C84', border: '#E6EDEF',
+  primary: '#0891B2', mint: '#0891B2', mint100: '#DCF1F6', forest: '#14324A',
+  danger: '#C0392B', warn: '#B86E00', warnBg: '#FFF1DC', neutralBg: '#EEF3F4',
 };
 
 // Project font tokens (see lib/typography.ts).
@@ -14,5 +14,5 @@ export const F = {
 };
 
 export const shadow = {
-  shadowColor: '#073B42', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 16, elevation: 2,
+  shadowColor: '#14324A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 16, elevation: 2,
 };

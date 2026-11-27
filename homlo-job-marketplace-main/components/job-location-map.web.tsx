@@ -38,7 +38,7 @@ export function JobLocationMap({ coordinate, defaultCoordinate, onChange }: JobL
     const map = new maplibregl.Map({ container: elementRef.current, style: openStreetMapStyle, center: [initialCoordinate.current.longitude, initialCoordinate.current.latitude], zoom: 12, attributionControl: false });
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
     map.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } }), "top-right");
-    const marker = new maplibregl.Marker({ color: "#08675F" })
+    const marker = new maplibregl.Marker({ color: "#14324A" })
       .setLngLat([initialCoordinate.current.longitude, initialCoordinate.current.latitude])
       .addTo(map);
     markerRef.current = marker;

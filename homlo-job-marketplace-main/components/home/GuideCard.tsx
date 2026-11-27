@@ -22,7 +22,7 @@ export function GuideCard({ onPress, label = 'First time here? Get matched in 3 
           <AppIcon name="target" size={15} color={colors.white} />
         </View>
         <Text
-          style={{ fontFamily: fontFamily.semibold, color: '#0B3D2E' }}
+          style={{ fontFamily: fontFamily.semibold, color: '#14324A' }}
           className="text-[12.5px] flex-1"
         >
           {label}
