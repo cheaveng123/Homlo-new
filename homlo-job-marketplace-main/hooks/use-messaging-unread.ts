@@ -1,55 +1,125 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { AppState, type NativeEventSubscription } from "react-native";
 import { useAuth } from "@/hooks/use-auth";
 import { getMessagingService } from "@/lib/messaging";
 
 /**
- * Poll + realtime-driven unread count for the Inbox tab badge.
- * Falls back to a lightweight periodic poll so the badge stays correct
- * even when Realtime is unavailable. Always cleans up on unmount.
+ * Unread count for the Inbox badge.
+ *
+ * PERF: this used to start its OWN 15s poll in every component that called it
+ * (tab bar + MyListings + JobDashboard + EmployerDashboard), so the same
+ * request went out 2–4x per interval. It is now one module-level poller shared
+ * by every subscriber: it starts with the first mounted consumer, stops when
+ * the last one unmounts, only polls while the app is in the foreground, and
+ * skips a tick when a refresh is already in flight.
  */
-export function useMessagingUnread(pollMs = 15_000) {
-  const { user } = useAuth();
-  const [count, setCount] = useState(0);
-  const [ready, setReady] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const unsubRef = useRef<(() => void) | null>(null);
+const POLL_MS = 15_000;
 
-  const refresh = useCallback(async () => {
-    if (!user) {
-      setCount(0);
-      return;
-    }
+type UnreadSnapshot = { count: number; ready: boolean };
+let snapshot: UnreadSnapshot = { count: 0, ready: false };
+const listeners = new Set<() => void>();
+let activeUserId: string | null = null;
+let consumers = 0;
+let timer: ReturnType<typeof setInterval> | null = null;
+let appStateSub: NativeEventSubscription | null = null;
+let unsubscribeRealtime: (() => void) | null = null;
+let inflight: Promise<void> | null = null;
+
+function emit(next: UnreadSnapshot) {
+  if (next.count === snapshot.count && next.ready === snapshot.ready) return;
+  snapshot = next;
+  listeners.forEach((l) => l());
+}
+
+function refresh(): Promise<void> {
+  if (!activeUserId) {
+    emit({ count: 0, ready: false });
+    return Promise.resolve();
+  }
+  if (inflight) return inflight;
+  const userAtStart = activeUserId;
+  inflight = (async () => {
     try {
       const svc = await getMessagingService();
       const c = await svc.getUnreadCount();
-      setCount(c);
-      setReady(true);
+      if (userAtStart === activeUserId) emit({ count: c, ready: true });
     } catch {
-      // Ignore transient failures; keep the last known count.
+      // Transient failure: keep the last known count.
+    } finally {
+      inflight = null;
     }
-  }, [user]);
+  })();
+  return inflight;
+}
+
+function stopPolling() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  appStateSub?.remove();
+  appStateSub = null;
+  unsubscribeRealtime?.();
+  unsubscribeRealtime = null;
+}
+
+function startPolling() {
+  stopPolling();
+  if (!activeUserId) return;
+  timer = setInterval(() => {
+    if (AppState.currentState === "active") void refresh();
+  }, POLL_MS);
+  appStateSub = AppState.addEventListener("change", (next) => {
+    if (next === "active") void refresh();
+  });
+  const userAtStart = activeUserId;
+  void getMessagingService().then((svc) => {
+    if (userAtStart !== activeUserId || !timer) return;
+    unsubscribeRealtime = svc.subscribeToMessages(() => void refresh());
+  });
+}
+
+function setUser(userId: string | null) {
+  if (userId === activeUserId) return;
+  activeUserId = userId;
+  if (!userId) {
+    stopPolling();
+    emit({ count: 0, ready: false });
+    return;
+  }
+  if (consumers > 0) startPolling();
+  void refresh();
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+const getSnapshot = () => snapshot;
+
+/** Force an immediate badge refresh (e.g. after opening a conversation). */
+export function refreshMessagingUnread() {
+  return refresh();
+}
+
+export function useMessagingUnread(): UnreadSnapshot {
+  const { user } = useAuth();
+  const userId = user?.id != null ? String(user.id) : null;
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    if (!user) {
-      setCount(0);
-      setReady(false);
-      return;
-    }
-    refresh();
-    const id = setInterval(refresh, pollMs);
-    timerRef.current = id;
-    (async () => {
-      const svc = await getMessagingService();
-      unsubRef.current = svc.subscribeToMessages(() => {
-        // A new message arrives → recompute unread count.
-        refresh();
-      });
-    })();
+    consumers += 1;
+    if (consumers === 1 && activeUserId) startPolling();
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      unsubRef.current?.();
+      consumers -= 1;
+      if (consumers === 0) stopPolling();
     };
-  }, [user, refresh, pollMs]);
+  }, []);
 
-  return { count, ready };
+  useEffect(() => {
+    setUser(userId);
+  }, [userId]);
+
+  return state;
 }

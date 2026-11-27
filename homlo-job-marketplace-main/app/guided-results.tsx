@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 

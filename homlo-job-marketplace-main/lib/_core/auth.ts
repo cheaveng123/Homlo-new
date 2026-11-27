@@ -1,8 +1,16 @@
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "@/lib/native/secure-store";
 import { Platform } from "react-native";
 import { SESSION_TOKEN_KEY, USER_INFO_KEY } from "@/constants/oauth";
 
 const REFRESH_TOKEN_KEY = "homlo_supabase_refresh_token";
+
+const secureStoreReadWarnings = new Set<string>();
+
+function warnSecureStoreReadOnce(key: string, error: unknown): void {
+  if (secureStoreReadWarnings.has(key)) return;
+  secureStoreReadWarnings.add(key);
+  console.warn(`[Auth] Secure store read for "${key}" failed once; continuing as guest.`, error);
+}
 
 export type User = {
   id: string | number;
@@ -29,7 +37,7 @@ export async function getSessionToken(): Promise<string | null> {
     const token = await SecureStore.getItemAsync(SESSION_TOKEN_KEY);
     return token;
   } catch (error) {
-    console.error("[Auth] Failed to read the secure session token:", error);
+    warnSecureStoreReadOnce(SESSION_TOKEN_KEY, error);
     return null;
   }
 }
@@ -58,7 +66,7 @@ export async function getRefreshToken(): Promise<string | null> {
   try {
     return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
   } catch (error) {
-    console.error("[Auth] Failed to read the secure refresh token:", error);
+    warnSecureStoreReadOnce(REFRESH_TOKEN_KEY, error);
     return null;
   }
 }

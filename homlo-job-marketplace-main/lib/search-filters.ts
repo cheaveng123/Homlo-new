@@ -108,7 +108,7 @@ export function applyClientFilters(jobs: Job[], filters: SearchFilters) {
     const matchesExperience = filters.experience === "Any" || job.experience === filters.experience || (filters.experience === "No experience" && job.noExperience);
     const matchesLocation = !location || job.location.toLowerCase().includes(location);
     const matchesRadius = !hasRadius || distanceKm <= radius;
-    const matchesPolygon = !isValidPolygon(filters.polygon) || pointInPolygon(coordinate, filters.polygon);
+    const matchesPolygon = !isValidPolygon(filters.polygon) || (coordinate !== null && pointInPolygon(coordinate, filters.polygon));
     return matchesCategory && matchesPay && matchesType && matchesArrangement && matchesExperience && matchesLocation && matchesRadius && matchesPolygon && postedMatches(job, filters.posted);
   });
   if (filters.sort === "Salary high to low") {

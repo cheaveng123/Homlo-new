@@ -1,23 +1,14 @@
-import type { Express, Request, Response } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
 
 import { getHomloDirectService } from "../homlo-direct-service";
 import { homloEventInputSchema } from "../event-logging";
+import { requestSourceIp } from "./requestIp";
 
 const MAX_SNAPSHOT_BYTES = 20_000;
 const USER_CACHE_TTL_MS = 5 * 60_000;
 const USER_CACHE_MAX_ENTRIES = 5_000;
 
 const userCache = new Map<string, { userId: string; expiresAt: number }>();
-
-function requestSourceIp(req: Request): string | null {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.trim()) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  if (req.ip) return req.ip;
-  return req.socket?.remoteAddress ?? null;
-}
 
 /**
  * Resolves an access token to a user id for event attribution. Cheap because it
@@ -43,7 +34,7 @@ function resolveUserForLogging(accessToken: string): Promise<{ id: string } | nu
 }
 
 export function registerEventLogRoutes(app: Express) {
-  app.post("/api/events/log", async (req: Request, res: Response) => {
+  app.post("/api/events/log", async (req: Request, res: Response, next: NextFunction) => {
     const input = homloEventInputSchema.safeParse(req.body);
     if (!input.success) {
       return res.status(400).json({ ok: false, code: "INVALID_PAYLOAD", error: "Invalid event payload" });
@@ -53,28 +44,34 @@ export function registerEventLogRoutes(app: Express) {
       return res.status(400).json({ ok: false, code: "INVALID_PAYLOAD", error: "Event payload too large" });
     }
 
-    const ip = requestSourceIp(req);
-    let userId: string | null = null;
-    const accessToken = getHomloDirectService().getAccessToken(req);
-    if (accessToken) {
-      const user = await resolveUserForLogging(accessToken);
-      userId = user?.id ?? null;
-    }
+    try {
+      const ip = requestSourceIp(req);
+      let userId: string | null = null;
+      const accessToken = getHomloDirectService().getAccessToken(req);
+      if (accessToken) {
+        const user = await resolveUserForLogging(accessToken);
+        userId = user?.id ?? null;
+      }
 
-    const result = await getHomloDirectService().logEvent(input.data, { ip, userId });
+      const result = await getHomloDirectService().logEvent(input.data, { ip, userId });
 
-    if (result.ok) {
-      return res.json({ ok: true, id: result.id });
-    }
-    switch (result.code) {
-      case "rate_limited":
-        return res.status(429).json({ ok: false, code: "RATE_LIMITED", error: "Too many events" });
-      case "invalid_job":
-        return res.status(400).json({ ok: false, code: "INVALID_JOB", error: "Unknown job" });
-      case "invalid_payload":
-        return res.status(400).json({ ok: false, code: "INVALID_PAYLOAD", error: "Invalid event payload" });
-      case "database":
-        return res.status(500).json({ ok: false, code: "SERVER_ERROR", error: "Could not record event" });
+      if (result.ok) {
+        return res.json({ ok: true, id: result.id });
+      }
+      switch (result.code) {
+        case "rate_limited":
+          return res.status(429).json({ ok: false, code: "RATE_LIMITED", error: "Too many events" });
+        case "invalid_job":
+          return res.status(400).json({ ok: false, code: "INVALID_JOB", error: "Unknown job" });
+        case "invalid_payload":
+          return res.status(400).json({ ok: false, code: "INVALID_PAYLOAD", error: "Invalid event payload" });
+        case "database":
+          return res.status(500).json({ ok: false, code: "SERVER_ERROR", error: "Could not record event" });
+        default:
+          return res.status(500).json({ ok: false, code: "SERVER_ERROR", error: "Could not record event" });
+      }
+    } catch (error) {
+      next(error);
     }
   });
 }

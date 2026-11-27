@@ -12,17 +12,6 @@ const employerTransitions: Record<ApplicationStatus, ApplicationStatus[]> = {
 export class ApplicationService {
   constructor(private readonly database: DatabaseAdapter) {}
 
-  async apply(jobId: UUID, workerId: UUID, message: string | null): Promise<Application> {
-    return this.database.transaction(async (transaction) => {
-      const jobs = new PostgresJobRepository(transaction);
-      const job = await jobs.findById(jobId);
-      if (!job || job.status === "filled" || job.status === "closed" || job.workersHired >= job.workersNeeded) throw new Error("This job is no longer accepting applications");
-      const application = await new PostgresApplicationRepository(transaction).upsertApplication(jobId, workerId, message);
-      await new NotificationService(transaction).notify(job.employerId, "new_application", "New application", "A worker applied to your job.");
-      return application;
-    });
-  }
-
   async transitionStatus(applicationId: UUID, actorUserId: UUID, target: ApplicationStatus): Promise<Application> {
     if (target === "hired") throw new Error("Use hire to complete a transactional hiring transition");
     return this.database.transaction(async (transaction) => {

@@ -40,9 +40,7 @@ import {
   computeEmployerQualityStats,
   computeJobQualityStats,
   type EmployerQualityEvidence,
-  type EmployerQualityStats,
-  type JobInteractionCounts,
-  type JobQualityStats,
+  type EmployerQualityStats,type JobQualityStats
 } from "./quality-aggregation";
 
 // ---------------------------------------------------------------------------

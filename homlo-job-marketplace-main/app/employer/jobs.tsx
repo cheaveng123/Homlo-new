@@ -1,4 +1,4 @@
-import { Redirect } from "expo-router";
+import { Redirect } from "@/lib/router";
 
 // Keep previous success and deep-link routes working while directing employers
 // to the redesigned single listed-jobs management surface.

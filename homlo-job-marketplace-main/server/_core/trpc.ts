@@ -5,6 +5,12 @@ import type { TrpcContext } from "./context";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  // Never include stack traces or file paths in error responses, in any
+  // environment. Stack traces are logged server-side by the error handler.
+  errorFormatter: ({ shape }) => {
+    const { stack, ...data } = shape.data;
+    return { ...shape, data };
+  },
 });
 
 export const router = t.router;
@@ -47,7 +53,7 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== "admin") {
+    if (!ctx.user || (ctx.user.role as string) !== "admin") {
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 

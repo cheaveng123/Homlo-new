@@ -8,6 +8,8 @@ export interface ConversationParticipant {
   userId: string;
   name: string;
   role: "worker" | "employer" | "both";
+  /** Profile picture (URL / data-URI) of this participant, if available. */
+  photo: string | null;
 }
 
 export interface ConversationSummary {
@@ -34,6 +36,9 @@ export interface Message {
   updatedAt: string | null;
   readAt: string | null;
   deletedAt: string | null;
+  applicationId: string | null;
+  jobId: string | null;
+  jobTitle: string | null;
 }
 
 export interface Conversation {

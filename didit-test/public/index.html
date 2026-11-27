@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Didit test</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1>Identity verification test</h1>
+    <p>You will be sent to Didit's hosted page to scan an ID or passport and take a live selfie.
+       Come back here automatically when you finish.</p>
+    <p class="muted">Test app. Didit processes your document and selfie; this app stores only the text results, in memory.</p>
+
+    <div id="sandbox" hidden>
+      <label>Sandbox scenario (mocked outcome, free)
+        <select id="scenario">
+          <option value="">approve (default)</option>
+          <option>decline_document_expired</option>
+          <option>decline_minimum_age</option>
+          <option>decline_face_match_low_similarity</option>
+          <option>review_face_match_borderline</option>
+          <option>decline_liveness_attack</option>
+          <option>decline_could_not_recognize_document</option>
+        </select>
+      </label>
+    </div>
+
+    <button id="go">Verify my identity</button>
+    <p id="msg" class="muted"></p>
+  </main>
+  <script>
+    const btn = document.getElementById('go');
+    const msg = document.getElementById('msg');
+    fetch('/api/config').then(r => r.json()).then(c => {
+      if (c.environment === 'sandbox') document.getElementById('sandbox').hidden = false;
+      else msg.textContent = 'LIVE mode: each completed verification uses Didit credits.';
+    });
+    btn.onclick = async () => {
+      btn.disabled = true; msg.textContent = 'Creating session…';
+      try {
+        const r = await fetch('/api/start-verification', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sandbox_scenario: document.getElementById('scenario').value || undefined }),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error + (data.details ? ' ' + JSON.stringify(data.details) : ''));
+        window.location.href = data.url; // hosted redirect, as the create-session docs recommend
+      } catch (e) {
+        msg.textContent = 'Error: ' + e.message; btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

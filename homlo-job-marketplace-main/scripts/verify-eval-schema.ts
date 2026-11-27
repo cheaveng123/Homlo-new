@@ -18,7 +18,6 @@ const TABLES = [
   "boosts",
 ] as const;
 
-const JOBS_GEO_COLUMN = "location";
 const JOB_COLUMNS_REQUIRED = [
   "latitude",
   "longitude",

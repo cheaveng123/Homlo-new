@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { Redirect } from "@/lib/router";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { ThemedView } from "@/components/themed-view";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
 import { useColors } from "@/hooks/use-colors";
 import { useThemeContext } from "@/lib/theme-provider";
@@ -24,7 +25,16 @@ function ColorSwatch({ name, value }: { name: PaletteName; value: string }) {
   );
 }
 
-export default function ThemeLabScreen() {
+/**
+ * App Store 2.3.1 (no hidden features): this developer tool exists only in
+ * development builds. Release builds redirect anyone who deep-links here.
+ */
+export default function ThemeLabRoute() {
+  if (!__DEV__) return <Redirect href="/" />;
+  return <ThemeLabScreen />;
+}
+
+function ThemeLabScreen() {
   const [pressCount, setPressCount] = useState(0);
   const [lastAction, setLastAction] = useState<string>("None yet");
   const { colorScheme, setColorScheme } = useThemeContext();
@@ -191,7 +201,7 @@ export default function ThemeLabScreen() {
               </Text>
               <View className="mt-3 gap-2">
                 <View className="flex-row items-center gap-2">
-                  <IconSymbol name="house.fill" color={colors.tint} size={20} />
+                  <AppIcon name="home" color={colors.tint} size={20} />
                   <Text className="text-sm text-foreground">
                     Press count: {pressCount}
                   </Text>

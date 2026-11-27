@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 
 import { MessagingService } from "../lib/messaging/service";
 import type { MessagingProvider } from "../lib/messaging/provider";
@@ -12,6 +12,24 @@ import type {
   NewMessageEvent,
 } from "../lib/messaging/types";
 
+// Mock fetch globally so the authenticated service-layer test does not
+// contact the live Supabase Edge Function. It verifies that the tRPC
+// procedure reaches the service layer and fails at the Supabase level
+// with INTERNAL_SERVER_ERROR, not that Supabase itself responds.
+const mockedFetch = vi.fn().mockResolvedValue({
+  ok: false,
+  status: 502,
+  json: async () => ({ error: "Bad Gateway" }),
+} as unknown as Response);
+
+beforeAll(() => {
+  vi.stubGlobal("fetch", mockedFetch);
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
+
 function makeMessage(overrides: Partial<Message> = {}): Message {
   return {
     id: "m1",
@@ -23,6 +41,9 @@ function makeMessage(overrides: Partial<Message> = {}): Message {
     updatedAt: null,
     readAt: null,
     deletedAt: null,
+    applicationId: null,
+    jobId: null,
+    jobTitle: null,
     ...overrides,
   };
 }
@@ -33,11 +54,12 @@ function makeSummary(overrides: Partial<ConversationSummary> = {}): Conversation
     applicationId: "a1",
     jobId: "j1",
     jobTitle: "Waiter",
-    otherParticipant: { userId: "u2", name: "Sokha", role: "employer" },
+    otherParticipant: { userId: "u2", name: "Sokha", role: "employer", photo: null },
     lastMessageAt: "2026-09-01T10:00:00.000Z",
     lastMessage: "Hello",
     lastMessageAuthorId: "u2",
     unreadCount: 1,
+    applicationStatus: null,
     ...overrides,
   };
 }
@@ -234,5 +256,6 @@ describe("appRouter — homlo.messaging wiring", () => {
   it("reaches the service layer once authenticated (fails only on missing Supabase credentials)", async () => {
     const caller = appRouter.createCaller({ homloUser: HOMLO_USER, supabaseAccessToken: "tok-1" } as TrpcContext);
     await expect(caller.homlo.messaging.conversations()).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+    expect(mockedFetch).toHaveBeenCalled();
   });
 });

@@ -1,11 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DEMO_CONTENT_ENABLED } from "@/lib/demo-content";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+import { MOCK_EMPLOYERS, MOCK_JOBS } from "@/lib/mock/employerMockData";
+import { parseSavedJobIds } from "@/lib/saved-job-storage";
+import type { JobListing } from "@/types/employer";
 
 export type Job = {
   id: string;
+  employerId?: string;
   title: string;
   company: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  isCurated?: boolean;
   schedule: string;
   pay: string;
   tag: string;
@@ -18,10 +27,29 @@ export type Job = {
   experience?: string;
   posted?: string;
   status?: "Featured" | "New" | "Hiring";
+  saved?: boolean;
+  /** Openness of the listing itself (open vs filled); distinct from `status` which is a card tag. */
+  jobStatus?: "open" | "filled";
+  /** Positions still available (workers_needed - workers_hired); absent when unknown. */
+  positionsAvailable?: number;
+  /** Total positions the job is hiring for (workers_needed); absent when unknown. */
+  positionsTotal?: number;
+  /** Positions already filled (workers_hired); absent when unknown. */
+  positionsFilled?: number;
+  /** Whether the listing currently has an active boost. */
+  boosted?: boolean;
+  /** Job-seeker safe ad flag; never carries price, plan, or end time. */
+  boost?: { isSponsored: true } | null;
+  /** Work days label, e.g. "Mon–Fri" (059_job_work_time); null/absent = not set. */
+  workDaysLabel?: string | null;
+  /** The same days as keys ('mon'..'sun'), for day chips. */
+  workDays?: string[];
+  /** Clock-in to clock-out, e.g. "8:00 AM – 5:00 PM"; null/absent = not set. */
+  workHoursLabel?: string | null;
 };
 
 function listing(job: Job): Job {
-  return { experience: "Entry level", posted: "Posted recently", arrangement: "On-site", ...job };
+  return { experience: "Entry level", posted: "Posted recently", arrangement: "On-site", isCurated: true, ...job };
 }
 
 export const jobs: Job[] = [
@@ -30,7 +58,7 @@ export const jobs: Job[] = [
   listing({ id: "retail-assistant", title: "Retail Assistant", company: "Maison Local", location: "Daun Penh, Phnom Penh", schedule: "4 PM – 9 PM", pay: "$180 / month", tag: "Part-time", category: "Retail", image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=300&q=80", description: "Help customers find products, maintain displays, and support the close-of-day store routine.", noExperience: true, experience: "No experience", posted: "Posted 5h ago" }),
   listing({ id: "barista", title: "Barista", company: "Common Grounds", location: "Chamkarmon, Phnom Penh", schedule: "7 AM – 1 PM", pay: "$12 / day", tag: "Temporary", category: "Hospitality", image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=300&q=80", description: "Prepare specialty drinks, greet regulars, and keep the coffee bar orderly during a six-week assignment.", noExperience: true, experience: "No experience", posted: "Posted yesterday" }),
   listing({ id: "weekend-cashier", title: "Weekend Cashier", company: "Green Market", location: "Russey Keo, Phnom Penh", schedule: "Saturday & Sunday", pay: "$18 / day", tag: "Weekend", category: "Retail", image: "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=300&q=80", description: "Process purchases, help shoppers, and keep the front of house moving smoothly during the weekend rush.", noExperience: true, experience: "No experience", posted: "Posted 3h ago" }),
-  listing({ id: "junior-software-developer", title: "Junior Software Developer", company: "Kiri Labs", location: "Chamkarmon, Phnom Penh", schedule: "Flexible weekday hours", pay: "$600 – $900 / month", tag: "Full-time", category: "Technology", image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=300&q=80", featured: true, status: "Hiring", description: "Build useful product features with a collaborative engineering team. You will work across interfaces, APIs, and thoughtful releases.", arrangement: "Hybrid", experience: "Entry level", posted: "Posted 2h ago" }),
+  listing({ id: "junior-software-developer", employerId: "emp-1", title: "Junior Software Developer", company: "Kiri Labs", location: "Chamkarmon, Phnom Penh", schedule: "Flexible weekday hours", pay: "$600 – $900 / month", tag: "Full-time", category: "Technology", image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=300&q=80", featured: true, status: "Hiring", description: "Build useful product features with a collaborative engineering team. You will work across interfaces, APIs, and thoughtful releases.", arrangement: "Hybrid", experience: "Entry level", posted: "Posted 2h ago" }),
   listing({ id: "growth-marketing-intern", title: "Growth Marketing Intern", company: "Bloom Commerce", location: "Daun Penh, Phnom Penh", schedule: "3 days per week", pay: "$10 / day", tag: "Internship", category: "Marketing", image: "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=300&q=80", description: "Learn how a consumer brand plans campaigns, measures growth, and creates content that connects with customers.", arrangement: "Hybrid", noExperience: true, experience: "Internship", status: "New", posted: "Posted today" }),
   listing({ id: "remote-customer-success", title: "Customer Success Associate", company: "Cloud Desk", location: "Remote · Cambodia", schedule: "9 AM – 6 PM", pay: "$420 / month", tag: "Full-time", category: "Customer Service", image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=300&q=80", description: "Guide customers through product questions and help a distributed team provide considered, human support.", arrangement: "Remote", noExperience: true, experience: "Entry level", status: "Hiring", posted: "Posted 1h ago" }),
   listing({ id: "sales-executive", title: "Sales Executive", company: "Mekong Mobility", location: "Sen Sok, Phnom Penh", schedule: "Weekdays", pay: "$500 / month + commission", tag: "Full-time", category: "Sales", image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=300&q=80", description: "Build relationships with new clients and help growing businesses find practical mobility solutions.", arrangement: "On-site", experience: "1–2 years", posted: "Posted yesterday" }),
@@ -60,13 +88,58 @@ type JobStoreValue = { savedIds: string[]; isSaved: (id: string) => boolean; tog
 const JobStoreContext = createContext<JobStoreValue | undefined>(undefined);
 const storageKey = "homlo-jobs-saved";
 
+const MOCK_TYPE_TO_TAG: Record<string, string> = {
+  full_time: "Full-time",
+  part_time: "Part-time",
+  weekends: "Weekend",
+  remote: "Remote",
+};
+
+const MOCK_TYPE_TO_SCHEDULE: Record<string, string> = {
+  full_time: "Weekdays",
+  part_time: "Afternoon hours",
+  weekends: "Saturday & Sunday",
+  remote: "Flexible remote hours",
+};
+
+function mockListingToJob(listingItem: JobListing): Job {
+  const employer = MOCK_EMPLOYERS[listingItem.employerId as string];
+  const unit =
+    listingItem.priceUnit === "hr" ? "hour" : listingItem.priceUnit === "mo" ? "month" : "day";
+  return {
+    id: listingItem.id,
+    employerId: listingItem.employerId,
+    title: listingItem.title,
+    company: employer?.name ?? listingItem.employerId,
+    location: listingItem.location,
+    latitude: listingItem.latitude ?? null,
+    longitude: listingItem.longitude ?? null,
+    isCurated: true,
+    schedule: MOCK_TYPE_TO_SCHEDULE[listingItem.type] ?? "Flexible",
+    pay: `$${listingItem.price} / ${unit}`,
+    tag: MOCK_TYPE_TO_TAG[listingItem.type] ?? "Part-time",
+    category: employer?.industry ?? "Job",
+    image: listingItem.photoUrl ?? "",
+    description: `Join the team at ${employer?.name ?? "this employer"} as a ${listingItem.title} and grow with a friendly local crew.`,
+    arrangement: listingItem.workArrangement ?? (listingItem.type === "remote" ? "Remote" : "On-site"),
+    experience: "Entry level",
+    posted: "Posted recently",
+  };
+}
+
+const mockStoreJobs: Job[] = MOCK_JOBS.map((listingItem) => mockListingToJob(listingItem));
+
 export function JobProvider({ children }: { children: ReactNode }) {
   const [savedIds, setSavedIds] = useState<string[]>([]);
-  useEffect(() => { AsyncStorage.getItem(storageKey).then((saved) => { if (saved) setSavedIds(JSON.parse(saved) as string[]); }).catch(() => undefined); }, []);
+  useEffect(() => { AsyncStorage.getItem(storageKey).then((saved) => { const { ids, corrupted } = parseSavedJobIds(saved); if (corrupted) console.warn("[JobStore] Ignoring corrupt saved-job storage for", storageKey); setSavedIds(ids); }).catch(() => undefined); }, []);
   const toggleSaved = useCallback((id: string) => { setSavedIds((current) => { const next = current.includes(id) ? current.filter((savedId) => savedId !== id) : [...current, id]; void AsyncStorage.setItem(storageKey, JSON.stringify(next)); return next; }); }, []);
-  const value = useMemo(() => ({ savedIds, isSaved: (id: string) => savedIds.includes(id), toggleSaved }), [savedIds, toggleSaved]);
+  // PERF: Set lookup — isSaved() runs once per job card on every list render.
+  const value = useMemo(() => { const set = new Set(savedIds); return { savedIds, isSaved: (id: string) => set.has(id), toggleSaved }; }, [savedIds, toggleSaved]);
   return <JobStoreContext.Provider value={value}>{children}</JobStoreContext.Provider>;
 }
 
 export function useJobStore() { const context = useContext(JobStoreContext); if (!context) throw new Error("useJobStore must be used within JobProvider"); return context; }
-export function getJob(id: string) { return jobs.find((job) => job.id === id); }
+export function getJob(id: string) {
+  // Sample listings are only resolvable in demo mode (see lib/demo-content.ts).
+  return jobs.find((job) => job.id === id) ?? (DEMO_CONTENT_ENABLED ? mockStoreJobs.find((job) => job.id === id) : undefined);
+}

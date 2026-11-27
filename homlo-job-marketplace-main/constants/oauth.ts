@@ -1,21 +1,25 @@
-import * as Linking from "expo-linking";
-import Constants from "expo-constants";
-import * as ReactNative from "react-native";
+// Named import only: a namespace import (`import * as ReactNative`) enumerates
+// every lazy getter on react-native's index, including deprecated ones that no
+// longer resolve, and can crash before the app mounts.
+import { Linking, NativeModules, Platform, TurboModuleRegistry } from "react-native";
+import { DEEP_LINK_SCHEME } from "@/constants/deep-link";
+import type { TurboModule } from "react-native";
+import {
+  devServerAuthorityFromBundleUrl,
+  isMetroAuthority,
+  parseDevServerAuthority,
+  toApiAuthority,
+} from "@/lib/api-base-url";
 
-// Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "com.app.homlojobmarketplace";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
-  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
-  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "",
-  appId: process.env.EXPO_PUBLIC_APP_ID ?? "",
-  ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
-  ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-  deepLinkScheme: schemeFromBundleId,
+  portal: process.env.PUBLIC_OAUTH_PORTAL_URL ?? "",
+  server: process.env.PUBLIC_OAUTH_SERVER_URL ?? "",
+  appId: process.env.PUBLIC_APP_ID ?? "",
+  ownerId: process.env.PUBLIC_OWNER_OPEN_ID ?? "",
+  ownerName: process.env.PUBLIC_OWNER_NAME ?? "",
+  apiBaseUrl: process.env.PUBLIC_API_BASE_URL ?? "",
+  deepLinkScheme: DEEP_LINK_SCHEME,
 };
 
 export const OAUTH_PORTAL_URL = env.portal;
@@ -25,46 +29,84 @@ export const OWNER_OPEN_ID = env.ownerId;
 export const OWNER_NAME = env.ownerName;
 export const API_BASE_URL = env.apiBaseUrl;
 
+type SourceCodeTurboModule = Omit<TurboModule, "getConstants"> & { getConstants(): { scriptURL: string } };
+
+// RN 0.86's New Architecture (bridgeless) no longer exposes the legacy
+// `NativeModules.SourceCode` (it resolves to null), but the same `SourceCode`
+// TurboModule stays registered and is reachable through the public
+// `TurboModuleRegistry`. `devServerAuthorityFromBundleUrl` ignores non-http(s)
+// bundle URLs, so release builds fall through to the explicit base URL.
+function devServerAuthorityFromSourceCode(): string | null {
+  try {
+    const scriptURL = TurboModuleRegistry.get<SourceCodeTurboModule>("SourceCode")?.getConstants?.().scriptURL;
+    return devServerAuthorityFromBundleUrl(scriptURL ?? null);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Get the API base URL, deriving from current hostname if not set.
  * Metro runs on 8081, API server runs on 3000.
  * URL pattern: https://PORT-sandboxid.region.domain
  */
 export function getApiBaseUrl(): string {
-  // If API_BASE_URL is set, use it
+  const isNative = Platform.OS !== "web";
+
+  // If API_BASE_URL is set, use it. The one exception is a native dev build
+  // configured to point at the Metro bundler (e.g. PUBLIC_API_BASE_URL was
+  // exported as :8081): the bundler would answer API calls with HTML, so fall
+  // through and derive the API host instead.
   if (API_BASE_URL) {
-    return API_BASE_URL.replace(/\/$/, "");
+    if (__DEV__ && isNative && isMetroAuthority(parseDevServerAuthority(API_BASE_URL))) {
+      console.warn(
+        `[getApiBaseUrl] PUBLIC_API_BASE_URL (${API_BASE_URL}) points at the Metro dev server; ` +
+          "using the API port :3000 instead. Unset it in the Metro shell to silence this warning.",
+      );
+    } else {
+      return API_BASE_URL.replace(/\/$/, "");
+    }
   }
 
-  // On web, derive from current hostname by replacing port 8081 with 3000
-  if (ReactNative.Platform.OS === "web" && typeof window !== "undefined" && window.location) {
+  // On web, derive from current hostname by replacing the Metro dev port with the API port
+  if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
     const { protocol, hostname, port } = window.location;
-    if ((hostname === "localhost" || hostname === "127.0.0.1") && port === "8081") {
+    // Local dev on any Metro port (8081, 8082, …) -> API server on :3000
+    if ((hostname === "localhost" || hostname === "127.0.0.1") && port) {
       return `${protocol}//${hostname}:3000`;
     }
-    // Pattern: 8081-sandboxid.region.domain -> 3000-sandboxid.region.domain
-    const apiHostname = hostname.replace(/^8081-/, "3000-");
+    // Pattern: 80xx-sandboxid.region.domain -> 3000-sandboxid.region.domain
+    const apiHostname = hostname.replace(/^80\d{2}-/, "3000-");
     if (apiHostname !== hostname) {
       return `${protocol}//${apiHostname}`;
     }
+    // Already an API-style preview host (3000-…/api-…): keep it as-is
+    if (/^(3000|api)-/.test(hostname)) {
+      return `${protocol}//${hostname}`;
+    }
+    // Production origin without an explicit API host: keep the host so requests
+    // never collapse into same-origin relative URLs that silently 404.
+    return `${protocol}//${hostname}`;
   }
 
-  // On native (Expo Go / dev client / physical device), Metro exposes the
-  // dev-server host as `Constants.expoConfig?.hostUri` (e.g. "192.168.1.42:8081").
-  // Swap the Metro port for the API port so the app talks to the Express
-  // server running on the same dev machine over the LAN.
-  if (ReactNative.Platform.OS !== "web") {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const cleaned = hostUri.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-      const apiHost = cleaned.replace(/:8081$/, ":3000");
-      if (apiHost !== cleaned) {
-        return `http://${apiHost}`;
-      }
+  // On native dev builds, derive the API host from the Metro dev server the JS
+  // bundle was loaded from (the `SourceCode` TurboModule, read above) and swap
+  // its port for the API port.
+  if (isNative) {
+    const devServerAuthority =
+      devServerAuthorityFromSourceCode() ??
+      devServerAuthorityFromBundleUrl(NativeModules.SourceCode?.scriptURL);
+    if (devServerAuthority) {
+      return `http://${toApiAuthority(devServerAuthority)}`;
     }
   }
 
-  // Fallback to empty (will use relative URL)
+  console.warn("[getApiBaseUrl] No API base URL is configured. Set PUBLIC_API_BASE_URL for production builds.");
+  // Fallback to localhost API server for native development so fetch() has an
+  // absolute URL to call (relative URLs do not work on React Native).
+  // On iOS Simulator, "localhost" refers to the host Mac.
+  // On Android Emulator, "10.0.2.2" refers to the host machine.
+  if (isNative) return Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000";
   return "";
 }
 
@@ -88,12 +130,10 @@ const encodeState = (value: string) => {
  * - Native: uses deep link scheme
  */
 export const getRedirectUri = () => {
-  if (ReactNative.Platform.OS === "web") {
+  if (Platform.OS === "web") {
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
-    return Linking.createURL("/oauth/callback", {
-      scheme: env.deepLinkScheme,
-    });
+    return `${env.deepLinkScheme}://oauth/callback`;
   }
 };
 
@@ -123,7 +163,7 @@ export const getLoginUrl = () => {
 export async function startOAuthLogin(): Promise<string | null> {
   const loginUrl = getLoginUrl();
 
-  if (ReactNative.Platform.OS === "web") {
+  if (Platform.OS === "web") {
     // On web, just redirect
     if (typeof window !== "undefined") {
       window.location.href = loginUrl;

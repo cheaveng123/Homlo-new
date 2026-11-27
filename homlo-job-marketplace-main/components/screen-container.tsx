@@ -55,13 +55,15 @@ export function ScreenContainer({
         containerClassName
       )}
       {...props}
+      style={{ flex: 1 }}
     >
+      {/* Explicit flex:1 as a backstop so the layout never depends on className mapping. */}
       <SafeAreaView
         edges={edges}
         className={cn("flex-1", safeAreaClassName)}
-        style={style}
+        style={[{ flex: 1 }, style]}
       >
-        <View className={cn("flex-1", className)}>{children}</View>
+        <View className={cn("flex-1", className)} style={{ flex: 1 }}>{children}</View>
       </SafeAreaView>
     </View>
   );

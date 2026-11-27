@@ -28,13 +28,13 @@ export function SearchResultsMap({ markers }: SearchResultsMapProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#DCE5E2",
+    backgroundColor: "#DCE6EA",
     flex: 1,
     overflow: "hidden",
     position: "relative",
   },
   gridOverlay: {
-    backgroundColor: "#E8EFEC",
+    backgroundColor: "#E6EDEF",
     bottom: 0,
     left: 0,
     opacity: 0.55,
@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   callout: {
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderColor: "#C7D3CC",
+    borderColor: "#DCE6EA",
     borderRadius: 14,
     borderWidth: 1,
     bottom: 16,
@@ -55,19 +55,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     position: "absolute",
-    shadowColor: "#173C25",
+    shadowColor: "#14324A",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
   },
   calloutDot: {
-    backgroundColor: "#16803C",
+    backgroundColor: "#0891B2",
     borderRadius: 4,
     height: 8,
     width: 8,
   },
   calloutLabel: {
-    color: "#17201A",
+    color: "#12303C",
     fontSize: 11.5,
     fontWeight: "700",
   },

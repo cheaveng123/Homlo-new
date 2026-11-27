@@ -30,8 +30,6 @@ type RecommendedFeedItem = {
   feedPosition: number;
 };
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=600&q=80";
-
 function money(amount: number, currency: string, type: RecommendedFeedJob["payType"]) {
   const formatted = Number.isFinite(amount) ? amount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(amount);
   const symbol = currency.toUpperCase() === "USD" ? "$" : `${currency.toUpperCase()} `;

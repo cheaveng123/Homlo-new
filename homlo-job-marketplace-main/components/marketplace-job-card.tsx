@@ -1,9 +1,9 @@
 import { memo as reactMemo } from "react";
 import { Image, Platform, Pressable, StyleSheet, View, type GestureResponderEvent, type StyleProp, type ViewStyle } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 
 import { type Job, useJobStore } from "@/components/job-store";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";
 import { haptic } from "@/lib/haptics";
 import { normalizeJob } from "@/lib/job-utils";
@@ -13,12 +13,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePressLock } from "@/hooks/use-press-lock";
 import { logJobEvent } from "@/lib/event-logging";
 
-const palette = ["#E8F2EC", "#EAF1FA", "#FBF1E5", "#F4ECF7", "#F8ECEC", "#EAF6F0"];
-const inkPalette = ["#16803C", "#1F5397", "#A65C18", "#7144A4", "#A04141", "#0E8A6A"];
+const palette = ["#E6EDEF", "#EAF1FA", "#FBF1E5", "#F4ECF7", "#F8ECEC", "#EEF3F4"];
+const inkPalette = ["#0891B2", "#1F5397", "#A65C18", "#7144A4", "#A04141", "#0B6F8A"];
 
 function avatarFor(company: string) {
   const trimmed = company.trim();
-  if (!trimmed) return { letter: "·", tone: "#E8F0EC", ink: "#66736A" };
+  if (!trimmed) return { letter: "·", tone: "#E6EDEF", ink: "#5D7480" };
   const first = trimmed.charAt(0).toUpperCase();
   let hash = 0;
   for (let index = 0; index < trimmed.length; index += 1) {
@@ -85,14 +85,14 @@ function MarketplaceJobCardImpl({ job, selected = false, onPress, showBookmark =
           <Text numberOfLines={2} style={styles.title}>{safeJob.title}</Text>
           <View style={styles.companyRow}>
             <Text numberOfLines={1} style={styles.company}>{safeJob.company}</Text>
-            <IconSymbol name="checkmark.circle.fill" size={12} color="#16803C" />
+            <AppIcon name="circle-check" size={12} color="#0891B2" />
           </View>
           <Text numberOfLines={1} style={styles.pay}>{safeJob.pay}</Text>
           <View style={styles.metaRow}>
-            <IconSymbol name="mappin.and.ellipse" size={12} color="#83918A" style={styles.metaIcon} />
+            <AppIcon name="pin" size={12} color="#6A7C84" style={styles.metaIcon} />
             <Text numberOfLines={1} style={styles.metaText}>{shortLocation}</Text>
             <View style={styles.metaDot} />
-            <IconSymbol name="clock3" size={12} color="#83918A" style={styles.metaIcon} />
+            <AppIcon name="clock" size={12} color="#6A7C84" style={styles.metaIcon} />
             <Text numberOfLines={1} style={styles.metaText}>{safeJob.posted?.replace("Posted ", "") || "Recently"}</Text>
           </View>
           {tags.length ? (
@@ -111,7 +111,7 @@ function MarketplaceJobCardImpl({ job, selected = false, onPress, showBookmark =
             hitSlop={10}
             style={({ pressed }) => [styles.bookmark, pressed && styles.bookmarkPressed]}
           >
-            <IconSymbol name={saved ? "heart.fill" : "heart"} size={18} color={saved ? "#16803C" : "#83918A"} />
+            <AppIcon name="heart" size={18} color={saved ? "#0891B2" : "#6A7C84"} />
           </Pressable>
         ) : null}
       </Pressable>
@@ -123,7 +123,7 @@ function MarketplaceCardImage({ imageUri, jobId, title, fallback }: { imageUri: 
   const localUri = localImageUris[jobId] ?? null;
   const resolved = imageUri?.startsWith("http") || imageUri?.startsWith("file:") || imageUri?.startsWith("data:") ? imageUri : localUri;
   if (resolved && Platform.OS === "web") {
-    return <View accessibilityLabel={`${title} banner`} style={[styles.avatar, { backgroundImage: `url("${resolved}")`, backgroundColor: "#E8F0EC", backgroundPosition: "center", backgroundSize: "cover" } as unknown as ViewStyle]} />;
+    return <View accessibilityLabel={`${title} banner`} style={[styles.avatar, { backgroundImage: `url("${resolved}")`, backgroundColor: "#E6EDEF", backgroundPosition: "center", backgroundSize: "cover" } as unknown as ViewStyle]} />;
   }
   if (resolved) {
     return <Image accessibilityLabel={`${title} banner`} resizeMode="cover" source={{ uri: resolved }} style={[styles.avatar, styles.avatarImage]} />;
@@ -137,7 +137,7 @@ export const MarketplaceJobCard = reactMemo(MarketplaceJobCardImpl, (prev, next)
 
 const styles = StyleSheet.create({
   card: {
-    borderColor: "#E8ECEA",
+    borderColor: "#E6EDEF",
     borderWidth: 1,
     marginBottom: 10,
     ...Platform.select({
@@ -145,32 +145,32 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
-  cardSelected: { borderColor: "#16803C", backgroundColor: "#F1F8F2" },
+  cardSelected: { borderColor: "#0891B2", backgroundColor: "#F3F6F5" },
   touchArea: { flexDirection: "row", alignItems: "flex-start", flex: 1 },
   pressed: { opacity: 0.78 },
   avatar: {
     alignItems: "center",
-    backgroundColor: "#E8F0EC",
+    backgroundColor: "#E6EDEF",
     borderRadius: 12,
     height: 72,
     justifyContent: "center",
     marginTop: 1,
     width: 72,
   },
-  avatarImage: { backgroundColor: "#E8F0EC" },
+  avatarImage: { backgroundColor: "#E6EDEF" },
   avatarLetter: { fontSize: 22, fontWeight: "700" },
   body: { flex: 1, marginLeft: 12, minWidth: 0, paddingRight: 28 },
-  title: { color: "#17201A", fontSize: 14.5, fontWeight: "600", letterSpacing: -0.1, lineHeight: 19 },
+  title: { color: "#12303C", fontSize: 14.5, fontWeight: "600", letterSpacing: -0.1, lineHeight: 19 },
   companyRow: { alignItems: "center", flexDirection: "row", gap: 4, marginTop: 3 },
-  company: { color: "#66736A", fontSize: 12, fontWeight: "500" },
-  pay: { color: "#16803C", fontSize: 14, fontWeight: "700", marginTop: 6 },
+  company: { color: "#5D7480", fontSize: 12, fontWeight: "500" },
+  pay: { color: "#0891B2", fontSize: 14, fontWeight: "700", marginTop: 6 },
   metaRow: { alignItems: "center", flexDirection: "row", marginTop: 5 },
   metaIcon: { marginRight: 3 },
-  metaText: { color: "#83918A", fontSize: 11, fontWeight: "400" },
-  metaDot: { backgroundColor: "#D0D9D4", borderRadius: 2, height: 3, marginHorizontal: 5, width: 3 },
+  metaText: { color: "#6A7C84", fontSize: 11, fontWeight: "400" },
+  metaDot: { backgroundColor: "#DCE6EA", borderRadius: 2, height: 3, marginHorizontal: 5, width: 3 },
   tagRow: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
-  tag: { backgroundColor: "#EAF6EC", borderColor: "#D5EBDC", borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
-  tagText: { color: "#16803C", fontSize: 10, fontWeight: "600" },
+  tag: { backgroundColor: "#EEF3F4", borderColor: "#DCF1F6", borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  tagText: { color: "#0891B2", fontSize: 10, fontWeight: "600" },
   bookmark: { alignItems: "center", height: 44, justifyContent: "center", position: "absolute", right: 0, top: 0, width: 32 },
   bookmarkPressed: { opacity: 0.55, transform: [{ scale: 0.9 }] },
 });

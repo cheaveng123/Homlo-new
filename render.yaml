@@ -1,0 +1,55 @@
+# Render Blueprint for the HireNow API server (the Node/Express + tRPC server in
+# homlo-job-marketplace-main/server). Supabase stays where it is; this only hosts
+# the API the mobile app calls at PUBLIC_API_BASE_URL.
+#
+# Setup: Render dashboard -> New -> Blueprint -> pick this GitHub repo.
+# Values marked `sync: false` are secrets: Render asks you to paste them once
+# (copy them from your local .env). They are never stored in this file.
+services:
+  - type: web
+    name: hirenow-api
+    runtime: node
+    plan: starter # $7/month, always on. "free" works too but sleeps when idle.
+    region: singapore # closest Render region to Cambodia
+    rootDir: homlo-job-marketplace-main
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: APP_ENV
+        value: production
+      # Real payments: RevenueCat webhooks confirm purchases. Never "simulated" in production.
+      - key: HOMLO_PAYMENT_VERIFICATION_MODE
+        value: webhook
+      # Render puts one proxy in front of the server; this lets rate limits see real client IPs.
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      # The app is native-only, so no browser origins need CORS access.
+      - key: ALLOWED_ORIGINS
+        value: ""
+
+      # --- Copy these from your local .env (same values) ---
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      # Must match the HOMLO_FEED_SECRET set on the Supabase edge function.
+      - key: HOMLO_FEED_SECRET
+        sync: false
+      - key: REVENUECAT_SECRET_API_KEY
+        sync: false
+      - key: REVENUECAT_WEBHOOK_AUTH
+        sync: false
+
+      # --- Generated once by Render; keep them stable (they protect stored data) ---
+      - key: FIELD_ENCRYPTION_KEY
+        generateValue: true
+      - key: HOMLO_IDENTIFIER_HASH_SECRET
+        generateValue: true
+      - key: HOMLO_EVENT_IP_HASH_SALT
+        generateValue: true

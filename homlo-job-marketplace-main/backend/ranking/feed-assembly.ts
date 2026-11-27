@@ -27,6 +27,7 @@
 // =========================================================
 
 import { rankingConfig } from "../config/rankingConfig";
+import type { WorkArrangement } from "../domain/work-arrangement";
 import type { Phase6Candidate } from "./sponsored-exploration";
 
 // ---------------------------------------------------------------------------
@@ -42,9 +43,11 @@ export type FeedJobDisplay = {
   payCurrency: string;
   payType: "hourly" | "daily" | "fixed";
   locationText: string | null;
+  workArrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workersNeeded: number;
+  workersHired?: number;
   createdAt: string;
   category: string;
   employerName: string | null;

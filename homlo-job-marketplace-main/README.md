@@ -1,53 +1,63 @@
-# Homlo Jobs
+# Inbox / Chat thread — React Native implementation
 
-Homlo Jobs is a native-style Expo and React Native marketplace for discovering flexible work, applying to jobs, and managing employer listings. The project uses Expo Router, NativeWind, and a server-only Supabase service boundary.
+## What changed from the last mockup
+- Removed the green "online" presence dot everywhere (message-row avatar
+  and the chat header). The chat header subtitle is back to a plain
+  `"Cashier (Weekend)"` — no more "· Active now".
+- Converted the approved mockup straight to React Native (Expo), no web.
 
-## Expo Go SDK 54 setup
+## File tree (new files)
 
-This repository is maintained as a managed Expo project and does not require `expo prebuild`, a custom development client, or committed `ios/` or `android/` folders.
+```
+theme/
+  tokens.ts                      — colors, radius, spacing, font sizes/weights, fixed sizes
 
-```bash
-npm install
-npx expo start
+components/
+  common/
+    IconButton.tsx                — shared circular icon button
+    SegmentedTabs.tsx              — Applications / Messages / Updates pill switcher
+    SectionLabel.tsx               — "TODAY" / "EARLIER THIS WEEK" label
+  inbox/
+    InboxHeader.tsx                — title + subtitle + bell
+    InboxSearchBar.tsx             — search pill + filter button
+    MessageRow.tsx                 — the redesigned message row
+  chat/
+    ChatHeader.tsx                 — back, avatar, name/role, more menu
+    SystemMessageCard.tsx          — "Worker applied to your job." card
+    QuickReplyChips.tsx            — scrollable quick-reply chips
+    ChatInputBar.tsx               — attach / input / send
+
+screens/
+  InboxScreen.tsx                  — composes the inbox screen end to end
+  ChatThreadScreen.tsx             — composes the chat thread screen end to end
 ```
 
-After `npx expo start` starts, scan the displayed QR code with **Expo Go SDK 54**. For web preview, press `w` in the Expo CLI or use the local web URL it prints.
+Drop `theme/` and `components/` wherever your app already keeps shared
+UI, and wire `InboxScreen` / `ChatThreadScreen` into your existing Expo
+Router routes (the bottom tab bar is assumed to already come from your
+`<Tabs />` navigator — it isn't re-implemented here).
 
-The project is pinned to Expo SDK 54 and its compatible Expo packages. Use the Expo installer for future Expo-adjacent dependency changes:
+## Dependencies
+- `react-native-svg` — used for every icon (no icon font/library swap
+  needed, but if the app already standardized on `lucide-react-native`,
+  the icons here can be swapped 1:1 — same stroke widths are noted in
+  comments where it matters).
 
-```bash
-npx expo install <package-name>
-```
+## The fidelity rule — read this before implementing
+Every spacing, font-size, font-weight, corner-radius, and color value in
+these files was copied **directly** from the approved HTML mockup, not
+estimated. `theme/tokens.ts` is the single source of truth:
 
-Validate dependency alignment before committing changes:
-
-```bash
-npx expo-doctor
-```
-
-## Environment configuration
-
-The mobile client does not contain Supabase service credentials and does not access Supabase tables directly. Server secrets are configured through the project’s secure environment settings. The repository includes `.env.example` only as a naming reference; never copy real credentials into a committed file.
-
-The server-side Supabase service uses `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and, where configured, `SUPABASE_DB_URL`. `SUPABASE_ANON_KEY` is client-safe configuration metadata but is not required by the Expo client for the server-mediated API flows.
-
-## Expo Go limitations
-
-Push notifications through `expo-notifications` require a physical device and platform credentials. Remote push behavior is not available in Expo Go on Android for SDK 53 and later; test that behavior in a release or development build when push delivery is enabled. Local in-app notification behavior and the rest of the app remain available in Expo Go. No custom dev client is required for the current default app flows.
-
-The interactive native map uses `react-native-maps`, which is available during Expo Go testing. Store deployment may require provider-specific map credentials and a rebuilt app binary; those credentials are not included in this repository.
-
-## Project commands
-
-| Command | Purpose |
-|---|---|
-| `npm install` | Install dependencies from the lockfile-compatible manifest. |
-| `npx expo start` | Start the managed Expo development server for Expo Go. |
-| `npx expo-doctor` | Check Expo SDK compatibility and dependency health. |
-| `npm run check` | Run TypeScript validation. |
-| `npm test` | Run the automated regression suite. |
-| `npm run lint` | Run Expo lint checks. |
-
-## Security
-
-Never commit `.env` files, Supabase service-role keys, database URLs, webhook secrets, or other credentials. The mobile app calls authenticated Homlo server procedures; administrative Supabase access remains on the server and in the deployed Supabase gateway.
+- If a number isn't in `tokens.ts`, it isn't approved — don't invent one.
+- Don't round `14.5` to `15`, don't swap `800` weight for `700`, don't
+  change `999` radius to a fixed pixel value "because it looks the
+  same" — these are the exact values that were sized against the mockup.
+- Do not silently swap `Plus Jakarta Sans` for a different font because
+  it isn't loaded yet in the project — either load it via `expo-font`
+  under the exact family names in `tokens.ts` (`PlusJakartaSans-Bold`,
+  etc.), or flag that it's missing rather than substituting something
+  else.
+- If a coding agent implementing this needs to adjust a value for a
+  real device (e.g. the FAB's `bottom: 24` needs to clear a real tab
+  bar height), that specific value should be the *only* thing that
+  changes — leave every other token untouched.

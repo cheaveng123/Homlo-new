@@ -1,4 +1,4 @@
-import type { Notification, ReportStatus, Review, UUID } from "../domain/models";
+import type { Notification, Review, UUID } from "../domain/models";
 import type { DatabaseAdapter } from "../infrastructure/database/DatabaseAdapter";
 import { Repository } from "./Repository";
 

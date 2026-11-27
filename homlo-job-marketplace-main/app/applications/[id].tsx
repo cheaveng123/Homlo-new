@@ -1,25 +1,82 @@
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "@/lib/router";
 
-import { ScreenContainer } from "@/components/screen-container";
-import { ScalePressable } from "@/components/ui/scale-pressable";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Text } from "@/components/ui/text";
-import { useAuth } from "@/hooks/use-auth";
-import { trpc } from "@/lib/trpc";
+import { ApplicationDetailView } from "@/src/new/applications";
+import type { ApplicationDetail } from "@/src/new/applications/types";
+import { useApplication } from "@/src/new/applications/useMyApplications";
+import { openApplicationChat, openApplications, openExplore, openJob } from "@/src/new/applications/routes";
+import { haptic } from "@/lib/haptics";
 
-type GatewayApplication = { id: string; job_id: string; status: "applied" | "reviewed" | "interview" | "hired" | "declined" | "withdrawn"; message: string | null; created_at: string; updated_at: string; job_title: string; job_location_text: string | null; employer_name: string | null };
-function label(status: GatewayApplication["status"]) { return status === "applied" ? "Submitted" : status[0].toUpperCase() + status.slice(1); }
-
-export default function ApplicationDetailScreen() {
+export default function ApplicationDetailRoute() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, loading: authLoading } = useAuth();
-  const query = trpc.homlo.applications.list.useQuery(undefined, { enabled: Boolean(user), refetchOnMount: true });
-  if (authLoading || query.isLoading) return <ScreenContainer className="items-center justify-center"><ActivityIndicator color="#16803C" /></ScreenContainer>;
-  const application = (((query.data as { applications?: GatewayApplication[] } | undefined)?.applications ?? []).find((item) => item.id === id));
-  if (!application) return <ScreenContainer className="items-center justify-center p-6"><Text style={styles.missing}>This application is not available.</Text><ScalePressable hapticFeedback onPress={() => router.back()} style={styles.primary}><Text style={styles.primaryText}>Go back</Text></ScalePressable></ScreenContainer>;
-  return <ScreenContainer className="flex-1" containerClassName="bg-background"><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}><View style={styles.top}><ScalePressable accessibilityLabel="Go back" hapticFeedback onPress={() => router.back()} style={styles.back}><IconSymbol name="chevron.left" size={21} color="#17201A" /></ScalePressable><Text style={styles.topTitle}>Application</Text><View style={styles.back} /></View><Text style={styles.label}>APPLICATION STATUS</Text><View style={styles.statusRow}><Text style={styles.status}>{label(application.status)}</Text><Text style={styles.date}>Submitted {new Date(application.created_at).toLocaleDateString()}</Text></View><View style={styles.job}><Text style={styles.label}>APPLYING FOR</Text><Text style={styles.jobTitle}>{application.job_title}</Text><Text style={styles.company}>{application.employer_name ?? "Employer"}</Text><Text style={styles.meta}>{application.job_location_text || "Remote"}</Text></View><View style={styles.section}><Text style={styles.label}>YOUR APPLICATION</Text><DetailRow label="Message" value={application.message || "No message added"} /></View><ScalePressable accessibilityLabel="Open conversation with employer" hapticFeedback onPress={() => router.push({ pathname: "/conversations/[id]", params: { id: "conversation", applicationId: application.id } } as never)} style={styles.messageButton}><IconSymbol name="message.fill" size={16} color="#FFFFFF" /><Text style={styles.messageButtonText}>Message employer</Text></ScalePressable><Text style={styles.note}>Homlo will update this application when the employer changes its status.</Text></ScrollView></ScreenContainer>;
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const applicationId = Array.isArray(params.id) ? params.id[0] : params.id ?? "";
+
+  const { user, authLoading, application, isLoading, error, refetch } = useApplication(
+    applicationId || undefined,
+  );
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else openApplications(router);
+  };
+
+  const detail: ApplicationDetail | undefined = application
+    ? {
+        id: application.id,
+        jobTitle: application.job_title,
+        employerName: application.employer_name ?? null,
+        jobImageUri: application.banner_image ?? null,
+        status: application.state,
+        appliedAt: application.created_at,
+        payLabel: application.payLabel ?? null,
+        typeLabel: null,
+        locationLabel: null,
+        message: application.message ?? null,
+        files: [],
+      }
+    : undefined;
+
+  const onViewJob = () => {
+    haptic.selection();
+    if (application?.job_id) {
+      openJob(router, application.job_id);
+    } else {
+      openApplications(router);
+    }
+  };
+
+  const onMessageEmployer = () => {
+    if (applicationId) {
+      haptic.selection();
+      openApplicationChat(router, applicationId);
+    }
+  };
+
+  const onFindSimilarJobs = () => {
+    haptic.selection();
+    openExplore(router);
+  };
+
+  const onViewFile = () => {
+    // No files exposed by the list query yet; silent no-op.
+  };
+
+  if (!user && !authLoading) {
+    return null;
+  }
+
+  const state = isLoading || authLoading ? "loading" : error ? "error" : !detail ? "notFound" : "ready";
+
+  return (
+    <ApplicationDetailView
+      state={state}
+      application={detail}
+      onBack={goBack}
+      onRetry={() => void refetch()}
+      onViewJob={onViewJob}
+      onMessageEmployer={onMessageEmployer}
+      onFindSimilarJobs={onFindSimilarJobs}
+      onViewFile={onViewFile}
+    />
+  );
 }
-function DetailRow({ label, value }: { label: string; value: string }) { return <View style={styles.detailRow}><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>; }
-const styles = StyleSheet.create({ content: { padding: 20, paddingBottom: 30 }, top: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" }, back: { alignItems: "center", backgroundColor: "#EDF1EE", borderRadius: 18, height: 38, justifyContent: "center", width: 38 }, topTitle: { color: "#17201A", fontSize: 16, fontWeight: "800" }, label: { color: "#66736A", fontSize: 10.5, fontWeight: "800", letterSpacing: 0.65, marginTop: 28, textTransform: "uppercase" }, statusRow: { alignItems: "center", borderBottomColor: "#E2E8E5", borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", paddingBottom: 15, paddingTop: 9 }, status: { color: "#16803C", fontSize: 17, fontWeight: "800", textTransform: "capitalize" }, date: { color: "#66736A", fontSize: 11.5 }, job: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, paddingBottom: 18 }, jobTitle: { color: "#17201A", fontSize: 21, fontWeight: "800", letterSpacing: -0.45, marginTop: 8 }, company: { color: "#405148", fontSize: 13.5, fontWeight: "700", marginTop: 4 }, meta: { color: "#66736A", fontSize: 12, marginTop: 7 }, section: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, paddingBottom: 8 }, detailRow: { paddingBottom: 14, paddingTop: 11 }, detailLabel: { color: "#66736A", fontSize: 11.5 }, detailValue: { color: "#17201A", fontSize: 13.5, lineHeight: 20, marginTop: 4 }, messageButton: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 12, flexDirection: "row", gap: 8, justifyContent: "center", marginTop: 20, minHeight: 48 }, messageButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" }, note: { color: "#66736A", fontSize: 12, lineHeight: 18, marginTop: 18 }, missing: { color: "#17201A", fontSize: 17, fontWeight: "800", textAlign: "center" }, primary: { backgroundColor: "#16803C", borderRadius: 12, marginTop: 16, paddingHorizontal: 18, paddingVertical: 11 }, primaryText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" } });

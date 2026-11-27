@@ -5,7 +5,7 @@ import { Repository } from "./Repository";
 export interface ApplicationRepository {
   findById(id: UUID): Promise<Application | null>;
   findByJobAndWorker(jobId: UUID, workerId: UUID): Promise<Application | null>;
-  upsertApplication(jobId: UUID, workerId: UUID, message: string | null): Promise<Application>;
+  upsertApplication(jobId: UUID, workerId: UUID, message: string | null): Promise<{ application: Application; isInsert: boolean }>;
   updateStatus(applicationId: UUID, status: ApplicationStatus): Promise<Application | null>;
   listForJob(jobId: UUID): Promise<Application[]>;
   listForWorker(workerId: UUID): Promise<Application[]>;
@@ -15,8 +15,8 @@ export class PostgresApplicationRepository extends Repository<Application> imple
   readonly modelName = "applications";
   constructor(database: DatabaseAdapter) { super(database); }
   async findById(id: UUID): Promise<Application | null> { const { rows } = await this.database.query<ApplicationRow>(`select * from applications where id = $1 limit 1`, [id]); return rows[0] ? toApplication(rows[0]) : null; }
-  async findByJobAndWorker(jobId: UUID, workerId: UUID): Promise<Application | null> { const { rows } = await this.database.query<ApplicationRow>(`select * from applications where job_id = $1 and worker_id = $2 limit 1`, [jobId, workerId]); return rows[0] ? toApplication(rows[0]) : null; }
-  async upsertApplication(jobId: UUID, workerId: UUID, message: string | null): Promise<Application> { const { rows } = await this.database.query<ApplicationRow>(`insert into applications (job_id, worker_id, message) values ($1, $2, $3) on conflict (job_id, worker_id) do update set status = 'applied', message = excluded.message returning *`, [jobId, workerId, message]); return toApplication(requiredRow(rows, "upsert application")); }
+  async findByJobAndWorker(jobId: UUID, workerId: UUID): Promise<Application | null> { const { rows } = await this.database.query<ApplicationRow>(`select * from applications where job_id = $1 and worker_id = $2 for update limit 1`, [jobId, workerId]); return rows[0] ? toApplication(rows[0]) : null; }
+  async upsertApplication(jobId: UUID, workerId: UUID, message: string | null): Promise<{ application: Application; isInsert: boolean }> { const { rows } = await this.database.query<ApplicationRow & { is_insert: boolean }>(`insert into applications (job_id, worker_id, message) values ($1, $2, $3) on conflict (job_id, worker_id) do update set status = case when applications.status in ('withdrawn', 'declined') then 'applied' else applications.status end, message = case when applications.status in ('withdrawn', 'declined') then excluded.message else applications.message end returning *, (xmax = 0) as is_insert`, [jobId, workerId, message]); return { application: toApplication(requiredRow(rows, "upsert application")), isInsert: rows[0]?.is_insert === true }; }
   async updateStatus(applicationId: UUID, status: ApplicationStatus): Promise<Application | null> { const { rows } = await this.database.query<ApplicationRow>(`update applications set status = $2 where id = $1 returning *`, [applicationId, status]); return rows[0] ? toApplication(rows[0]) : null; }
   async listForJob(jobId: UUID): Promise<Application[]> { const { rows } = await this.database.query<ApplicationRow>(`select * from applications where job_id = $1 order by created_at desc`, [jobId]); return rows.map(toApplication); }
   async listForWorker(workerId: UUID): Promise<Application[]> { const { rows } = await this.database.query<ApplicationRow>(`select * from applications where worker_id = $1 order by created_at desc`, [workerId]); return rows.map(toApplication); }

@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { getDeviceId } from "@/lib/device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "./auth";
 
@@ -21,6 +22,7 @@ function getHeaders(options: RequestInit): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "X-Homlo-Client": Platform.OS === "web" ? "web" : "native",
+      "X-Homlo-Device-Id": await getDeviceId(),
       ...((options.headers as Record<string, string>) || {}),
     };
     if (Platform.OS !== "web") {
@@ -67,7 +69,7 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     let data: unknown;
     try {
       data = JSON.parse(raw);
-    } catch (cause) {
+    } catch {
       const preview = previewText(raw);
       throw new Error(
         `Invalid JSON from ${url} (${response.status}): ${preview}`,
@@ -76,7 +78,10 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
 
     if (!response.ok) {
       const errObj = (data ?? {}) as { error?: string; message?: string };
-      throw new Error(errObj.error ?? errObj.message ?? `Request failed: ${response.status}`);
+      // `status` lets callers tell "server said no" (401) from a network blip.
+      throw Object.assign(new Error(errObj.error ?? errObj.message ?? `Request failed: ${response.status}`), {
+        status: response.status,
+      });
     }
     return data as T;
   } finally {
@@ -94,12 +99,35 @@ export async function logout(): Promise<void> {
   await apiCall<void>("/api/supabase-auth/logout", { method: "POST" });
 }
 
-export async function signUpWithEmailPassword(input: { email: string; password: string; fullName?: string }): Promise<HomloAuthResponse | { confirmationRequired: true; message: string }> {
+export async function signUpWithEmailPassword(input: { email: string; password: string; fullName?: string; acceptTerms: true; marketingOptIn?: boolean }): Promise<HomloAuthResponse | { confirmationRequired: true; message: string }> {
   return apiCall("/api/supabase-auth/sign-up", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function signInWithEmailPassword(input: { email: string; password: string }): Promise<HomloAuthResponse> {
   return apiCall("/api/supabase-auth/sign-in", { method: "POST", body: JSON.stringify(input) });
+}
+
+/**
+ * BUGFIX (random sign-outs): Supabase refresh tokens are single-use. When the
+ * access token expired, every request that got a 401 (tRPC calls, the session
+ * check) refreshed on its own with the SAME refresh token; the second use was
+ * rejected and the app then wiped the session. All refreshes now share one
+ * in-flight call, and the new session is saved before anyone retries.
+ */
+let refreshInflight: Promise<HomloAuthResponse> | null = null;
+
+export function refreshSessionShared(): Promise<HomloAuthResponse> {
+  if (!refreshInflight) {
+    refreshInflight = (async () => {
+      const refreshToken = await Auth.getRefreshToken();
+      const refreshed = await refreshSupabaseSession(refreshToken ?? undefined);
+      if (refreshed.session) await Auth.setAuthSession(refreshed.session);
+      return refreshed;
+    })().finally(() => {
+      refreshInflight = null;
+    });
+  }
+  return refreshInflight;
 }
 
 export async function refreshSupabaseSession(refreshToken?: string): Promise<HomloAuthResponse> {
@@ -109,11 +137,29 @@ export async function refreshSupabaseSession(refreshToken?: string): Promise<Hom
   });
 }
 
+/** HTTP status attached by apiCall, or null for network/timeout/parse failures. */
+export function httpStatusOf(error: unknown): number | null {
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? status : null;
+}
+
+/** True only when the server definitively rejected the session (not a blip). */
+export function isAuthRejection(error: unknown): boolean {
+  const status = httpStatusOf(error);
+  return status === 400 || status === 401 || status === 403;
+}
+
+/**
+ * BUGFIX: returns null ONLY when the server says the session is invalid.
+ * Network errors, timeouts, 429 and 5xx are re-thrown so a hiccup is never
+ * mistaken for "signed out" (that used to drop users to a Sign in screen).
+ */
 export async function getSupabaseMe(): Promise<HomloSessionUser | null> {
   try {
     const result = await apiCall<{ user: HomloSessionUser }>("/api/supabase-auth/me");
-    return result.user;
-  } catch {
-    return null;
+    return result.user ?? null;
+  } catch (error) {
+    if (isAuthRejection(error)) return null;
+    throw error;
   }
 }

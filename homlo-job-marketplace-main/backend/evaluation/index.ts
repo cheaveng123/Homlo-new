@@ -12,7 +12,6 @@
 
 import { rankingConfig } from "../config/rankingConfig";
 import { buildEvaluableFixture } from "./fixtures";
-import { evaluateRanking } from "./metrics";
 import type { EvalRunResult } from "./evaluator";
 import { metricTable, buildReport, type EvaluationReport } from "./report";
 

@@ -8,12 +8,12 @@ import { useCallback, useRef } from "react";
 export function usePressLock<T extends (...args: never[]) => void>(callback: T, ttlMs = 700): T {
   const lockUntilRef = useRef(0);
   return useCallback(
-    ((...args: never[]) => {
+    (...args: never[]) => {
       const now = Date.now();
       if (now < lockUntilRef.current) return;
       lockUntilRef.current = now + ttlMs;
       callback(...args);
-    }) as T,
+    },
     [callback, ttlMs],
-  );
+  ) as T;
 }

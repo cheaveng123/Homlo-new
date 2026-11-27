@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { isAwaitingData } from "@/lib/useFirstLoadSkeletonFlag";
 import { resolveSearchTypos } from "@/lib/fuzzy-match";
 import { resolveJobImage } from "@/lib/job-banner";
+import { computePositionsLeft } from "@/lib/positions";
 
 export type SearchJobRecord = {
   id: string;
@@ -14,6 +16,7 @@ export type SearchJobRecord = {
   latitude: number | null;
   longitude: number | null;
   workers_needed: number;
+  workers_hired?: number | null;
   created_at: string;
   category: string;
   employer_name: string | null;
@@ -41,8 +44,6 @@ export type JobSearchParams = {
   offset?: number;
 };
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=600&q=80";
-
 function money(amount: number | string, currency: string, type: SearchJobRecord["pay_type"]) {
   const numeric = Number(amount);
   const formatted = Number.isFinite(numeric) ? numeric.toLocaleString(undefined, { maximumFractionDigits: 2 }) : String(amount);
@@ -65,6 +66,8 @@ function normalizeSearchJob(record: SearchJobRecord) {
   const location = record.location_text?.trim() || "Location to be confirmed";
   const remote = location.toLowerCase().includes("remote");
   const arrangement: "On-site" | "Hybrid" | "Remote" = remote ? "Remote" : "On-site";
+  const workersNeeded = Number(record.workers_needed) || 0;
+  const workersHired = Number(record.workers_hired ?? 0);
   return {
     id: record.id,
     title: record.title,
@@ -81,6 +84,9 @@ function normalizeSearchJob(record: SearchJobRecord) {
     posted: postedAt(record.created_at),
     status: "New" as const,
     relevanceScore: record.relevance_score,
+    positionsAvailable: computePositionsLeft(workersNeeded, workersHired),
+    positionsTotal: workersNeeded,
+    positionsFilled: workersHired,
   };
 }
 
@@ -109,7 +115,10 @@ export function useJobSearch(params: JobSearchParams, options?: { enabled?: bool
 
   return {
     jobs,
-    loading: query.isLoading,
+    // Loading until results (or an error) arrive. `isLoading` alone is false
+    // for a pending query that isn't fetching yet, which screens read as "no
+    // results". A disabled search is idle, not loading.
+    loading: enabled && isAwaitingData(query),
     error: query.error,
     refetch: query.refetch,
     isFetching: query.isFetching,

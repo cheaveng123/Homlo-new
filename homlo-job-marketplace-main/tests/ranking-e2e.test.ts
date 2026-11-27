@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { createHash } from "node:crypto";
 import { rankingConfig } from "../backend/config/rankingConfig";
 import { RecommendationFeedService } from "../backend/ranking/recommendation-feed";
 import { QualityAggregationService } from "../backend/ranking/quality-aggregation-service";
@@ -8,7 +9,7 @@ import {
   InvalidFeedCursorError,
   validateFeedCursor,
 } from "../backend/ranking/feed-assembly";
-import { EventLoggingService, type HomloEventLogInput } from "../server/event-logging";
+import { EventLoggingService, hashIp, type HomloEventLogInput } from "../server/event-logging";
 import { recommendationsFeedInputSchema } from "../server/routers";
 import { router, supabaseProtectedProcedure } from "../server/_core/trpc";
 import type { TrpcContext } from "../server/_core/context";
@@ -923,7 +924,7 @@ describe("E2E — quality feedback loop", () => {
     const feed = serviceFor(database);
 
     // Round 1: no stats yet — both jobs neutral, no aggregated evidence.
-    const round1 = await feed.getFeed({ userId: "worker-U", userLocation: location, now: NOW });
+    await feed.getFeed({ userId: "worker-U", userLocation: location, now: NOW });
     expect(store.jobQuality.size).toBe(0);
 
     // U2 engages with job-good (events → the aggregation's input source).
@@ -1065,6 +1066,70 @@ describe("E2E — event logging contract", () => {
   });
 });
 
+describe("IP hash salt handling", () => {
+  const ip = "203.0.113.10";
+  const expectedHash = (salt: string) =>
+    createHash("sha256").update(salt + ":" + ip).digest("hex");
+
+  async function withHashEnvironment<T>(
+    appEnv: string | undefined,
+    salt: string | undefined,
+    run: () => T | Promise<T>,
+  ): Promise<T> {
+    const previousAppEnv = process.env.APP_ENV;
+    const previousSalt = process.env.HOMLO_EVENT_IP_HASH_SALT;
+
+    if (appEnv === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = appEnv;
+
+    if (salt === undefined) delete process.env.HOMLO_EVENT_IP_HASH_SALT;
+    else process.env.HOMLO_EVENT_IP_HASH_SALT = salt;
+
+    try {
+      return await run();
+    } finally {
+      if (previousAppEnv === undefined) delete process.env.APP_ENV;
+      else process.env.APP_ENV = previousAppEnv;
+
+      if (previousSalt === undefined) delete process.env.HOMLO_EVENT_IP_HASH_SALT;
+      else process.env.HOMLO_EVENT_IP_HASH_SALT = previousSalt;
+    }
+  }
+
+  it("uses the configured salt in production", async () => {
+    await withHashEnvironment("production", "test-configured-secret", () => {
+      expect(hashIp(ip)).toBe(expectedHash("test-configured-secret"));
+    });
+  });
+
+  it("uses a stable random process salt and warns once when production salt is missing", async () => {
+    await withHashEnvironment("production", undefined, async () => {
+      vi.resetModules();
+      const { hashIp: isolatedHashIp } = await import("../server/event-logging");
+      const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      try {
+        const firstHash = isolatedHashIp(ip);
+        const secondHash = isolatedHashIp(ip);
+
+        expect(firstHash).toBe(secondHash);
+        expect(firstHash).not.toBe(expectedHash("homlo-event-ip-hash-v1"));
+        expect(warning).toHaveBeenCalledTimes(1);
+        expect(warning).toHaveBeenCalledWith(
+          "[security] HOMLO_EVENT_IP_HASH_SALT is missing; using a random per-process salt.",
+        );
+      } finally {
+        warning.mockRestore();
+      }
+    });
+  });
+
+  it("retains the fixed fallback outside production", async () => {
+    await withHashEnvironment("development", undefined, () => {
+      expect(hashIp(ip)).toBe(expectedHash("homlo-event-ip-hash-v1"));
+    });
+  });
+});
 // ---------------------------------------------------------------------------
 // 6 · MMR diversity, sponsored boost, controlled exploration (§16-18)
 // ---------------------------------------------------------------------------

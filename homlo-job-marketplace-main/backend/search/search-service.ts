@@ -1,4 +1,5 @@
 import type { DatabaseAdapter } from "../infrastructure/database/DatabaseAdapter";
+import type { WorkArrangement } from "../domain/work-arrangement";
 import { parseSearchQuery, buildSearchParams, searchInputSchema, type SearchInput } from "./query-parser";
 
 export type SearchJobRecord = {
@@ -9,9 +10,11 @@ export type SearchJobRecord = {
   pay_currency: string;
   pay_type: "hourly" | "daily" | "fixed";
   location_text: string | null;
+  work_arrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workers_needed: number;
+  workers_hired: number;
   created_at: string;
   category: string;
   employer_name: string | null;

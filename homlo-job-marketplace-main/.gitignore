@@ -3,11 +3,10 @@
 # dependencies
 node_modules/
 
-# Expo
+# Build output
 .expo/
 dist/
 web-build/
-expo-env.d.ts
 
 # Native
 .kotlin/
@@ -33,15 +32,29 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 
 app-example
 
-# generated native folders
-/ios
-/android
+# Native projects (android/ and ios/ are source; only their build output is ignored)
+*.keystore
+!android/app/debug.keystore
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/local.properties
+android/app/src/main/assets/index.android.bundle
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+**/xcuserdata/
+*.xcuserstate
+ios/*.xcworkspace/xcshareddata/swiftpm/
 
 # IDE
 .vscode/

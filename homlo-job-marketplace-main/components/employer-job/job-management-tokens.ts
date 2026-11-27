@@ -1,0 +1,42 @@
+// job-management-tokens — design tokens (colors, fonts, shadows) for the employer Job Management + Edit Job screens
+import { Platform, ViewStyle } from 'react-native';
+
+export const colors = {
+  forest: '#12303C',
+  mint: '#0891B2',
+  mintLight: '#0891B2',
+  tint: '#DCF1F6',
+  bg: '#F3F6F5',
+  white: '#FFFFFF',
+  muted: '#6A7C84',
+  red: '#C0392B',
+  redTint: '#FBEAE6',
+  redBorder: '#F2D4D0',
+  line: '#E6EDEF',
+  dash: '#D5E6EA',
+  amberBg: '#FFF1D2',
+  amberText: '#7A4300',
+  scrim: 'rgba(20,50,74,0.55)',
+  toggleOff: '#D5E6EA',
+};
+
+// Loaded via @expo-google-fonts (Plus Jakarta Sans = headings, Inter = body/labels)
+export const font = {
+  h800: 'PlusJakartaSans_800ExtraBold',
+  h700: 'PlusJakartaSans_700Bold',
+  b400: 'Inter_400Regular',
+  b500: 'Inter_500Medium',
+  b600: 'Inter_600SemiBold',
+};
+
+const s = (color: string, y: number, opacity: number, radius: number, elevation: number): ViewStyle =>
+  Platform.select<ViewStyle>({
+    ios: { shadowColor: color, shadowOffset: { width: 0, height: y }, shadowOpacity: opacity, shadowRadius: radius },
+    default: { elevation },
+  }) as ViewStyle;
+
+export const shadows = {
+  card: s(colors.forest, 10, 0.12, 15, 8),
+  boost: { ...s(colors.mint, 8, 0.35, 10, 6), backgroundColor: colors.mint } as ViewStyle,
+  menu: s(colors.forest, 14, 0.28, 17, 14),
+};

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 
 import type { DatabaseAdapter } from "../backend/infrastructure/database/DatabaseAdapter";
@@ -56,8 +56,24 @@ const RATE_LIMIT_WINDOW_MS = 5_000;
 const RATE_LIMIT_MAX_EVENTS_PER_WINDOW = 40;
 const RATE_LIMIT_MAX_BUCKETS = 10_000;
 
+const PROCESS_IP_HASH_SALT = randomBytes(32).toString("hex");
+let warnedAboutMissingIpHashSalt = false;
+
 function ipHashSalt(): string {
-  return process.env.HOMLO_EVENT_IP_HASH_SALT || "homlo-event-ip-hash-v1";
+  const configuredSalt = process.env.HOMLO_EVENT_IP_HASH_SALT;
+  if (configuredSalt) return configuredSalt;
+
+  if (process.env.APP_ENV === "production") {
+    if (!warnedAboutMissingIpHashSalt) {
+      console.warn(
+        "[security] HOMLO_EVENT_IP_HASH_SALT is missing; using a random per-process salt.",
+      );
+      warnedAboutMissingIpHashSalt = true;
+    }
+    return PROCESS_IP_HASH_SALT;
+  }
+
+  return "homlo-event-ip-hash-v1";
 }
 
 export function hashIp(ip: string): string {

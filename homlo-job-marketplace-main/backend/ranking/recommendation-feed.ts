@@ -27,6 +27,7 @@
 
 import type { DatabaseAdapter } from "../infrastructure/database/DatabaseAdapter";
 import { rankingConfig } from "../config/rankingConfig";
+import type { WorkArrangement } from "../domain/work-arrangement";
 import type { RetrievalPreferences } from "./candidate-retrieval";
 import { CandidateRetrievalService } from "./candidate-retrieval";
 import { RankingScoringService } from "./scoring-service";
@@ -68,9 +69,11 @@ type DisplayRow = {
   pay_currency: string;
   pay_type: "hourly" | "daily" | "fixed";
   location_text: string | null;
+  work_arrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workers_needed: number | string;
+  workers_hired: number | string;
   created_at: string | Date;
   category: string;
   employer_name: string | null;
@@ -156,7 +159,8 @@ export class RecommendationFeedService {
 
     const { rows } = await this.database.query<DisplayRow>(
       `select j.id, j.title, j.description, j.pay_amount, j.pay_currency, j.pay_type,
-              j.location_text, j.latitude, j.longitude, j.workers_needed, j.created_at,
+              j.location_text, j.latitude, j.longitude, j.workers_needed, j.workers_hired, j.created_at,
+              j.work_arrangement,
               coalesce(c.name, 'Other') as category,
               p.full_name as employer_name,
               p.profile_photo_key as employer_photo_key,
@@ -165,6 +169,9 @@ export class RecommendationFeedService {
          left join categories c on c.id = j.category_id
          left join profiles p on p.user_id = j.employer_id and p.deleted_at is null
         where j.deleted_at is null
+          and j.status = 'open'
+          and (j.workers_needed = 0 or j.workers_hired < j.workers_needed)
+          and (j.end_date is null or j.end_date >= current_date)
           and j.id = any($1::uuid[])`,
       [arrayUnionParam(jobIds)],
     );
@@ -179,9 +186,11 @@ export class RecommendationFeedService {
         payCurrency: row.pay_currency,
         payType: row.pay_type,
         locationText: row.location_text,
+        workArrangement: row.work_arrangement ?? null,
         latitude: toNumber(row.latitude),
         longitude: toNumber(row.longitude),
         workersNeeded: toNumber(row.workers_needed) ?? 0,
+        workersHired: toNumber(row.workers_hired) ?? 0,
         createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
         category: row.category,
         employerName: row.employer_name,

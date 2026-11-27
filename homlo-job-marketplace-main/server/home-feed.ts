@@ -4,24 +4,28 @@
 // Sections (in canonical display order):
 //   1. Jobs Near You   — DB-level geo search (radiusKm around a real lng/lat).
 //   2. Recommended     — the existing Phase 3→7 recommendation pipeline for
-//                        signed-in users; data-driven editorial for anonymous.
+//                        signed-in users; data-driven editorial (best of the
+//                        public pool, boosted & fresh first) for anonymous or
+//                        when the pipeline has no signal yet.
 //   3. Featured        — active `boosts` joined to open, non-deleted listings.
 //   4. Specialized     — config-driven field sections that only ship when a
 //                        field's categories actually have published jobs.
-//   5. Remote          — the same `location_text ~ %remote%` convention the
-//                        client already uses everywhere (not NLP on the body).
-//   6. More            — everything left over, best availability first.
+//   5. Remote          — the canonical jobs.work_arrangement = 'Remote' rows.
+//   6. Weekend         — the same keyword convention the search function uses
+//                        (title/description mention weekend, Saturday or Sunday).
+//   7. More            — everything left over, best availability first.
 //
 // Every section is filtered/ranked server-side against real rows (through the
 // existing homlo_list_public_published_jobs / homlo_search_public_jobs read
 // models or the boosts join) — nothing is hardcoded, and the payload carries
 // the same display shape the rest of the app already normalizes. Dedupe order
-// is Near → Recommended → Featured → Specialized → Remote → More, applied to
-// whichever section needs freshness while later sections top up when a pool is
-// small.
+// is Near → Recommended → Featured → Specialized → Remote → Weekend → More,
+// applied to whichever section needs freshness while later sections top up when
+// a pool is small.
 // =========================================================
 
 import type { DatabaseAdapter } from "../backend/infrastructure/database/DatabaseAdapter";
+import type { WorkArrangement } from "../backend/domain/work-arrangement";
 import { SearchService } from "../backend/search/search-service";
 import {
   RecommendationFeedService,
@@ -47,15 +51,18 @@ export type HomeFeedJobRecord = {
   pay_currency: string;
   pay_type: "hourly" | "daily" | "fixed";
   location_text: string | null;
+  work_arrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workers_needed: number | string;
+  workers_hired: number | string;
   created_at: string;
   category: string;
   employer_name: string | null;
   employer_photo_key: string | null;
   banner_image: string | null;
   relevance_score: number;
+  boosted?: boolean;
 };
 
 export type HomeFeedSpecializedSection = {
@@ -65,14 +72,31 @@ export type HomeFeedSpecializedSection = {
   available: number;
 };
 
+/** Why a section is absent. Absent `code` means the section is legitimately empty. */
+export type HomeFeedSectionError = {
+  section: string;
+  code: string;
+};
+
+/**
+ * A section's load result. A failed section is reported and degraded to empty
+ * data, never silently presented as "there is nothing to show".
+ */
+type SectionOutcome<T> =
+  | { ok: true; data: T }
+  | { ok: false; code: string; message: string };
+
 export type HomeFeedResult = {
   nearby: HomeFeedJobRecord[];
   recommended: HomeFeedJobRecord[];
   featured: HomeFeedJobRecord[];
   specialized: HomeFeedSpecializedSection[];
   remote: HomeFeedJobRecord[];
+  weekend: HomeFeedJobRecord[];
   more: HomeFeedJobRecord[];
   total: number;
+  /** Omitted entirely on a healthy feed, so success responses are unchanged. */
+  sectionErrors?: HomeFeedSectionError[];
 };
 
 export type HomeFeedInput = {
@@ -94,15 +118,18 @@ type PublicJobRow = {
   pay_currency: string;
   pay_type: "hourly" | "daily" | "fixed";
   location_text: string | null;
+  work_arrangement: WorkArrangement | null;
   latitude: number | null;
   longitude: number | null;
   workers_needed: number | string;
+  workers_hired: number | string;
   created_at: string | Date;
   category: string;
   employer_name: string | null;
   employer_photo_key: string | null;
   banner_image: string | null;
   relevance_score?: number | string | null;
+  boosted?: boolean | null;
 };
 
 export class HomeFeedService {
@@ -124,28 +151,68 @@ export class HomeFeedService {
       Math.abs(input.latitude ?? 0) <= 90 &&
       Math.abs(input.longitude ?? 0) <= 180;
 
-    const [nearby, pool, featured, recommended] = await Promise.all([
+    const sectionErrors: HomeFeedSectionError[] = [];
+    const collect = <T>(section: string, work: Promise<T>): Promise<SectionOutcome<T>> =>
+      work.then(
+        (data) => ({ ok: true, data }) as SectionOutcome<T>,
+        (cause: unknown) => {
+          console.error("[HomeFeed] Section failed", {
+            section,
+            code: "SECTION_QUERY_FAILED",
+            cause: cause instanceof Error ? cause.message : String(cause),
+          });
+          sectionErrors.push({ section, code: "SECTION_QUERY_FAILED" });
+          return {
+            ok: false,
+            code: "SECTION_QUERY_FAILED",
+            message: cause instanceof Error ? cause.message : String(cause),
+          } as SectionOutcome<T>;
+        },
+      );
+
+    const [nearbyOutcome, poolOutcome, featuredOutcome] = await Promise.all([
       hasCoords
-        ? new SearchService(this.database)
-            .search({
-              latitude: input.latitude as number,
-              longitude: input.longitude as number,
-              radiusKm,
-              sort: "closest",
-              limit: sectionSize,
-              offset: 0,
-            })
-            .then(({ jobs }) => jobs.map((row) => toHomeFeedJob(row)))
-            .catch(() => [] as HomeFeedJobRecord[])
-        : Promise.resolve([] as HomeFeedJobRecord[]),
-      this.loadPublicPool(),
-      this.loadFeatured(sectionSize),
-      this.buildRecommended({ ...input, sectionSize, now }),
+        ? collect(
+            "nearby",
+            new SearchService(this.database)
+              .search({
+                latitude: input.latitude as number,
+                longitude: input.longitude as number,
+                radiusKm,
+                sort: "closest",
+                limit: sectionSize,
+                offset: 0,
+              })
+              .then(({ jobs }) => jobs.map((row) => toHomeFeedJob(row))),
+          )
+        : Promise.resolve<SectionOutcome<HomeFeedJobRecord[]>>({ ok: true, data: [] }),
+      collect("publicPool", this.loadPublicPool()),
+      collect("featured", this.loadFeatured(sectionSize)),
     ]);
+
+    const nearby = nearbyOutcome.ok ? nearbyOutcome.data : [];
+    const pool = poolOutcome.ok ? poolOutcome.data : [];
+    const featured = featuredOutcome.ok ? featuredOutcome.data : [];
 
     const boostedIds = new Set(featured.map((job) => job.id));
 
-    // Dedupe order: near → recommended → featured → specialized → remote → more.
+    // Recommended for a signed-in worker comes from the Phase 3→7 pipeline;
+    // everyone else (anonymous, or a pipeline with nothing to rank yet) gets a
+    // data-driven editorial slice so the row never silently disappears: the
+    // freshest open jobs that aren't already in the higher-priority
+    // Nearby/Featured sections.
+    const recommendedOutcome = await collect("recommended", this.buildRecommended({ ...input, sectionSize, now }));
+    const pipelineRecommended = recommendedOutcome.ok ? recommendedOutcome.data : [];
+    const recommended =
+      pipelineRecommended.length > 0
+        ? pipelineRecommended
+        : pickRecommendedEditorial(pool, sectionSize, {
+            avoidIds: new Set([...nearby, ...featured].map((job) => job.id)),
+            boostedIds,
+            now,
+          });
+
+    // Dedupe order: near → recommended → featured → specialized → remote → weekend → more.
     const used = new Set<string>();
     nearby.forEach((job) => used.add(job.id));
     recommended.forEach((job) => used.add(job.id));
@@ -170,21 +237,35 @@ export class HomeFeedService {
     ).picked;
     remote.forEach((job) => used.add(job.id));
 
+    const weekend = pickSection(
+      pool.filter((job) => isWeekend(job)),
+      sectionSize,
+      {
+        avoidIds: used,
+        boostedIds,
+        now,
+      },
+    ).picked;
+    weekend.forEach((job) => used.add(job.id));
+
     const more = pickSection(pool, moreSize, {
       avoidIds: used,
       boostedIds,
       now,
     }).picked;
 
-    return {
+    const result: HomeFeedResult = {
       nearby,
       recommended,
       featured,
       specialized,
       remote,
+      weekend,
       more,
       total: pool.length,
     };
+    if (sectionErrors.length > 0) result.sectionErrors = sectionErrors;
+    return result;
   }
 
   /** The bounded public read-model pool (single function call, ≤ 200 open jobs). */
@@ -197,39 +278,38 @@ export class HomeFeedService {
 
   /** Active boosts joined to open, non-deleted listings, promotions first. */
   private async loadFeatured(limit: number): Promise<HomeFeedJobRecord[]> {
-    try {
-      const { rows } = await this.database.query<PublicJobRow>(
-        `select
-           j.id, j.title, j.description, j.pay_amount, j.pay_currency, j.pay_type,
-           j.location_text, j.latitude, j.longitude, j.workers_needed, j.created_at,
-           coalesce(c.name, 'Other') as category,
-           p.full_name as employer_name,
-           p.profile_photo_key as employer_photo_key,
-           j.banner_image
-         from boosts b
-         join jobs j on j.id = b.job_id
-         left join categories c on c.id = j.category_id
-         left join profiles p on p.user_id = j.employer_id and p.deleted_at is null
-        where b.status = 'active'
-          and b.expires_at > now()
-          and j.deleted_at is null
-          and j.status = 'open'
-        order by b.start_at desc, j.created_at desc
-        limit $1`,
-        [limit],
-      );
-      return rows.map((row) => toHomeFeedJob(row));
-    } catch {
-      // If the boosts table is missing in an environment, featured degrades to
-      // an empty section instead of breaking the whole homepage.
-      return [];
-    }
+    const { rows } = await this.database.query<PublicJobRow>(
+      `select
+         j.id, j.title, j.description, j.pay_amount, j.pay_currency, j.pay_type,
+         j.location_text, j.latitude, j.longitude, j.workers_needed, j.workers_hired, j.created_at,
+         j.work_arrangement,
+         coalesce(c.name, 'Other') as category,
+         p.full_name as employer_name,
+         p.profile_photo_key as employer_photo_key,
+         j.banner_image,
+         true as boosted
+       from boosts b
+       join jobs j on j.id = b.job_id
+       left join categories c on c.id = j.category_id
+       left join profiles p on p.user_id = j.employer_id and p.deleted_at is null
+      where b.status = 'active'
+        and b.expires_at > now()
+        and j.deleted_at is null
+        and j.status = 'open'
+        and (j.workers_needed = 0 or j.workers_hired < j.workers_needed)
+        and (j.end_date is null or j.end_date >= current_date)
+      order by b.start_at desc, j.created_at desc
+      limit $1`,
+      [limit],
+    );
+    return rows.map((row) => toHomeFeedJob(row));
   }
 
   /**
    * Recommended: the canonical Phase 3→7 pipeline when a worker is signed in
    * (user id always derives from the session, never the request body); the
-   * section is left empty for anonymous visitors with no identity to rank for.
+   * pipeline's ranking slice. An empty result falls back to data-driven
+   * editorial in `getHomeFeed`, so anonymous visitors still get a section.
    */
   private async buildRecommended(input: {
     userId?: string | null;
@@ -303,9 +383,11 @@ function toHomeFeedJob(row: PublicJobRow): HomeFeedJobRecord {
     pay_currency: row.pay_currency,
     pay_type: row.pay_type,
     location_text: row.location_text,
+    work_arrangement: row.work_arrangement ?? null,
     latitude: row.latitude,
     longitude: row.longitude,
     workers_needed: row.workers_needed,
+    workers_hired: row.workers_hired ?? 0,
     created_at:
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     category: row.category || "Other",
@@ -313,6 +395,7 @@ function toHomeFeedJob(row: PublicJobRow): HomeFeedJobRecord {
     employer_photo_key: row.employer_photo_key,
     banner_image: row.banner_image,
     relevance_score: toNumber(row.relevance_score) ?? 0,
+    boosted: row.boosted === true,
   };
 }
 
@@ -326,20 +409,53 @@ function toFeedItemJob(item: FeedItem): HomeFeedJobRecord {
     pay_currency: job.payCurrency,
     pay_type: job.payType,
     location_text: job.locationText,
+    work_arrangement: job.workArrangement,
     latitude: job.latitude,
     longitude: job.longitude,
     workers_needed: job.workersNeeded,
+    workers_hired: job.workersHired ?? 0,
     created_at: job.createdAt,
     category: job.category || "Other",
     employer_name: job.employerName,
     employer_photo_key: job.employerPhotoKey,
     banner_image: job.bannerImage,
     relevance_score: item.rankingMetadata.finalRankingScore,
+    boosted: false,
   };
 }
 
 function isRemote(job: HomeFeedJobRecord): boolean {
-  return String(job.location_text ?? "").toLowerCase().includes("remote");
+  return job.work_arrangement === "Remote";
+}
+
+/**
+ * Weekend shifts are inferred from the same keywords the SQL search function
+ * uses (see `homlo_search_public_jobs`, Weekend branch), so home and search
+ * agree on what "weekend" means.
+ */
+function isWeekend(job: HomeFeedJobRecord): boolean {
+  const haystack = `${job.title} ${job.description}`.toLowerCase();
+  return /weekend|saturday|sunday/.test(haystack);
+}
+
+/**
+ * Editorial fallback for a visitor with no ranking identity (anonymous) or a
+ * pipeline that has no signal yet: the freshest promoted/open jobs that aren't
+ * already shown in a higher-priority section, so the Recommended row renders
+ * something real instead of silently disappearing.
+ */
+function pickRecommendedEditorial(
+  pool: HomeFeedJobRecord[],
+  size: number,
+  options: {
+    avoidIds: ReadonlySet<string>;
+    boostedIds: ReadonlySet<string>;
+    now: Date;
+  },
+): HomeFeedJobRecord[] {
+  return rankJobs(pool, options.now, options.boostedIds)
+    .filter((job) => !options.avoidIds.has(job.id))
+    .slice(0, size);
 }
 
 /**

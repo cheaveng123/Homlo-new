@@ -1,20 +1,13 @@
 /**
- * SupabaseMessagingProvider — the first production messaging provider.
+ * SupabaseMessagingProvider — the production messaging provider.
  *
  * Transport:
  *  - Mutations + queries go through the tRPC homlo.messaging.* router,
  *    which routes to the gateway (service-role RPCs, server-enforced auth).
- *  - Realtime push uses the Supabase JS SDK with the anon key + the user's
- *    access token. RLS policies (via homlo_current_user_id()) ensure the
- *    client can only see its own conversations/messages.
- *
- * Fallback:
- *  - If Realtime env vars are missing or the connection fails, the provider
- *    silently degrades to poll-on-focus (no push). The messaging domain
- *    always remains functional regardless.
+ *  - Realtime push is disabled. `subscribeToMessages` is a no-op; the unread
+ *    badge polls every 15s and the chat screen loads on mount. This avoids an
+ *    unauthenticated, unfiltered Realtime channel.
  */
-import { createClient, RealtimeChannel } from "@supabase/supabase-js";
-
 import { trpcDirect } from "@/lib/trpc";
 import type { MessagingProvider } from "./provider";
 import type {
@@ -23,24 +16,6 @@ import type {
   Message,
   NewMessageEvent,
 } from "./types";
-
-// ---------------------------------------------------------------------------
-// Supabase client singleton (lazy-initialized, only if Realtime is configured)
-// ---------------------------------------------------------------------------
-
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
-
-let supabaseClient: ReturnType<typeof createClient> | null = null;
-
-function getSupabaseClient() {
-  if (supabaseClient) return supabaseClient;
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
-  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    realtime: { params: { eventsPerSecond: 2 } },
-  });
-  return supabaseClient;
-}
 
 // ---------------------------------------------------------------------------
 // Wire-format → domain model mapping
@@ -54,6 +29,7 @@ interface WireConversation {
   job_title: string;
   other_user_id: string;
   other_user_name: string;
+  other_user_photo: string | null;
   last_message_at: string | null;
   last_message: string | null;
   last_message_author: string | null;
@@ -70,12 +46,9 @@ interface WireMessage {
   created_at: string;
   updated_at: string | null;
   deleted_at: string | null;
-}
-
-interface WireConversationDetail {
-  id: string;
-  application_id: string | null;
-  job_id: string | null;
+  application_id?: string | null;
+  job_id?: string | null;
+  job_title?: string | null;
 }
 
 function mapConversationSummary(row: WireConversation): ConversationSummary {
@@ -88,6 +61,7 @@ function mapConversationSummary(row: WireConversation): ConversationSummary {
       userId: row.other_user_id,
       name: row.other_user_name || "Homlo user",
       role: "employer",
+      photo: row.other_user_photo ?? null,
     },
     lastMessageAt: row.last_message_at,
     lastMessage: row.last_message,
@@ -108,6 +82,9 @@ function mapMessage(row: WireMessage): Message {
     updatedAt: row.updated_at,
     readAt: row.read_at,
     deletedAt: row.deleted_at,
+    applicationId: row.application_id ?? null,
+    jobId: row.job_id ?? null,
+    jobTitle: row.job_title || null,
   };
 }
 
@@ -126,10 +103,9 @@ class _SupabaseMessagingProvider implements MessagingProvider {
       .filter((r: WireConversation) => r.conversation_id && r.other_user_id)
       .map(mapConversationSummary)
       .sort((a, b) => {
-        if (!a.lastMessageAt && !b.lastMessageAt) return 0;
-        if (!a.lastMessageAt) return 1;
-        if (!b.lastMessageAt) return -1;
-        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+        const at = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+        const bt = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+        return bt - at;
       });
   }
 
@@ -176,45 +152,8 @@ class _SupabaseMessagingProvider implements MessagingProvider {
 
   // -- Realtime ----------------------------------------------------------
 
-  subscribeToMessages(cb: (event: NewMessageEvent) => void): () => void {
-    const client = getSupabaseClient();
-    if (!client) return () => {}; // polling-only fallback: nothing to unsubscribe
-
-    let channel: RealtimeChannel | null = null;
-
-    (async () => {
-      try {
-        // Ensure the access token is set for realtime auth (RLS).
-        // The token refresh is handled by the tRPC client; we piggyback on it.
-        channel = client
-          .channel("messaging-realtime")
-          .on(
-            "postgres_changes" as any,
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "messages",
-            } as any,
-            (payload: any) => {
-              const row = payload.new;
-              if (!row) return;
-              cb({
-                conversationId: row.conversation_id,
-                message: mapMessage(row),
-              });
-            },
-          )
-          .subscribe();
-      } catch {
-        // Realtime not available — degrade silently.
-      }
-    })();
-
-    return () => {
-      if (channel) {
-        client.removeChannel(channel);
-      }
-    };
+  subscribeToMessages(_cb: (event: NewMessageEvent) => void): () => void {
+    return () => {};
   }
 
   // -- blocks / reports --------------------------------------------------

@@ -1,1 +1,5 @@
-export { default } from "@/components/search-screen";
+import { Redirect } from "@/lib/router";
+
+export default function JobsRedirect() {
+  return <Redirect href="/explore" />;
+}

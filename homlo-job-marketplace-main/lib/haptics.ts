@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "@/lib/native/haptics";
 
 export const haptic = {
   light: () => {

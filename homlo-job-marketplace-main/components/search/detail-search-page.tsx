@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter } from "@/lib/router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Location from "expo-location";
+import { locationService } from "@/lib/location-service";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { Text } from "@/components/ui/text";
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { haptic } from "@/lib/haptics";
 import { goBack as goBackOrHome } from "@/lib/navigation";
 import { PolygonDrawMap } from "@/components/search/polygon-draw-map";
@@ -16,25 +16,18 @@ import { defaultSearchFilters, payPeriods, type EmploymentFilter, type MapCoordi
 import { getDetailSnapshot, publishAppliedFilters } from "@/lib/detail-search-store";
 import { trpc } from "@/lib/trpc";
 
-const GREEN = "#58C7A4";
-const GREEN_INK = "#0E8160";
+const GREEN = "#8BD3E3";
+const GREEN_INK = "#0B6F8A";
 const TEXT_PRIMARY = "#1F2933";
 const TEXT_SECONDARY = "#6B7280";
-const CONTROL_GRAY = "#F1F4F3";
-const SELECTED_BG = "#EFF9F5";
-const DIVIDER = "#EEF0EF";
-const SLIDER_TRACK = "#E3E8E6";
+const CONTROL_GRAY = "#EEF3F4";
+const SELECTED_BG = "#EEF7FA";
+const DIVIDER = "#EEF3F4";
+const SLIDER_TRACK = "#DCE6EA";
 const MUTED = "#9AA19F";
 
 const DISTANCE_MIN = 5;
 const DISTANCE_MAX = 50;
-
-const quickSearchOptions: { label: string; icon: "clock" | "graduationcap.fill" | "calendar" | "house.fill"; value: EmploymentFilter | "Remote" }[] = [
-  { label: "Part-time", icon: "clock", value: "Part-time" },
-  { label: "Internship", icon: "graduationcap.fill", value: "Internship" },
-  { label: "Weekend", icon: "calendar", value: "Weekend" },
-  { label: "Remote", icon: "house.fill", value: "Remote" },
-];
 
 const PRICE_PERIODS: Record<PayPeriodFilter, { min: number; max: number }> = {
   "Per hour": { min: 2, max: 50 },
@@ -46,14 +39,14 @@ const PRICE_PERIODS: Record<PayPeriodFilter, { min: number; max: number }> = {
 const jobTypeRows: {
   key: string;
   label: string;
-  icon: "briefcase.fill" | "clock" | "calendar.days" | "graduationcap.fill" | "sun.max";
+  icon: "brief" | "clock" | "calendar" | "grad" | "sun";
   value: EmploymentFilter;
 }[] = [
-  { key: "all", label: "All", icon: "briefcase.fill", value: "Any" },
+  { key: "all", label: "All", icon: "brief", value: "Any" },
   { key: "part-time", label: "Part-time", icon: "clock", value: "Part-time" },
-  { key: "full-time", label: "Full-time", icon: "calendar.days", value: "Full-time" },
-  { key: "internship", label: "Internship", icon: "graduationcap.fill", value: "Internship" },
-  { key: "seasonal", label: "Seasonal", icon: "sun.max", value: "Temporary" },
+  { key: "full-time", label: "Full-time", icon: "calendar", value: "Full-time" },
+  { key: "internship", label: "Internship", icon: "grad", value: "Internship" },
+  { key: "seasonal", label: "Seasonal", icon: "sun", value: "Temporary" },
 ];
 
 type PublishedJobLike = {
@@ -142,11 +135,13 @@ export function DetailSearchPage() {
     }
     let center: MapCoordinate = defaultSearchCenter;
     try {
-      const permission = await Location.getForegroundPermissionsAsync();
-      const granted = permission.status === "granted" ? true : (await Location.requestForegroundPermissionsAsync()).status === "granted";
-      if (granted) {
-        const position = (await Location.getLastKnownPositionAsync()) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-        if (position) center = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+      let permission = await locationService.getPermissionDetails();
+      if (permission.status !== "granted") {
+        permission = await locationService.requestPermissionDetails();
+      }
+      if (permission.status === "granted") {
+        const position = await locationService.getBestAvailablePosition();
+        if (position) center = { latitude: position.latitude, longitude: position.longitude };
       }
     } catch {
       center = defaultSearchCenter;
@@ -219,10 +214,10 @@ export function DetailSearchPage() {
             onPress={() => goBackOrHome(router)}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <IconSymbol name="chevron.left" size={19} color={TEXT_PRIMARY} />
+            <AppIcon name="back" size={19} color={TEXT_PRIMARY} />
           </Pressable>
           <View style={styles.searchField}>
-            <IconSymbol name="magnifyingglass" size={16} color="#8A9390" />
+            <AppIcon name="search" size={16} color="#8A9390" />
             <TextInput
               accessibilityLabel="Search jobs"
               value={query}
@@ -235,7 +230,7 @@ export function DetailSearchPage() {
             />
             {query.length > 0 && (
               <Pressable accessibilityLabel="Clear search" hitSlop={8} onPress={() => setQuery("")} style={styles.clearButton}>
-                <IconSymbol name="xmark" size={15} color="#8A9390" />
+                <AppIcon name="close" size={15} color="#8A9390" />
               </Pressable>
             )}
           </View>
@@ -246,28 +241,6 @@ export function DetailSearchPage() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.quickSearchTitle}>Quick search</Text>
-          <View style={styles.quickSearchGrid}>
-            {quickSearchOptions.map((option) => {
-              const active = option.value === "Remote" ? draft.arrangement === "Remote" : draft.employmentType === option.value;
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  key={option.label}
-                  onPress={() => {
-                    haptic.selection();
-                    if (option.value === "Remote") setDraft((current) => ({ ...current, arrangement: active ? "Any" : "Remote" }));
-                    else setDraft((current) => ({ ...current, employmentType: active ? "Any" : option.value as EmploymentFilter }));
-                  }}
-                  style={({ pressed }) => [styles.quickSearchPill, active && styles.quickSearchPillActive, pressed && styles.pressed]}
-                >
-                  <IconSymbol name={option.icon} size={16} color={active ? "#FFFFFF" : GREEN_INK} />
-                  <Text style={active ? styles.quickSearchTextActive : styles.quickSearchText}>{option.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
           <View style={styles.sectionBlock}>
             <Text style={styles.sectionHeading}>Price range</Text>
             <View style={styles.periodRow}>
@@ -309,7 +282,7 @@ export function DetailSearchPage() {
                     onPress={() => selectJobType(row.value)}
                     style={({ pressed }) => [styles.jobTypeRow, selected && styles.jobTypeRowSelected, pressed && styles.pressed]}
                   >
-                    <IconSymbol name={row.icon} size={20} color={selected ? GREEN_INK : "#9AA19F"} />
+                    <AppIcon name={row.icon} size={20} color={selected ? GREEN_INK : "#9AA19F"} />
                     <Text style={selected ? styles.jobTypeLabelSelected : styles.jobTypeLabel}>{row.label}</Text>
                     <Text style={selected ? styles.jobTypeCountSelected : styles.jobTypeCount}>
                       {count !== null ? count.toLocaleString() : "—"}
@@ -336,7 +309,7 @@ export function DetailSearchPage() {
               </View>
               <View style={styles.drawRow}>
                 <View style={styles.drawStatusRow}>
-                  <IconSymbol name={isValidPolygon(draft.polygon) ? "checkmark.circle.fill" : "mappin"} size={14} color={GREEN_INK} />
+                  <AppIcon name={isValidPolygon(draft.polygon) ? "circle-check" : "pin"} size={14} color={GREEN_INK} />
                   <Text style={styles.drawStatus}>
                     {isValidPolygon(draft.polygon) ? `Drawn area (${(draft.polygon ?? []).length} points)` : "Tap the map to draw an area"}
                   </Text>
@@ -349,7 +322,7 @@ export function DetailSearchPage() {
             </View>
             <View style={styles.nearMeRow}>
               <View style={styles.locationIconWell}>
-                <IconSymbol name="mappin" size={20} color={GREEN_INK} />
+                <AppIcon name="pin" size={20} color={GREEN_INK} />
               </View>
               <View style={styles.nearMeCopy}>
                 <Text style={styles.nearMeTitle}>Near me</Text>
@@ -481,25 +454,18 @@ const styles = StyleSheet.create({
 
   content: { paddingHorizontal: 20 },
 
-  quickSearchTitle: { color: TEXT_PRIMARY, fontSize: 16, fontWeight: "800", marginTop: 12 },
-  quickSearchGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 11 },
-  quickSearchPill: { alignItems: "center", backgroundColor: CONTROL_GRAY, borderRadius: 18, flexDirection: "row", gap: 6, height: 38, justifyContent: "center", paddingHorizontal: 15, width: "47%" },
-  quickSearchPillActive: { backgroundColor: GREEN_INK },
-  quickSearchText: { color: TEXT_PRIMARY, fontSize: 12.5, fontWeight: "700" },
-  quickSearchTextActive: { color: "#FFFFFF", fontSize: 12.5, fontWeight: "700" },
-
   sectionHeading: { color: TEXT_PRIMARY, fontSize: 16, fontWeight: "700", letterSpacing: -0.2 },
   periodRow: { flexDirection: "row", gap: 8, marginTop: 11 },
   periodPill: { alignItems: "center", backgroundColor: CONTROL_GRAY, borderRadius: 17, flex: 1, height: 33, justifyContent: "center" },
   periodPillActive: { backgroundColor: GREEN },
-  periodPillText: { color: "#66706D", fontSize: 12, fontWeight: "600" },
+  periodPillText: { color: "#5D7480", fontSize: 12, fontWeight: "600" },
   periodPillTextActive: { color: GREEN_INK, fontSize: 12, fontWeight: "700" },
 
   sectionBlock: { marginTop: 12 },
   jobTypeList: { marginTop: 10 },
   jobTypeRow: { alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: 9, flexDirection: "row", gap: 12, height: 44, paddingHorizontal: 10 },
   jobTypeRowSelected: { backgroundColor: SELECTED_BG },
-  jobTypeLabel: { color: "#4F5956", flex: 1, fontSize: 14, fontWeight: "500" },
+  jobTypeLabel: { color: "#5D7480", flex: 1, fontSize: 14, fontWeight: "500" },
   jobTypeLabelSelected: { color: GREEN_INK, flex: 1, fontSize: 14, fontWeight: "600" },
   jobTypeCount: { color: "#9AA19F", fontSize: 12.5, fontWeight: "500", marginRight: 4 },
   jobTypeCountSelected: { color: GREEN_INK, fontSize: 12.5, fontWeight: "600", marginRight: 4 },
@@ -537,7 +503,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 8,
     height: 16,
-    shadowColor: "#173C25",
+    shadowColor: "#14324A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.5,
@@ -560,7 +526,7 @@ const styles = StyleSheet.create({
     height: 14,
     left: 0,
     position: "absolute",
-    shadowColor: "#173C25",
+    shadowColor: "#14324A",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 2,

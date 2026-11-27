@@ -2,11 +2,15 @@ import { useMemo } from "react";
 
 import { jobs as curatedJobs } from "@/components/job-store";
 import { trpc } from "@/lib/trpc";
+import { isAwaitingData } from "@/lib/useFirstLoadSkeletonFlag";
 import { normalizePublishedJob, type JobRecord } from "@/lib/job-record";
 
 type PublishedRecord = Omit<JobRecord, "workers_needed" | "banner_image"> & {
   workers_needed?: number;
   banner_image?: string | null;
+  work_arrangement?: "On-site" | "Hybrid" | "Remote" | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 function toJobRecord(record: PublishedRecord): JobRecord {
@@ -23,7 +27,21 @@ function toJobRecord(record: PublishedRecord): JobRecord {
     category: record.category,
     employer_name: record.employer_name,
     banner_image: record.banner_image,
+    status: record.status,
+    workers_hired: record.workers_hired,
+    work_arrangement: record.work_arrangement,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    work_days: record.work_days,
+    clock_in: record.clock_in,
+    clock_out: record.clock_out,
+    pay_amount_max: record.pay_amount_max,
   };
+}
+
+/** One public job record (list or single-job endpoint) → the app's job shape. */
+export function toLiveJob(record: PublishedRecord) {
+  return normalizePublishedJob(toJobRecord(record));
 }
 
 export function usePublishedJobs() {
@@ -31,7 +49,7 @@ export function usePublishedJobs() {
     // Home mounts its queries on every tab visit; render fresh data instantly
     // from the client cache and only re-validate in the background once the
     // window is stale, instead of refetching on every mount.
-    staleTime: 30_000,
+    // PERF: staleTime comes from the shared publicJobs default (app/_layout.tsx).
     placeholderData: (previousData) => previousData,
   });
   const liveJobs = useMemo(
@@ -46,5 +64,7 @@ export function usePublishedJobs() {
       return true;
     });
   }, [liveJobs]);
-  return { jobs: allJobs, liveJobs, loading: query.isLoading, error: query.error, refetch: query.refetch };
+  // `loading` stays true until the live list is in (see isAwaitingData), so
+  // screens don't read the curated-only list as the final result.
+  return { jobs: allJobs, liveJobs, loading: isAwaitingData(query), error: query.error, refetch: query.refetch };
 }

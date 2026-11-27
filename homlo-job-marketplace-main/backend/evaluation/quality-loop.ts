@@ -20,8 +20,7 @@
 
 import { RecommendationFeedService } from "../ranking/recommendation-feed";
 import { EvalDatabase } from "./in-memory";
-import { truncateDataset, simulateAggregation, type EvalDataset } from "./dataset";
-import type { EvalEvent } from "./dataset";
+import { truncateDataset, simulateAggregation, type EvalDataset , EvalEvent } from "./dataset";
 
 export type FeedbackLoopOptions = {
   userId: string;

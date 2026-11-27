@@ -1,14 +1,16 @@
-/** @type {const} */
+// Lagoon & Sunrise palette. Keep the token NAMES stable — only the swatches
+// change — so every consumer repaints without touching its imports.
 const themeColors = {
-  primary: { light: '#16803C', dark: '#16803C' },
-  background: { light: '#F7F8F6', dark: '#F7F8F6' },
+  primary: { light: '#0891B2', dark: '#0891B2' },
+  background: { light: '#F3F6F5', dark: '#F3F6F5' },
   surface: { light: '#FFFFFF', dark: '#FFFFFF' },
-  foreground: { light: '#17201A', dark: '#17201A' },
-  muted: { light: '#66736A', dark: '#66736A' },
-  border: { light: '#E2E8E5', dark: '#E2E8E5' },
-  success: { light: '#22A447', dark: '#22A447' },
-  warning: { light: '#DD9E08', dark: '#DD9E08' },
-  error: { light: '#C74D4D', dark: '#C74D4D' },
+  foreground: { light: '#12303C', dark: '#12303C' },
+  muted: { light: '#6A7C84', dark: '#6A7C84' },
+  border: { light: '#E6EDEF', dark: '#E6EDEF' },
+  success: { light: '#0891B2', dark: '#0891B2' },
+  warning: { light: '#F5A524', dark: '#F5A524' },
+  error: { light: '#C0392B', dark: '#C0392B' },
+  softBlue: { light: '#8BD3E3', dark: '#8BD3E3' },
 };
 
 module.exports = { themeColors };

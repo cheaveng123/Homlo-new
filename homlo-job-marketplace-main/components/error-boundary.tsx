@@ -1,6 +1,9 @@
 import { Component, type ErrorInfo, type PropsWithChildren, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ErrorStateIcon } from "@/src/components/icons";
+import { palette, radii, shadows } from "@/src/design/tokens";
+
 type ErrorBoundaryState = { error: Error | null };
 
 /**
@@ -27,9 +30,7 @@ export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundarySta
     if (!this.state.error) return this.props.children;
     return (
       <View style={styles.screen}>
-        <View style={styles.icon}>
-          <Text style={styles.iconText}>!</Text>
-        </View>
+        <ErrorStateIcon size={64} surface={palette.page} />
         <Text style={styles.title}>Something went wrong</Text>
         <Text style={styles.copy}>Homlo hit an unexpected error on this screen.</Text>
         <Pressable
@@ -46,12 +47,10 @@ export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundarySta
 }
 
 const styles = StyleSheet.create({
-  screen: { alignItems: "center", backgroundColor: "#F7F8F6", flex: 1, justifyContent: "center", paddingHorizontal: 32 },
-  icon: { alignItems: "center", backgroundColor: "#FBEcec", borderRadius: 22, height: 52, justifyContent: "center", width: 52 },
-  iconText: { color: "#A04141", fontSize: 24, fontWeight: "800" },
-  title: { color: "#17201A", fontSize: 18, fontWeight: "800", marginTop: 16 },
-  copy: { color: "#66736A", fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: "center" },
-  button: { alignItems: "center", backgroundColor: "#16803C", borderRadius: 13, marginTop: 22, minWidth: 160, paddingHorizontal: 20, paddingVertical: 13 },
-  buttonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  screen: { alignItems: "center", backgroundColor: palette.page, flex: 1, justifyContent: "center", paddingHorizontal: 32 },
+  title: { color: palette.ink, fontSize: 18, fontWeight: "800", marginTop: 16 },
+  copy: { color: palette.muted, fontSize: 13, lineHeight: 19, marginTop: 6, textAlign: "center" },
+  button: { alignItems: "center", backgroundColor: palette.cyan, borderRadius: radii.input, marginTop: 22, minWidth: 160, paddingHorizontal: 20, paddingVertical: 13, ...shadows.lift },
+  buttonText: { color: palette.surface, fontSize: 14, fontWeight: "700" },
   pressed: { opacity: 0.86 },
 });

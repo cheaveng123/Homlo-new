@@ -1,69 +1,119 @@
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import React, { useMemo } from "react";
+import { FlatList, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "@/lib/router";
+import Animated from "react-native-reanimated";
 
-import { jobs, useJobStore } from "@/components/job-store";
-import { JobCard } from "@/components/job-card";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { ScreenContainer } from "@/components/screen-container";
+import { useJobStore, type Job } from "@/components/job-store";
+import { usePublishedJobs } from "@/hooks/use-published-jobs";
+import { useFirstLoadSkeletonFlag } from "@/lib/useFirstLoadSkeletonFlag";
+import { computePositionsLeft } from "@/lib/positions";
+import { JobResultListSkeleton } from "@/src/new/components/NewSkeletons";
+import { mockJobFor } from "@/lib/mock-job";
+import { DEMO_CONTENT_ENABLED } from "@/lib/demo-content";
 import { haptic } from "@/lib/haptics";
-import { Text } from "@/components/ui/text";
+import { EmptyStateNew, RoundButtonNew } from "@/src/new/components/PrimitivesNew";
+import { JobResultCardNew } from "@/src/new/components/JobPartsNew";
+import { TextNew } from "@/src/new/components/TextNew";
+import { colorsNew } from "@/src/new/theme/tokensNew";
+import { useEnterNew } from "@/src/new/theme/motionNew";
+import type { JobSummaryNew } from "@/src/new/types/jobNew";
 
-export default function SavedScreen() {
-  const router = useRouter();
-  const { savedIds } = useJobStore();
-  const savedJobs = jobs.filter((job) => savedIds.includes(job.id));
-
-  return (
-    <ScreenContainer className="flex-1" containerClassName="bg-background">
-      <FlatList
-        contentContainerStyle={styles.content}
-        data={savedJobs}
-        keyExtractor={(job) => job.id}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.title}>Saved jobs</Text>
-            <View style={styles.tabs}>
-              <View style={[styles.tab, styles.tabActive]}><Text style={styles.tabActiveText}>Saved</Text></View>
-              <View style={styles.tab}><Text style={styles.tabText}>Viewed</Text></View>
-            </View>
-          </View>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={styles.iconWell}><IconSymbol name="heart" size={31} color="#08675F" /></View>
-            <Text style={styles.emptyTitle}>Nothing saved yet</Text>
-            <Text style={styles.emptyText}>Tap the heart on any role to build your shortlist.</Text>
-            <Pressable
-              onPress={() => { haptic.light(); router.push("/jobs" as never); }}
-              style={({ pressed }) => [styles.browseButton, pressed && styles.buttonPressed]}
-            >
-              <Text style={styles.browseText}>Browse jobs</Text>
-              <IconSymbol name="arrow.right" size={16} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        }
-        renderItem={({ item, index }) => <Animated.View entering={FadeInDown.delay(index * 45).duration(220)}><JobCard job={item} compact /></Animated.View>}
-        showsVerticalScrollIndicator={false}
-      />
-    </ScreenContainer>
-  );
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "H";
+  return parts.map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-const styles = StyleSheet.create({
-  content: { flexGrow: 1, padding: 18, paddingBottom: 28 },
-  header: { marginBottom: 10, marginTop: 5 },
-  title: { color: "#16211F", fontSize: 27, fontWeight: "800", letterSpacing: -0.8 },
-  tabs: { borderBottomColor: "#E2E8E5", borderBottomWidth: 1, flexDirection: "row", gap: 26, marginTop: 18 },
-  tab: { alignItems: "center", paddingBottom: 11, paddingHorizontal: 6 },
-  tabActive: { borderBottomColor: "#0F7D5E", borderBottomWidth: 2 },
-  tabText: { color: "#94A098", fontSize: 12.5, fontWeight: "600" },
-  tabActiveText: { color: "#0F7D5E", fontSize: 12.5, fontWeight: "800" },
-  emptyState: { alignItems: "center", backgroundColor: "#F0F8F6", borderRadius: 23, marginTop: 25, paddingHorizontal: 25, paddingVertical: 35 },
-  iconWell: { alignItems: "center", backgroundColor: "#DDF1EC", borderRadius: 34, height: 68, justifyContent: "center", width: 68 },
-  emptyTitle: { color: "#16211F", fontSize: 18, fontWeight: "800", marginTop: 17 },
-  emptyText: { color: "#64716E", fontSize: 13.5, lineHeight: 19, marginTop: 7, textAlign: "center" },
-  browseButton: { alignItems: "center", backgroundColor: "#08675F", borderRadius: 13, flexDirection: "row", gap: 8, marginTop: 21, paddingHorizontal: 18, paddingVertical: 12 },
-  browseText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
-  buttonPressed: { opacity: 0.78, transform: [{ scale: 0.97 }] },
-});
+/** Maps the app's canonical Job onto the new job container's view-model. */
+function toSummary(job: Job): JobSummaryNew {
+  const total = job.positionsTotal && job.positionsTotal > 0 ? job.positionsTotal : 0;
+  const left = typeof job.positionsAvailable === "number"
+    ? job.positionsAvailable
+    : computePositionsLeft(total, job.positionsFilled);
+  return {
+    id: job.id,
+    title: job.title,
+    locationLabel: job.location?.split(",")[0]?.trim() || "Location to be confirmed",
+    payLabel: job.pay,
+    positionsLeft: total ? left : 0,
+    positionsTotal: total || 1,
+    employerInitials: initialsOf(job.company),
+    imageUri: job.image || undefined,
+    typeLabel: job.tag || undefined,
+    liked: true,
+    boosted: job.boosted === true || job.boost?.isSponsored === true,
+  };
+}
+
+export default function SavedJobsScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const enter = useEnterNew();
+  const { savedIds, toggleSaved } = useJobStore();
+  const { jobs: allJobs, loading } = usePublishedJobs();
+
+  // Filtering by savedIds is what makes unsaving drop the card: toggleSaved
+  // removes the id, this memo recomputes, and the row disappears. The list
+  // covers curated + live published jobs; ids that are in neither (demo or
+  // removed listings) fall back to their placeholder so nothing is lost.
+  const savedJobs = useMemo(() => {
+    const known = savedIds
+      .map((id) => allJobs.find((job) => job.id === id))
+      .filter((job): job is Job => Boolean(job));
+    // Saved jobs that no longer exist are dropped; sample jobs only in demo mode.
+    const missing = loading || !DEMO_CONTENT_ENABLED
+      ? []
+      : savedIds
+          .filter((id) => !allJobs.some((job) => job.id === id))
+          .map((id) => mockJobFor(id));
+    return [...known, ...missing].map(toSummary);
+  }, [savedIds, allJobs, loading]);
+
+  const showSkeleton = useFirstLoadSkeletonFlag({
+    loading,
+    data: savedJobs.length ? savedJobs : undefined,
+  });
+
+  const toggleSave = (id: string) => {
+    haptic.selection();
+    toggleSaved(id);
+  };
+
+  const openJob = (id: string) => {
+    haptic.light();
+    router.push({ pathname: "/job/[id]", params: { id } } as never);
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colorsNew.white, paddingTop: insets.top + 8 }}>
+      <Animated.View entering={enter(0)} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16 }}>
+        <RoundButtonNew icon="back" onPress={() => router.back()} accessibilityLabel="Back" />
+        <TextNew variant="header">Saved</TextNew>
+      </Animated.View>
+
+      {!showSkeleton && (
+        <TextNew variant="meta" color={colorsNew.muted} style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+          {savedJobs.length} saved job{savedJobs.length === 1 ? "" : "s"}
+        </TextNew>
+      )}
+
+      {showSkeleton ? (
+        <JobResultListSkeleton />
+      ) : (
+        <FlatList
+          data={savedJobs}
+          keyExtractor={(j) => j.id}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item, index }) => (
+            <Animated.View entering={enter(index + 1)}>
+              <JobResultCardNew job={item} onPress={() => openJob(item.id)} onToggleLike={() => toggleSave(item.id)} />
+            </Animated.View>
+          )}
+          ListEmptyComponent={<EmptyStateNew icon="heart" title="No saved jobs yet" actionLabel="Explore jobs" onAction={() => router.push("/explore" as never)} />}
+        />
+      )}
+    </View>
+  );
+}

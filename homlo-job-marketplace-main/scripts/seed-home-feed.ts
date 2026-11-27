@@ -31,7 +31,7 @@ const EMPLOYER_EMAIL = "mengcheaveng2019@gmail.com";
 // the first visit (no device permission needed).
 const DEFAULT_CENTER = { latitude: 11.5564, longitude: 104.9282 };
 
-const CATEGORIES: Array<{ slug: string; name: string }> = [
+const CATEGORIES: { slug: string; name: string }[] = [
   { slug: "technology", name: "Technology" },
   { slug: "sales", name: "Sales" },
   { slug: "marketing", name: "Marketing" },

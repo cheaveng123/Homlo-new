@@ -1,9 +1,14 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useIsFocused } from "@/lib/router";
 
-import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { Text } from "@/components/ui/text";
 import { haptic } from "@/lib/haptics";
+import AnimatedPlaceholder from "./AnimatedPlaceholder";
+import { employerWords, jobSeekerWords } from "./searchPlaceholderWords";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SchemeColors } from "@/constants/theme";
 
 type SearchBarProps = {
   query?: string;
@@ -13,12 +18,24 @@ type SearchBarProps = {
   onFilters?: () => void;
   filterCount?: number;
   disableTopInset?: boolean;
+  role?: "seeker" | "employer";
 };
 
-export function SearchBar({ query, onPress, onBack, onFilters, filterCount = 0, disableTopInset = false }: SearchBarProps) {
+export function SearchBar({
+  query,
+  onPress,
+  onBack,
+  onFilters,
+  filterCount = 0,
+  disableTopInset = false,
+  role = "seeker",
+}: SearchBarProps) {
   const insets = useSafeAreaInsets();
-  const topPadding = disableTopInset ? 0 : Math.max(insets.top, 8) + 4;
+    const topPadding = disableTopInset ? 0 : Math.max(insets.top, 8) + 20;
   const displayQuery = query?.trim();
+  const scheme = useColorScheme();
+  const theme = SchemeColors[scheme === "dark" ? "dark" : "light"];
+  const isScreenFocused = useIsFocused();
 
   return (
     <View style={[styles.shell, { paddingTop: topPadding }]}>
@@ -33,19 +50,24 @@ export function SearchBar({ query, onPress, onBack, onFilters, filterCount = 0, 
             }}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <IconSymbol name="chevron.left" size={18} color="#17201A" />
+            <AppIcon name="back" size={18} color="#12303C" />
           </Pressable>
         ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Search jobs"
+          accessibilityLabel={role === "employer" ? "Search applicants" : "Search jobs"}
           onPress={() => {
             haptic.light();
             onPress();
           }}
           style={({ pressed }) => [styles.bar, styles.barFlex, pressed && styles.pressed]}
         >
-          <BarContent query={displayQuery} />
+          <BarContent
+            query={displayQuery}
+            role={role}
+            schemeTheme={theme}
+            paused={!isScreenFocused}
+          />
         </Pressable>
         {onFilters ? <FilterButton count={filterCount} onPress={onFilters} /> : null}
       </View>
@@ -53,97 +75,97 @@ export function SearchBar({ query, onPress, onBack, onFilters, filterCount = 0, 
   );
 }
 
-function BarContent({ query }: { query?: string }) {
-  return (
-    <>
-      <IconSymbol name="magnifyingglass" size={16} color="#94A098" />
-      <Text numberOfLines={1} style={[styles.searchText, query ? styles.searchTextActive : null]}>
-        {query || "Search jobs, skills, or companies..."}
-      </Text>
-    </>
-  );
-}
-
-function FilterButton({ count, onPress }: { count: number; onPress: () => void }) {
+function FilterButton({ count, onPress }: { count?: number; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={count > 0 ? `Filters, ${count} active` : "Filters"}
-      accessibilityState={{ expanded: false, selected: count > 0 }}
+      accessibilityLabel="Filters"
       onPress={() => {
         haptic.light();
         onPress();
       }}
       style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}
     >
-      <IconSymbol name="slider.horizontal.3" size={17} color="#17201A" />
-      {count > 0 && (
+      <AppIcon name="sliders" size={18} color="#12303C" />
+      {count ? (
         <View style={styles.filterBadge}>
-          <Text style={styles.filterBadgeText}>{count > 9 ? "9+" : count}</Text>
+          <Text style={styles.filterBadgeText}>{count}</Text>
         </View>
-      )}
+      ) : null}
     </Pressable>
   );
 }
-
+function BarContent({
+  query,
+  role = "seeker",
+  schemeTheme,
+  paused = false,
+}: {
+  query?: string;
+  role?: "seeker" | "employer";
+  schemeTheme?: any;
+  paused?: boolean;
+}) {
+  const displayQuery = query?.trim();
+  return (
+    <>
+      <View style={{ marginRight: 6 }}>
+        <AppIcon name="search" size={17} color="#9AAAB1" />
+      </View>
+      <View style={{ flex: 1, position: "relative", justifyContent: "center" }}>
+        {displayQuery ? (
+          <Text numberOfLines={1} style={[styles.searchText, styles.searchTextActive]}>
+            {displayQuery}
+          </Text>
+        ) : (
+          <AnimatedPlaceholder
+            words={role === "employer" ? employerWords : jobSeekerWords}
+            visible={!displayQuery}
+            paused={paused}
+            color={schemeTheme?.softBlue ?? "#7FAEF0"}
+            prefixColor={schemeTheme?.muted ?? "#6A7C84"}
+            fontSize={15}
+            lineHeight={22}
+          />
+        )}
+      </View>
+    </>
+  );
+}
 const styles = StyleSheet.create({
   shell: {
-    backgroundColor: "#F7F8F6",
-    paddingBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     paddingHorizontal: 16,
   },
-  row: { alignItems: "center", flexDirection: "row", gap: 8 },
+  row: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#DCE6EA",
     alignItems: "center",
-    backgroundColor: "#EDF7EF",
-    borderRadius: 19,
-    height: 42,
     justifyContent: "center",
-    width: 42,
+    backgroundColor: "#FFFFFF",
   },
   bar: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E2E8E5",
-    borderRadius: 14,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: 8,
-    height: 46,
-    paddingHorizontal: 14,
-    shadowColor: "#173C25",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    alignItems: "center",
+    borderRadius: 19,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DCE6EA",
+    paddingHorizontal: 16,
+    height: 56,
+    gap: 10,
   },
   barFlex: { flex: 1 },
-  filterButton: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E2E8E5",
-    borderRadius: 14,
-    borderWidth: 1,
-    height: 46,
-    justifyContent: "center",
-    position: "relative",
-    width: 46,
-  },
-  filterBadge: {
-    alignItems: "center",
-    backgroundColor: "#16803C",
-    borderColor: "#FFFFFF",
-    borderRadius: 8,
-    borderWidth: 1.5,
-    height: 16,
-    justifyContent: "center",
-    minWidth: 16,
-    paddingHorizontal: 3,
-    position: "absolute",
-    right: -3,
-    top: -4,
-  },
+  filterButton: { alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#DCE6EA", borderRadius: 16, borderWidth: 1, justifyContent: "center", position: "relative", width: 48, height: 48 },
+  filterBadge: { alignItems: "center", backgroundColor: "#0891B2", borderColor: "#FFFFFF", borderRadius: 8, borderWidth: 1.5, height: 16, justifyContent: "center", minWidth: 16, paddingHorizontal: 3, position: "absolute", right: -3, top: -4 },
   filterBadgeText: { color: "#FFFFFF", fontSize: 8, fontWeight: "800" },
-  searchText: { color: "#94A098", flex: 1, fontSize: 14, fontWeight: "400" },
-  searchTextActive: { color: "#17201A", fontWeight: "500" },
+  searchText: { color: "#9AAAB1", flex: 1, fontSize: 15, fontWeight: "400" },
+  searchTextActive: { color: "#12303C", fontWeight: "500" },
   pressed: { opacity: 0.82 },
 });

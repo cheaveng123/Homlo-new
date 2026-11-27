@@ -21,7 +21,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { buildEvaluableFixture } from "../backend/evaluation/fixtures";
-import { evaluateRanking, ndcgAt, mrr } from "../backend/evaluation/metrics";
+import { evaluateRanking } from "../backend/evaluation/metrics";
 import { runEvaluationSample } from "../backend/evaluation/evaluator";
 import { computeBaselines } from "../backend/evaluation/baselines";
 import { metricTable, buildReport, type EvaluationReport, type MetricTable } from "../backend/evaluation/report";

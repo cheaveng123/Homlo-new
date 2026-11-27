@@ -1,21 +1,22 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, usePathname, useRouter } from "expo-router";
+import { usePathname, useRouter } from "@/lib/router";
+import { AppNavigationContainer, RootStack } from "@/lib/router/navigators";
+import type { NativeStackNavigationOptions } from "@react-navigation/native-stack";
+import TabLayout from "./(tabs)/_layout";
 
-import { StatusBar } from "expo-status-bar";
-import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
+import BootSplash from "react-native-bootsplash";
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform, View } from "react-native";
+import { Platform, StatusBar } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { JobProvider } from "@/components/job-store";
-import { fontAssets } from "@/lib/typography";
 import { ONBOARDING_COMPLETE_KEY } from "@/lib/onboarding";
 import { getLocalValue, getLocalValueSync } from "@/lib/local-persistence";
 import { useAuth } from "@/hooks/use-auth";
+import { initPurchases } from "@/lib/purchases";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -24,18 +25,55 @@ import {
 } from "react-native-safe-area-context";
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
-import { trpc, createTRPCClient } from "@/lib/trpc";
+import { trpc, createTRPCClient, setQueryClientInstance } from "@/lib/trpc";
+import { setupQueryPersistence } from "@/lib/query-persistence";
+import { clearFeedClientCache } from "@/lib/feed-client";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { LocationProvider } from "@/src/context/LocationContext";
+import { WebLegalChrome } from "@/components/legal/WebLegalChrome";
+import { BrandLoadingScreen } from "@/components/BrandLoadingScreen";
+
+/** Native-stack options for every screen, then per screen (keyed by its app/ path). */
+const ROOT_SCREEN_OPTIONS: NativeStackNavigationOptions = { animation: "slide_from_right", animationDuration: 220, fullScreenGestureEnabled: false, gestureEnabled: true, gestureDirection: "horizontal", headerShown: false };
+
+const SCREEN_OPTIONS: Record<string, NativeStackNavigationOptions> = {
+  "(tabs)": { animation: "fade", animationDuration: 160 },
+  "onboarding/index": { animation: "fade", animationDuration: 220, gestureEnabled: false },
+  "search-results": { animation: "slide_from_right", animationDuration: 220 },
+  "detailed-search": { animation: "slide_from_right", animationDuration: 240 },
+  "discover/[kind]": { animation: "slide_from_right", animationDuration: 240 },
+  "job/[id]": { animation: "slide_from_right", animationDuration: 220 },
+  "job/[id]/apply": { animation: "slide_from_right", animationDuration: 220, presentation: "fullScreenModal" },
+  "employer/index": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/listings": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/post-job": { animation: "slide_from_right", animationDuration: 240 },
+  "post-job": { animation: "slide_from_right", animationDuration: 240 },
+  "employer/jobs": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/boost/[id]": { animation: "slide_from_right", animationDuration: 240 },
+  "oauth/callback": { animation: "fade", animationDuration: 160 },
+  "login": { animation: "fade", animationDuration: 180 },
+  "age": { animation: "slide_from_right", animationDuration: 220, gestureEnabled: false },
+  "complete-profile": { animation: "slide_from_right", animationDuration: 220, gestureEnabled: false },
+  "account-plans": { animation: "slide_from_right", animationDuration: 220 },
+  "checkout": { animation: "slide_from_right", animationDuration: 220 },
+  "employer/enterprise-campaign": { animation: "slide_from_right", animationDuration: 220 },
+  "applications/[id]": { animation: "slide_from_right", animationDuration: 220 },
+  "applications/index": { animation: "slide_from_right", animationDuration: 220 },
+  "terms": { animation: "slide_from_right", animationDuration: 220 },
+  "privacy": { animation: "slide_from_right", animationDuration: 220 },
+  "appeal": { animation: "slide_from_right", animationDuration: 220 },
+  "account/verify": { animation: "slide_from_right", animationDuration: 220 },
+  "account/settings": { animation: "slide_from_right", animationDuration: 220 },
+  "admin/index": { animation: "slide_from_right", animationDuration: 220 },
+};
+
+/** Pages anyone can open at any time (legal text, appeals), even mid-sign-up. */
+const ALWAYS_OPEN_PATHS = new Set(["/terms", "/privacy", "/appeal"]);
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
-void SplashScreen.preventAutoHideAsync();
-
-export const unstable_settings = {
-  anchor: "(tabs)",
-};
 
 /**
  * Resolves the initial route once the persisted onboarding flag is known.
@@ -86,11 +124,14 @@ function LaunchGate({ children }: PropsWithChildren) {
       if (pathname === "/login" || pathname === "/complete-profile") return;
       return;
     }
+    if (ALWAYS_OPEN_PATHS.has(pathname)) return;
     if (!user.profileComplete) {
-      if (pathname !== "/complete-profile") router.replace("/complete-profile" as never);
+      // New accounts go age → complete-profile; complete-profile itself sends
+      // anyone without a recorded age back to /age.
+      if (pathname !== "/complete-profile" && pathname !== "/age") router.replace("/complete-profile" as never);
       return;
     }
-    if (pathname === "/login" || pathname === "/complete-profile") {
+    if (pathname === "/login" || pathname === "/complete-profile" || pathname === "/age") {
       router.replace("/" as never);
     }
   }, [authLoading, pathname, router, status, user]);
@@ -101,30 +142,41 @@ function LaunchGate({ children }: PropsWithChildren) {
   // white/blank screen and the navigator remounts, dumping the user back toward
   // the initial route. Screens handle their own `loading` states instead.
   if (status === "loading") {
-    return <View style={{ flex: 1, backgroundColor: "#F7F8F6" }} />;
+    return <BrandLoadingScreen />;
   }
 
   return <>{children}</>;
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontsError] = useFonts(fontAssets);
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
+  const [brandDelayElapsed, setBrandDelayElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBrandDelayElapsed(true), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {
     initManusRuntime();
   }, []);
 
+  // Configure RevenueCat once at startup. Missing keys are logged and leave the
+  // paywall in its empty state rather than crashing app launch.
   useEffect(() => {
-    if (fontsLoaded || fontsError) {
-      void SplashScreen.hideAsync();
-    }
-  }, [fontsError, fontsLoaded]);
+    void initPurchases();
+  }, []);
+
+  // Fonts ship inside the app binary now, so the native splash can hand over
+  // to the branded loading screen as soon as React has mounted.
+  useEffect(() => {
+    void BootSplash.hide({ fade: true });
+  }, []);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
     setInsets(metrics.insets);
@@ -138,9 +190,8 @@ export default function RootLayout() {
   }, [handleSafeAreaUpdate]);
 
   // Create clients once and reuse them
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({
         defaultOptions: {
           queries: {
             // Disable automatic refetching on window focus for mobile
@@ -148,20 +199,55 @@ export default function RootLayout() {
             // Don't refetch just because the network reconnects; keep showing
             // cached data until the query goes stale.
             refetchOnReconnect: false,
-            // Retry failed requests once
-            retry: 1,
+            // PERF: retry network/5xx failures once, but never 4xx (401, 404,
+            // 429 rate-limited). Retrying a 429 only digs the hole deeper and
+            // kept spinners on screen for the whole backoff.
+            retry: (failureCount, error) => {
+              const status = (error as { data?: { httpStatus?: number } } | null)?.data?.httpStatus;
+              if (typeof status === "number" && status >= 400 && status < 500) return false;
+              return failureCount < 1;
+            },
             // Serve cached data on remount and re-validate in the background.
             // 30s keeps tabs "live-ish" while stopping a network call every
             // time a screen mounts (the pre-fix behavior).
             staleTime: 30_000,
-            // Hold data for five minutes after a query leaves the screen so a
-            // quick revisit renders instantly without a round trip.
-            gcTime: 5 * 60_000,
+            // Hold data for 30 minutes after a query leaves the screen so a
+            // revisit renders instantly from cache (stale-while-revalidate:
+            // stale data paints first, a background refetch replaces it).
+            // Was 5 minutes, after which screens fell back to a skeleton.
+            gcTime: 30 * 60_000,
           },
         },
-      }),
-  );
+      });
+    // PERF: the full public job list is read by ~10 screens (Home, Explore,
+    // Near you, Popular, Recommended, Vista, Search…). One shared 60s cache
+    // stops each screen mount from refetching it; writes (post/edit/apply/
+    // boost) already call publicJobs.invalidate() so changes still show at once.
+    client.setQueryDefaults([["homlo", "publicJobs"]], { staleTime: 60_000, gcTime: 60 * 60_000 });
+    // The ranked feeds (Home, Popular) share the publicJobs freshness window.
+    client.setQueryDefaults([["homlo", "homeFeed"]], { staleTime: 60_000, gcTime: 60 * 60_000 });
+    // Categories barely ever change.
+    client.setQueryDefaults([["homlo", "categories"]], { staleTime: 30 * 60_000, gcTime: 60 * 60_000 });
+    // Post/edit/apply/boost screens call publicJobs.invalidate(); drop the
+    // feed client's reused pages at the same moment so Home shows the change.
+    client.getQueryCache().subscribe((event) => {
+      if (event.type !== "updated" || event.action.type !== "invalidate") return;
+      const key = event.query.queryKey[0];
+      if (Array.isArray(key) && key[0] === "homlo" && (key[1] === "publicJobs" || key[1] === "homeFeed")) {
+        clearFeedClientCache();
+        // Job detail reads one job (homlo.publicJob); keep it as fresh as the list.
+        if (key[1] === "publicJobs") void client.invalidateQueries({ queryKey: [["homlo", "publicJob"]] });
+      }
+    });
+    // PERF: cold starts paint public data from the last session, then refresh.
+    setupQueryPersistence(client);
+    return client;
+  });
   const [trpcClient] = useState(() => createTRPCClient());
+
+  useEffect(() => {
+    setQueryClientInstance(queryClient);
+  }, [queryClient]);
 
   // Ensure minimum 8px padding for top and bottom on mobile
   const providerInitialMetrics = useMemo(() => {
@@ -176,47 +262,28 @@ export default function RootLayout() {
     };
   }, [initialInsets, initialFrame]);
 
-  if (!fontsLoaded && !fontsError && Platform.OS !== "web") return <View style={{ flex: 1, backgroundColor: "#F7F8F6" }} />;
+  if (Platform.OS !== "web" && !brandDelayElapsed) return <BrandLoadingScreen />;
 
   const content = (
     <ErrorBoundary>
+    <LocationProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <JobProvider>
+          <AppNavigationContainer>
           <LaunchGate>
-          {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
-          {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
-          {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
-          <Stack screenOptions={{ animation: "slide_from_right", animationDuration: 220, fullScreenGestureEnabled: false, gestureEnabled: true, gestureDirection: "horizontal", headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ animation: "fade", animationDuration: 160 }} />
-            <Stack.Screen name="onboarding/index" options={{ animation: "fade", animationDuration: 220, gestureEnabled: false }} />
-            <Stack.Screen name="explore" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="search-results" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="detailed-search" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="discover/[kind]" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="job/[id]" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="job/[id]/apply" options={{ animation: "slide_from_right", animationDuration: 220, presentation: "fullScreenModal" }} />
-
-            <Stack.Screen name="employer/index" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="post-job" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="employer/jobs" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="employer/boost/[id]" options={{ animation: "slide_from_right", animationDuration: 240 }} />
-            <Stack.Screen name="oauth/callback" options={{ animation: "fade", animationDuration: 160 }} />
-            <Stack.Screen name="login" options={{ animation: "fade", animationDuration: 180 }} />
-            <Stack.Screen name="complete-profile" options={{ animation: "slide_from_right", animationDuration: 220, gestureEnabled: false }} />
-            <Stack.Screen name="account-plans" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="checkout" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="employer/enterprise-campaign" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="applications/[id]" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-            <Stack.Screen name="applications/index" options={{ animation: "slide_from_right", animationDuration: 220 }} />
-          </Stack>
+          {/* Native headers are hidden by default (ROOT_SCREEN_OPTIONS); a screen that needs one enables it via <Stack.Screen options>. */}
+          <RootStack screenOptions={ROOT_SCREEN_OPTIONS} options={SCREEN_OPTIONS} tabs={TabLayout} />
+          <WebLegalChrome />
           </LaunchGate>
+          </AppNavigationContainer>
           </JobProvider>
-          <StatusBar style="auto" />
+          <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
         </QueryClientProvider>
       </trpc.Provider>
     </GestureHandlerRootView>
+    </LocationProvider>
     </ErrorBoundary>
   );
 
